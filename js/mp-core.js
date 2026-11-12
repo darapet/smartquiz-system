@@ -70,11 +70,11 @@ export function normalizeQuestions(items, existing = [], random = Math.random) {
   return out;
 }
 
-export function validateSetup({ title, seconds, count, prompt }) {
+export function validateSetup({ title, seconds, count, prompt, hasSource = false }) {
   if (!String(title).trim()) return 'Give your quiz a name.';
   if (!Number.isInteger(seconds) || seconds < LIMITS.minSeconds || seconds > LIMITS.maxSeconds) return 'Time per question must be 5 to 120 seconds.';
   if (!Number.isInteger(count) || count < 1 || count > LIMITS.maxQuestions) return 'Number of questions must be between 1 and 1,500.';
-  if (String(prompt).trim().length < 3) return 'Tell the AI what the questions should be about.';
+  if (!hasSource && String(prompt).trim().length < 3) return 'Tell the AI what the questions should be about, or add a file.';
   return '';
 }
 
@@ -109,4 +109,109 @@ export function timeFraction(nowMs, startMs, deadlineMs) {
 
 export function randomPin(random = Math.random) {
   return String(1000 + Math.floor(random() * 9000));
+}
+
+/* ───────── study material: cleaning, splitting, and planning so nothing is left out ───────── */
+
+export const SOURCE = Object.freeze({
+  /* The server accepts up to 32,000 characters per request; stay under it. */
+  maxUnitChars: 24000,
+  chunkChars: 5000,
+  charsPerQuestion: 450,
+  maxTotalChars: 800000
+});
+
+export function cleanText(text) {
+  return String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u00AD\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[ \t\u00A0]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/* Splits text into pieces of at most `max` characters, at paragraph, then sentence, then word breaks.
+   Joining the pieces gives back all of the text (only whitespace at the cut points is dropped). */
+export function splitIntoChunks(text, max = SOURCE.chunkChars) {
+  const t = cleanText(text);
+  if (!t) return [];
+  const pieces = [];
+  const pushLong = para => {
+    let rest = para;
+    while (rest.length > max) {
+      let cut = Math.max(rest.lastIndexOf('. ', max), rest.lastIndexOf('? ', max), rest.lastIndexOf('! ', max), rest.lastIndexOf('\n', max));
+      if (cut < max * 0.4) cut = rest.lastIndexOf(' ', max);
+      if (cut < max * 0.4) cut = max - 1;
+      pieces.push(rest.slice(0, cut + 1).trim());
+      rest = rest.slice(cut + 1).trim();
+    }
+    if (rest) pieces.push(rest);
+  };
+  for (const para of t.split(/\n{2,}/)) {
+    if (para.length <= max) pieces.push(para);
+    else pushLong(para);
+  }
+  /* Pack neighbouring pieces together up to `max`. */
+  const chunks = [];
+  let cur = '';
+  for (const piece of pieces) {
+    if (!piece) continue;
+    if (cur && cur.length + piece.length + 2 > max) { chunks.push(cur); cur = piece; }
+    else cur = cur ? `${cur}\n\n${piece}` : piece;
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+/* About how many questions it takes to cover the material (1 per ~450 characters). */
+export function recommendedCount(chars) {
+  if (!chars) return 0;
+  return Math.min(LIMITS.maxQuestions, Math.max(1, Math.ceil(chars / SOURCE.charsPerQuestion)));
+}
+
+/* Plans which part of the material each question comes from.
+   Returns units of { text, count }. Every character of the material lands in exactly one unit,
+   and the counts add up to `count`, so no section is skipped even when few questions are asked. */
+export function planUnits(text, count) {
+  const chunks = splitIntoChunks(text);
+  if (!chunks.length) return [];
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  /* Fewer questions than chunks: merge neighbouring chunks into `count` groups of similar size. */
+  let groups = chunks;
+  if (chunks.length > count) {
+    groups = [];
+    const target = total / count;
+    let cur = '';
+    chunks.forEach((c, i) => {
+      cur = cur ? `${cur}\n\n${c}` : c;
+      const left = chunks.length - i - 1, slotsLeft = count - groups.length - 1;
+      if (slotsLeft > 0 && (cur.length >= target || left <= slotsLeft)) { groups.push(cur); cur = ''; }
+    });
+    if (cur) groups.push(cur);
+  }
+  /* Give each group at least one question, share the rest by length (largest remainder). */
+  const n = groups.length;
+  const extra = count - n;
+  const len = groups.map(g => g.length);
+  const sum = len.reduce((a, b) => a + b, 0);
+  const raw = len.map(l => (l / sum) * extra);
+  const counts = raw.map(r => 1 + Math.floor(r));
+  let left = count - counts.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - Math.floor(r), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { counts[i]++; left--; } });
+  return groups.map((g, i) => ({ text: g, count: counts[i] }));
+}
+
+/* The fewest questions that still let one request carry every part of the material. */
+export function minCountToCover(chars) {
+  return Math.max(1, Math.ceil(chars / SOURCE.maxUnitChars));
+}
+
+export function shuffled(list, random = Math.random) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }

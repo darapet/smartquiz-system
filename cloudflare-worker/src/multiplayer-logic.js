@@ -115,12 +115,15 @@ const DIFFICULTY_GUIDE = Object.freeze({
   Professional: 'Professional: expert-level, exam or industry standard. Nuanced scenarios, edge cases, and precise terminology. Distractors reflect real expert-level confusions.'
 });
 
-const AI_LIMITS = Object.freeze({ maxTopic: 1500, maxCount: 20, maxAvoid: 30, maxAvoidChars: 240, maxBatch: 200 });
+const AI_LIMITS = Object.freeze({ maxTopic: 1500, maxCount: 20, maxAvoid: 30, maxAvoidChars: 240, maxBatch: 2000, maxSource: 32000, maxImageChars: 1800000 });
 
 function validateGenerate(body) {
   const b = body && typeof body === 'object' ? body : {};
   const topic = String(b.topic || '').replace(/\s+/g, ' ').trim();
-  if (topic.length < 3) throw new Error('Describe what the questions should be about.');
+  /* Text taken from the host's uploaded files. Line breaks are kept so headings and lists stay readable. */
+  const source = String(b.source || '').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if (source.length > AI_LIMITS.maxSource) throw new Error(`The study material for one request must be ${AI_LIMITS.maxSource} characters or fewer.`);
+  if (!source && topic.length < 3) throw new Error('Describe what the questions should be about.');
   if (topic.length > AI_LIMITS.maxTopic) throw new Error(`The topic must be ${AI_LIMITS.maxTopic} characters or fewer.`);
   if (!DIFFICULTIES.includes(b.difficulty)) throw new Error('Choose a difficulty level.');
   const count = Number(b.count);
@@ -128,19 +131,28 @@ function validateGenerate(body) {
   const batch = Number.isInteger(Number(b.batch)) ? Math.min(AI_LIMITS.maxBatch, Math.max(1, Number(b.batch))) : 1;
   const avoid = (Array.isArray(b.avoid) ? b.avoid : []).slice(-AI_LIMITS.maxAvoid)
     .map(x => String(x || '').replace(/\s+/g, ' ').trim().slice(0, AI_LIMITS.maxAvoidChars)).filter(Boolean);
-  return { topic, difficulty: b.difficulty, count, batch, avoid };
+  const part = Number(b.part), parts = Number(b.parts);
+  return {
+    topic, source, difficulty: b.difficulty, count, batch, avoid,
+    part: Number.isInteger(part) && part > 0 ? part : 0,
+    parts: Number.isInteger(parts) && parts > 0 ? parts : 0
+  };
 }
 
-function buildQuizPrompt({ topic, difficulty, count, avoid = [], batch = 1 }) {
+/* An image sent for text reading must be a small PNG, JPEG or WebP data URL. */
+function validateImage(body) {
+  const image = String((body && body.image) || '');
+  if (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) throw new Error('Send a PNG, JPEG or WebP image.');
+  if (image.length > AI_LIMITS.maxImageChars) throw new Error('That image is too large. Try a smaller one.');
+  return image;
+}
+
+function buildQuizPrompt({ topic, source = '', difficulty, count, avoid = [], batch = 1, part = 0, parts = 0 }) {
   const guide = DIFFICULTY_GUIDE[difficulty] || DIFFICULTY_GUIDE.Easy;
   const avoidText = avoid.length
     ? `\nDo NOT repeat or rephrase any of these existing questions:\n${avoid.map(q => `- ${q}`).join('\n')}\n`
     : '';
-  return `Write exactly ${count} multiple-choice quiz questions about: ${topic}
-
-Difficulty: ${guide}
-This is batch ${batch}. Cover a different sub-topic or angle than earlier batches.${avoidText}
-Rules:
+  const rules = `Rules:
 - Each question has exactly 4 answer options and exactly 1 correct option.
 - Plain text only. No markdown. Write math in plain text (for example x^2 or sqrt(9)).
 - Keep each question under 220 characters and each option under 100 characters.
@@ -149,6 +161,28 @@ Rules:
 Return ONLY a raw JSON array, nothing else. Format:
 [{"q":"Question text","options":["Option 1","Option 2","Option 3","Option 4"],"answer":0}]
 "answer" is the index (0 to 3) of the correct option.`;
+  if (source) {
+    const where = parts > 1 ? ` This is part ${part} of ${parts} of the full material.` : '';
+    const focus = topic ? `\nThe host also asked for this focus: ${topic}\n` : '';
+    return `Write exactly ${count} multiple-choice quiz questions from the study material below.${where}
+
+Difficulty: ${guide}${focus}
+Rules for using the material:
+- Base every question ONLY on facts, definitions, numbers, steps and ideas that appear in the material. Do not add outside facts.
+- Spread the questions across the whole passage, from beginning to end, so no section is skipped. Each question must test a different point.
+- Make each question understandable on its own. Never write "according to the text" or refer to "the passage".${avoidText}
+${rules}
+
+STUDY MATERIAL:
+"""
+${source}
+"""`;
+  }
+  return `Write exactly ${count} multiple-choice quiz questions about: ${topic}
+
+Difficulty: ${guide}
+This is batch ${batch}. Cover a different sub-topic or angle than earlier batches.${avoidText}
+${rules}`;
 }
 
 /* Groq retired these in 2026; an old admin setting must not send requests to them. */
@@ -201,5 +235,7 @@ function errorStatus(error) {
 export {
   LIMITS, DIFFICULTIES, validateAvatar, validateRoom, shardQuestions, shardIndex, shardOffset,
   publicQuestion, correctIndex, answerOutcome, answerWindow, rankPlayers, errorStatus,
-  AI_LIMITS, validateGenerate, buildQuizPrompt, groqModelFor, collectKeys, nextQuota, GROQ_DEFAULT_MODEL
+  AI_LIMITS, validateGenerate, validateImage, buildQuizPrompt, groqModelFor, collectKeys, nextQuota, GROQ_DEFAULT_MODEL
 };
+
+export const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
