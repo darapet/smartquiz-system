@@ -191,7 +191,6 @@ export async function handleImage(request, env) {
 
   try {
     const design = directDesign(prompt, payload.category, payload.aspectRatio);
-    const category = design.category;
     const model = modelFor(payload.engineModel);
     if (model === PROFESSIONAL_IMAGE_MODEL) {
       let image;
