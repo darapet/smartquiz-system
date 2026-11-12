@@ -150,7 +150,7 @@ function speakAnswer(text){
  if(!clean)return;nativeVoice=window.AqsNativeVoice||nativeVoice;
  if(nativeVoice&&typeof nativeVoice.speak==='function'){
   if(typeof nativeVoice.isTtsReady==='function'&&!nativeVoice.isTtsReady()){
-   if(!ttsInitComplete){pendingNativeSpeech=clean;setState('','Preparing Android voice…');setTimeout(function(){if(pendingNativeSpeech&&!nativeVoice.isTtsReady()){pendingNativeSpeech=null;setState('','Answer ready.');showToast('Android Text-to-Speech is not ready. Enable or install a voice in Android settings. Your written answer is saved.');}},2800);}
+   if(!ttsInitComplete){pendingNativeSpeech=clean;setState('','Preparing Android voice…');setTimeout(function(){if(pendingNativeSpeech){if(nativeVoice.isTtsReady()){var queued=pendingNativeSpeech;pendingNativeSpeech=null;speakAnswer(queued);}else{pendingNativeSpeech=null;setState('','Answer ready.');showToast('Android Text-to-Speech is not ready. Enable or install a voice in Android settings. Your written answer is saved.');}}},2800);}
    else showToast('Android Text-to-Speech is unavailable. Enable or install a voice in Android settings. Your written answer is saved.');
    return;
   }
