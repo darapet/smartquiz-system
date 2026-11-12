@@ -437,6 +437,7 @@ async function hostRoom() {
     S.link = roomLink(r.roomId);
     $('link-text').textContent = S.link;
     $('link-pin').textContent = pin;
+    $('link-code').textContent = r.roomId;
     $('linkcard').hidden = false;
     $('back-setup').disabled = true;
     say('msg-room', '');
@@ -470,6 +471,7 @@ async function bootPlayer(rid, pinParam, notice) {
     return say('msg-join', e.message);
   }
   S.roomId = rid;
+  $('join-room-code').value = rid;
   $('join-title').textContent = info.title;
   $('join-meta').textContent = `${info.secondsPerQuestion} seconds per question · ${info.questionCount} questions · ${info.difficulty} · ${info.playerCount} of ${info.capacity} players`;
   if (pinParam && /^\d{4}$/.test(pinParam)) $('join-pin').value = pinParam;
@@ -627,6 +629,7 @@ function paintLobbyInfo() {
   $('lobby-title').textContent = d.title;
   $('lobby-meta').textContent = `${d.secondsPerQuestion} seconds per question · ${d.questionCount} question${d.questionCount === 1 ? '' : 's'} · ${d.difficulty}`;
   $('room-pin').textContent = d.pin;
+  $('room-code').textContent = S.roomId;
   $('room-link').textContent = S.link;
   $('player-cap').textContent = d.capacity;
   $('ready-btn').hidden = S.isHost;
