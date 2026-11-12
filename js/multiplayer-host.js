@@ -418,7 +418,7 @@ function pauseGeneration() {
 
 /* ───────────────────────── licensed background music ───────────────────────── */
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
-const MUSIC_ALLOWED_LICENSE = /^(CC0|CC BY(?:-[0-9.]+)?|Public domain|Public Domain)$/i;
+const MUSIC_ALLOWED_LICENSE = /^(?:CC0(?:\\s+1\\.0)?|CC BY(?:\\s+[0-9.]+)?|Public domain)$/i;
 const cleanMeta = value => String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&#0*39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim().slice(0, 240);
 
 function setMusicDraft(track) {
@@ -504,7 +504,7 @@ function initRoomMusic() {
   S.musicAudio.volume = volume;
   try { S.musicEnabledLocally = localStorage.getItem('sq-room-music-muted') !== '1'; } catch (_) {}
   $('room-music-volume').addEventListener('input', e => { S.musicAudio.volume = Number(e.target.value) / 100; });
-  $('room-music-toggle').addEventListener('click', async () => {
+  $('room-music-host-toggle').addEventListener('click', async () => {\n    if (!S.isHost || !S.room || !S.room.music || !S.room.music.track) return;\n    const button = $('room-music-host-toggle'); button.disabled = true;\n    try { await api('setMusic', { roomId: S.roomId, enabled: !S.room.music.enabled, track: S.room.music.track }); }\n    catch (error) { toast(error.message || 'Could not update room music.'); }\n    finally { button.disabled = false; }\n  });\n  $('room-music-toggle').addEventListener('click', async () => {
     S.musicEnabledLocally = !S.musicEnabledLocally;
     try { localStorage.setItem('sq-room-music-muted', S.musicEnabledLocally ? '0' : '1'); } catch (_) {}
     if (!S.musicEnabledLocally) { S.musicAudio.pause(); $('room-music-toggle').textContent = 'Enable music'; return; }
@@ -513,7 +513,7 @@ function initRoomMusic() {
 }
 async function playRoomMusic() {
   const track = S.room && S.room.music && S.room.music.enabled && S.room.music.track;
-  if (!track || !S.musicAudio || !S.musicEnabledLocally) return;
+  if (!track || !S.room.music.enabled || !S.musicAudio || !S.musicEnabledLocally) return;
   try {
     await S.musicAudio.play();
     S.musicPlayBlocked = false;
@@ -533,7 +533,7 @@ function syncRoomMusic(music) {
     return;
   }
   const track = music.track;
-  $('room-music-label').textContent = '♪ ' + track.title + ' — ' + (track.artist || 'Unknown artist');
+  $('room-music-label').textContent = (active ? '♪ ' : 'Ⅱ ') + track.title + ' — ' + (track.artist || 'Unknown artist');\n  $('room-music-credit').href = track.pageUrl || 'https://commons.wikimedia.org/';\n  $('room-music-credit').title = track.credit || track.license || 'Music source and licence';\n  $('room-music-credit').textContent = track.license || 'Source & licence';
   const key = track.id + '|' + track.url;
   if (key !== S.musicTrackKey) {
     S.musicTrackKey = key;
