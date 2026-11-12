@@ -390,16 +390,27 @@ const actions = {
     const pin = String(body.pin || '');
     const name = String(body.name || '').trim().slice(0, 35);
     if (!name || !/^\d{4}$/.test(pin)) throw new Error('Name and four-digit PIN are required.');
-    const avatar = M.validateAvatar(body.avatar);
+    const requestedAvatar = body.avatar === undefined || body.avatar === null ? null : M.validateAvatar(body.avatar);
     await runTransaction(fs, async tx => {
-      const got = await tx.getMany([roomP(id), playerP(id, uid), claimP(id, avatar)]);
+      const got = await tx.getMany([roomP(id), playerP(id, uid)]);
       const d = got.get(roomP(id));
       if (!d) throw new Error('Room not found.');
       if (d.pin !== pin) throw new Error('Incorrect room PIN.');
       if (d.startAt && d.startAt.toMillis() > Date.now()) throw new Error('This room is scheduled to open later. Please wait for the countdown to finish.');
       if (got.get(playerP(id, uid))) return;
-      if (d.phase !== 'lobby' || Number(d.playerCount || 0) >= d.capacity) throw new Error('Room is closed or full.');
-      if (got.get(claimP(id, avatar))) throw new Error('Avatar already taken.');
+      if (!['lobby', 'question'].includes(d.phase) || Number(d.playerCount || 0) >= d.capacity) throw new Error('Room is closed or full.');
+
+      let avatar = requestedAvatar;
+      if (avatar === null) {
+        /* Late joiners do not stop to choose an avatar: reserve the first free one on the server. */
+        const claims = await tx.list(`${roomP(id)}/avatarClaims`, { fields: ['uid'] });
+        const taken = new Set(claims.map(claim => Number(claim.id)));
+        avatar = Array.from({ length: M.LIMITS.avatarCount }, (_, index) => index).find(index => !taken.has(index));
+        if (avatar === undefined) throw new Error('Room is closed or full.');
+      } else if (await tx.get(claimP(id, avatar))) {
+        throw new Error('Avatar already taken.');
+      }
+
       tx.create(claimP(id, avatar), { uid });
       tx.create(playerP(id, uid), freshPlayer(name, avatar, false));
       tx.update(roomP(id), { playerCount: Number(d.playerCount || 0) + 1 });
