@@ -544,7 +544,8 @@ function syncRoomMusic(music) {
   const hasTrack = !!(track && track.url);
   const active = hasTrack && music.enabled === true;
   const panel = $('room-music-control');
-  panel.hidden = !hasTrack || !['lobby', 'game'].includes(S.view);
+  const inPlayableRoom = ['lobby', 'game'].includes(S.view);
+  panel.hidden = !hasTrack || !inPlayableRoom;
   $('room-music-host-toggle').hidden = !S.isHost || !hasTrack;
   $('room-music-host-toggle').textContent = active ? 'Stop for everyone' : 'Play for everyone';
   $('room-music-toggle').disabled = !active;
@@ -563,7 +564,7 @@ function syncRoomMusic(music) {
     S.musicAudio.src = track.url;
     S.musicAudio.load();
   }
-  if (!active) {
+  if (!active || !inPlayableRoom) {
     S.musicAudio.pause();
     $('room-music-toggle').textContent = 'Off by host';
   } else if (S.musicEnabledLocally) {
