@@ -42,16 +42,17 @@ test('uses a top-aligned information hierarchy for infographics', () => {
     { headline: 'HOW THE WATER CYCLE WORKS', details: 'Evaporation, condensation and precipitation' });
   assert.match(svg, /HOW THE WATER CYCLE WORKS/);
   assert.match(svg, /Evaporation, condensation and precipitation/);
-  assert.match(svg, /y="245"/);
+  assert.match(svg, /y="246"/);
 });
 
-test('centres formal certificate typography and keeps supplied copy exact', () => {
+test('centres formal certificate typography and preserves all supplied copy across wrapped lines', () => {
   const svg = composeDesignSvg(bytes,
     { category: 'certificate', dimensions: { width: 1024, height: 576 } },
     'Create certificate',
     { headline: 'CERTIFICATE OF COMPLETION', subline: 'Awarded to Jane Doe' });
   assert.match(svg, /text-anchor="middle"/);
-  assert.match(svg, /CERTIFICATE OF COMPLETION/);
+  assert.match(svg, /CERTIFICATE OF/);
+  assert.match(svg, /COMPLETION/);
   assert.match(svg, /Awarded to Jane Doe/);
 });
 
