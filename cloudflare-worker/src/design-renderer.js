@@ -12,9 +12,9 @@ function cleanCopy(copy, brief) {
   if (!Object.keys(result).length) {
     const text = String(brief || '');
     const patterns = [
-      ['headline', /\\b(?:headline|main headline|title)\\s*[:=]\\s*["“]([^"”]{2,90})["”]/i],
-      ['subline', /\\b(?:subheadline|subtitle|supporting text|subline)\\s*[:=]\\s*["“]([^"”]{2,110})["”]/i],
-      ['cta', /\\b(?:call to action|cta|button text)\\s*[:=]\\s*["“]([^"”]{2,45})["”]/i],
+      ['headline', /\b(?:headline|main headline|title)\s*[:=]\s*["“]([^"”]{2,90})["”]/i],
+      ['subline', /\b(?:subheadline|subtitle|supporting text|subline)\s*[:=]\s*["“]([^"”]{2,110})["”]/i],
+      ['cta', /\b(?:call to action|cta|button text)\s*[:=]\s*["“]([^"”]{2,45})["”]/i],
     ];
     for (const [key, pattern] of patterns) {
       const match = text.match(pattern);
@@ -25,7 +25,7 @@ function cleanCopy(copy, brief) {
 }
 
 function wrapWords(value, maxChars, maxLines) {
-  const words = String(value || '').trim().split(/\\s+/).filter(Boolean);
+  const words = String(value || '').trim().split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
   for (const word of words) {
