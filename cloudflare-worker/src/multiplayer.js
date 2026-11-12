@@ -9,7 +9,7 @@
 import * as M from './multiplayer-logic.js';
 
 const ROOM_ID = /^[A-F0-9]{16}$/;
-const QUOTA = { create: { limit: 10, windowMs: 3600e3 }, generate: { limit: 200, windowMs: 3600e3 } };
+const QUOTA = { create: { limit: 10, windowMs: 3600e3 }, generate: { limit: 400, windowMs: 3600e3 }, ocr: { limit: 80, windowMs: 3600e3 } };
 const LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 
 /* ── Firestore value encoding ─────────────────────────────────────────────── */
@@ -206,20 +206,17 @@ async function chatOnce(url, key, body, timeoutMs) {
   }
 }
 
-async function writeQuestions(fs, prompt, deps, env) {
+/* Sends a chat request to the AI providers. `vision` sends the request to Groq's image model only. */
+async function askModel(fs, messages, deps, env, { vision = false, maxTokens = 4096 } = {}) {
   const settings = await aiSettings(fs);
   /* Groq keys live in Worker storage (same place as /api/ai). Old Firestore keys still work as a fallback. */
   const stored = deps.getGroqConfig ? await deps.getGroqConfig(env).catch(() => ({ keys: [], model: '' })) : { keys: [], model: '' };
   const groq = M.collectKeys({ w: stored.keys, q: settings.quiz_groq_keys, g: settings.groq_keys }, ['w', 'q', 'g']);
-  const mistral = M.collectKeys(settings, ['mistral_keys']);
+  const mistral = vision ? [] : M.collectKeys(settings, ['mistral_keys']);
   if (!groq.length && !mistral.length) throw new Error('AI is not set up yet. The site owner needs to add AI keys in Admin Settings.');
-  const messages = [
-    { role: 'system', content: 'You are an expert quiz writer. Reply with only the raw JSON array that was asked for.' },
-    { role: 'user', content: prompt }
-  ];
-  const gModel = M.groqModelFor(stored.model || settings.groq_model);
-  const groqP = groq.map(k => ({ name: 'groq', key: k, url: 'https://api.groq.com/openai/v1/chat/completions', body: { model: gModel, messages, max_tokens: 4096, temperature: 0.5, ...(gModel.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}) } }));
-  const mistralP = mistral.map(k => ({ name: 'mistral', key: k, url: 'https://api.mistral.ai/v1/chat/completions', body: { model: String(settings.mistral_model || 'mistral-small-latest'), messages, max_tokens: 4096, temperature: 0.5 } }));
+  const gModel = vision ? M.GROQ_VISION_MODEL : M.groqModelFor(stored.model || settings.groq_model);
+  const groqP = groq.map(k => ({ name: 'groq', key: k, url: 'https://api.groq.com/openai/v1/chat/completions', body: { model: gModel, messages, max_tokens: maxTokens, temperature: vision ? 0 : 0.5, ...(gModel.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}) } }));
+  const mistralP = mistral.map(k => ({ name: 'mistral', key: k, url: 'https://api.mistral.ai/v1/chat/completions', body: { model: String(settings.mistral_model || 'mistral-small-latest'), messages, max_tokens: maxTokens, temperature: 0.5 } }));
   /* Start at a random key so one busy key does not take every request. */
   const offset = Math.floor(Math.random() * Math.max(1, groqP.length));
   const ordered = [...groqP.map((_, i) => groqP[(i + offset) % groqP.length]), ...mistralP];
@@ -233,13 +230,27 @@ async function writeQuestions(fs, prompt, deps, env) {
       if (!res.ok) { console.warn(`multiplayer AI: ${p.name} answered ${res.status}`); continue; }
       const data = await res.json();
       const text = String((((data.choices || [])[0] || {}).message || {}).content || '');
-      if (text.trim().length >= 20) return text;
+      if (text.trim().length >= (vision ? 1 : 20)) return text;
     } catch (e) {
       console.warn(`multiplayer AI: ${p.name} failed: ${e.message}`);
     }
   }
   throw new Error('The AI service is busy or unavailable right now. Wait a minute, then press Continue.');
 }
+
+const writeQuestions = (fs, prompt, deps, env) => askModel(fs, [
+  { role: 'system', content: 'You are an expert quiz writer. Reply with only the raw JSON array that was asked for.' },
+  { role: 'user', content: prompt }
+], deps, env);
+
+/* Reads every word of text out of a picture (notes, slides, textbook pages, screenshots). */
+const readImageText = (fs, image, deps, env) => askModel(fs, [{
+  role: 'user',
+  content: [
+    { type: 'text', text: 'Read this image and write out ALL of the text in it, in reading order, exactly as written. Keep headings, bullet points, numbers, formulas and table rows (put each table row on one line, cells separated by " | "). If there are diagrams or charts, add one short line describing what they show and any labels. Do not summarise, skip or explain anything. If the image has no readable text, reply with exactly: NO TEXT' },
+    { type: 'image_url', image_url: { url: image } }
+  ]
+}], deps, env, { vision: true, maxTokens: 6000 });
 
 /* ── Sign-in check (guests have no email, so this does not use the email helper) ── */
 
@@ -311,6 +322,13 @@ const actions = {
     const input = M.validateGenerate(body);
     await takeQuota(fs, uid, 'generate');
     return { text: await writeQuestions(fs, M.buildQuizPrompt(input), deps, env) };
+  },
+
+  async ocr({ fs, uid, body, deps, env }) {
+    const image = M.validateImage(body);
+    await takeQuota(fs, uid, 'ocr');
+    const text = (await readImageText(fs, image, deps, env)).trim();
+    return { text: /^NO TEXT\.?$/i.test(text) ? '' : text };
   },
 
   async create({ fs, uid, body }) {
@@ -534,7 +552,7 @@ export async function handleMultiplayer(request, env, deps) {
     const handler = Object.prototype.hasOwnProperty.call(actions, action) ? actions[action] : null;
     if (!handler) return deps.json(request, env, { error: 'Unknown multiplayer action.' }, 400);
     let id = '';
-    if (action !== 'create' && action !== 'generate') {
+    if (action !== 'create' && action !== 'generate' && action !== 'ocr') {
       id = String(input.roomId || '');
       if (!ROOM_ID.test(id)) throw new Error('Invalid room id.');
     }

@@ -20,7 +20,7 @@ function makeWorld() {
       const uid = body.idToken.replace(/^tok_/, '');
       return reply(200, { users: [{ localId: uid }] });
     }
-    if (url.startsWith('https://api.groq.com')) return reply(state.groqStatus, { choices: [{ message: { content: state.groqText } }] });
+    if (url.startsWith('https://api.groq.com')) { state.lastGroq = body; return reply(state.groqStatus, state.groqOverride ? { choices: [{ message: { content: state.groqOverride } }] } : { choices: [{ message: { content: state.groqText } }] }); }
     if (!url.startsWith('https://firestore.googleapis.com/')) throw new Error('unexpected ' + url);
     const path = url.split('/documents')[1] || '';
     if (path.startsWith(':beginTransaction')) return reply(200, { transaction: 'tx1' });
@@ -192,7 +192,7 @@ test('AI generate: works, rate limits, and reports missing keys', async () => {
   assert.equal((await call('g', { action: 'generate', topic: 'Photosynthesis', difficulty: 'Easy', count: 5 })).status, 503);
   deps.getGroqConfig = saved;
   assert.equal((await call('g', { action: 'generate', topic: 'x', difficulty: 'Easy', count: 5 })).status, 400);
-  world.docs.set('multiplayerLimits/spam_generate', { start: { integerValue: String(Date.now()) }, count: { integerValue: '200' } });
+  world.docs.set('multiplayerLimits/spam_generate', { start: { integerValue: String(Date.now()) }, count: { integerValue: '400' } });
   assert.equal((await call('spam', { action: 'generate', topic: 'Photosynthesis', difficulty: 'Easy', count: 5 })).status, 429);
 });
 
@@ -207,4 +207,34 @@ test('an action stays well under the 50-subrequest limit', async () => {
   world.calls.count = 0;
   await call('p1', { action: 'join', roomId: id, name: 'Ann', pin: '1234', avatar: 4 });
   assert.ok(world.calls.count <= 8, `join used ${world.calls.count} calls`);
+});
+
+test('generate from uploaded material puts the passage in the prompt and needs no topic', async () => {
+  const source = 'Mitochondria make ATP.\n\nRibosomes build proteins.';
+  const r = await call('g', { action: 'generate', source, part: 2, parts: 5, difficulty: 'Hard', count: 10 });
+  assert.equal(r.status, 200, JSON.stringify(r));
+  const prompt = world.state.lastGroq.messages[1].content;
+  assert.ok(prompt.includes('Mitochondria make ATP.') && prompt.includes('part 2 of 5'));
+  assert.ok(/ONLY on facts/.test(prompt));
+  assert.equal((await call('g', { action: 'generate', source: 'x'.repeat(32001), difficulty: 'Hard', count: 10 })).status, 400);
+  assert.equal((await call('g', { action: 'generate', difficulty: 'Hard', count: 10 })).status, 400);
+});
+
+test('image reading sends the picture to the vision model and returns its text', async () => {
+  world.state.groqOverride = 'Chapter 1\nCells are the basic unit of life.';
+  const image = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
+  const r = await call('o', { action: 'ocr', image });
+  assert.equal(r.status, 200, JSON.stringify(r));
+  assert.ok(r.text.includes('Cells are the basic unit'));
+  assert.equal(world.state.lastGroq.model, 'qwen/qwen3.8-27b');
+  assert.equal(world.state.lastGroq.messages[0].content[1].image_url.url, image);
+  world.state.groqOverride = 'NO TEXT';
+  assert.equal((await call('o', { action: 'ocr', image })).text, '');
+  assert.equal((await call('o', { action: 'ocr', image: 'data:text/html;base64,AAAA' })).status, 400);
+  assert.equal((await call('o', { action: 'ocr', image: 'data:image/png;base64,' + 'A'.repeat(1800001) })).status, 400);
+});
+
+test('image reading is rate limited', async () => {
+  world.docs.set('multiplayerLimits/spam_ocr', { start: { integerValue: String(Date.now()) }, count: { integerValue: '80' } });
+  assert.equal((await call('spam', { action: 'ocr', image: 'data:image/png;base64,AAAA' })).status, 429);
 });

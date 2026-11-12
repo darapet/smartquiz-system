@@ -59,9 +59,23 @@
             <button type="button" class="level" data-level="Professional" role="radio" aria-checked="false"><b>Professional</b><span>Expert level</span></button>
           </div>
         </div>
-        <label class="field wide">What should the questions be about?
+        <div class="field wide">
+          <span class="label">Study material <small>Optional. The questions will come from your files.</small></span>
+          <label class="drop" id="drop" for="docs">
+            <input id="docs" type="file" multiple accept=".pdf,.docx,.pptx,.txt,.md,.csv,.json,.html,.rtf,.srt,.vtt,image/png,image/jpeg,image/webp">
+            <b>Add files or photos</b>
+            <span>PDF, Word, PowerPoint, text, or pictures of notes and pages. Drop them here or tap to choose.</span>
+          </label>
+          <ul class="doclist" id="doc-list" aria-live="polite"></ul>
+          <div class="docsum" id="doc-sum" hidden>
+            <p id="doc-sum-text"></p>
+            <button class="btn ghost" id="use-rec" type="button" hidden></button>
+          </div>
+        </div>
+        <label class="field wide"><span id="prompt-label">What should the questions be about?</span>
           <textarea id="prompt" rows="4" placeholder="e.g. Cell biology for first-year university students: organelles, mitosis, DNA replication"></textarea>
         </label>
+        <label class="check wide" id="mix-wrap" hidden><input type="checkbox" id="mix" checked> Mix up the question order <small>Otherwise questions follow the order of your files.</small></label>
       </div>
       <div class="row">
         <button class="btn primary big" id="generate" type="button">Generate questions with AI</button>

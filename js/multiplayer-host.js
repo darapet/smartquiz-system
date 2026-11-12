@@ -8,8 +8,10 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import * as fs from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
   LIMITS, extractJsonArray, normalizeQuestions, validateSetup, validateRoomSettings,
-  rankPlayers, accuracy, countdownLabel, timeFraction, randomPin
+  rankPlayers, accuracy, countdownLabel, timeFraction, randomPin,
+  planUnits, recommendedCount, minCountToCover, shuffled, SOURCE
 } from './mp-core.js';
+import { readOne, kindOf, DOC_LIMITS } from './mp-docs.js';
 import { avatarSvg } from './mp-avatars.js';
 import { createPicker, avatarInfo } from './mp-picker.js';
 import { createVoice } from './mp-voice.js';
@@ -48,7 +50,7 @@ const ICON = {
 const S = {
   roomId: '', room: null, players: [], me: null, isHost: false, view: '',
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
-  level: 'Easy', gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
+  level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
   voice: null, speaking: new Set(), voiceSyncTimer: 0,
   q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0 }, tick: 0
 };
@@ -169,18 +171,89 @@ const roomLink = id => `${location.origin}${location.pathname}?room=${id}`;
 
 /* ───────────────────────── step 1: build the quiz with AI ───────────────────────── */
 
+/* All the text from the files the host added, in the order they were added. */
+function sourceText() {
+  return S.docs.filter(d => d.status === 'ok').map(d => `Source: ${d.name}\n${d.text}`).join('\n\n');
+}
+
 function readSetup() {
+  const source = sourceText();
   return {
     title: $('title').value.trim(),
     seconds: parseInt($('seconds').value, 10),
     count: parseInt($('count').value, 10),
     prompt: $('prompt').value.trim(),
-    level: S.level
+    level: S.level,
+    source,
+    hasSource: source.length > 0
   };
 }
 
+/* ───────────────────────── study material (files and photos) ───────────────────────── */
+
+const fmtNum = n => n.toLocaleString('en-US');
+
+async function readPicture(dataUrl) {
+  const r = await api('ocr', { image: dataUrl });
+  return String(r.text || '');
+}
+
+function renderDocs() {
+  const list = $('doc-list');
+  list.innerHTML = S.docs.map(d => {
+    const info = d.status === 'ok' ? `${fmtNum(d.text.length)} characters read${d.note || ''}`
+      : d.status === 'err' ? d.error : (d.progress || 'Reading…');
+    return `<li class="docitem ${d.status === 'ok' ? 'ok' : d.status === 'err' ? 'err' : ''}" data-id="${d.id}"><b>${esc(d.name)}</b><small>${esc(info)}</small><button type="button" class="doc-x" aria-label="Remove ${esc(d.name)}">✕</button></li>`;
+  }).join('');
+  const text = sourceText();
+  const chars = text.length, busy = S.docs.some(d => d.status === 'busy');
+  const has = chars > 0;
+  $('doc-sum').hidden = !has;
+  $('mix-wrap').hidden = !has;
+  $('prompt-label').textContent = has ? 'Anything to focus on? (optional)' : 'What should the questions be about?';
+  $('prompt').placeholder = has ? 'e.g. Only chapters 2 and 3, or focus on definitions' : 'e.g. Cell biology for first-year university students: organelles, mitosis, DNA replication';
+  $('generate').disabled = busy || (S.gen && S.gen.running);
+  if (!has) return;
+  const rec = recommendedCount(chars), want = parseInt($('count').value, 10) || 0;
+  $('doc-sum-text').textContent = `${fmtNum(chars)} characters read from ${S.docs.filter(d => d.status === 'ok').length} file(s). About ${fmtNum(rec)} question${rec === 1 ? '' : 's'} would cover all of it. ` +
+    (want && want < rec ? `You asked for ${fmtNum(want)}, so each question will come from a wider part of your material. Every part is still used.` : 'Every part of your material will be used.');
+  const btn = $('use-rec');
+  btn.hidden = want === rec;
+  btn.textContent = `Use ${fmtNum(rec)} questions`;
+}
+
+async function addFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  say('msg-setup', '');
+  for (const file of files) {
+    if (S.docs.length >= DOC_LIMITS.maxFiles) { say('msg-setup', `You can add up to ${DOC_LIMITS.maxFiles} files.`); break; }
+    const doc = { id: ++S.docSeq, name: file.name, status: 'busy', text: '', note: '', error: '', progress: kindOf(file) === 'image' ? 'Reading the picture…' : 'Reading…' };
+    S.docs.push(doc);
+    renderDocs();
+    try {
+      const r = await readOne(file, {
+        readImage: readPicture,
+        onProgress: t => { doc.progress = t; const el = document.querySelector(`.docitem[data-id="${doc.id}"] small`); if (el) el.textContent = t; }
+      });
+      doc.text = r.text; doc.note = r.note; doc.status = 'ok';
+      const total = sourceText().length;
+      if (total > SOURCE.maxTotalChars) { doc.status = 'err'; doc.text = ''; doc.error = 'Your files together are too long. Remove something or split the material into two quizzes.'; }
+    } catch (e) {
+      doc.status = 'err';
+      doc.error = (e && e.message) || 'This file could not be read.';
+    }
+    renderDocs();
+  }
+  /* Suggest a size that covers everything the first time material is added. */
+  const chars = sourceText().length;
+  if (chars && !S.countTouched) $('count').value = String(recommendedCount(chars));
+  renderDocs();
+}
+
 function lockSetup(locked) {
-  ['title', 'seconds', 'count', 'prompt', 'generate'].forEach(id => { $(id).disabled = locked; });
+  ['title', 'seconds', 'count', 'prompt', 'generate', 'docs', 'mix'].forEach(id => { $(id).disabled = locked; });
+  document.querySelectorAll('.doc-x').forEach(b => { b.disabled = locked; });
   document.querySelectorAll('#levels .level').forEach(b => { b.disabled = locked; });
 }
 
@@ -194,10 +267,12 @@ async function askAI(cfg, need, G) {
   G.status = 0;
   G.ctrl = new AbortController();
   const timer = setTimeout(() => G.ctrl.abort(), 110000);
+  const unit = G.units[G.ui];
   try {
     const r = await api('generate', {
       topic: cfg.prompt, difficulty: cfg.level, count: need,
-      avoid: G.questions.slice(-30).map(q => q.text), batch: ++G.batch
+      avoid: G.unitQs.slice(-30), batch: ++G.batch,
+      ...(unit.text ? { source: unit.text, part: G.ui + 1, parts: G.units.length } : {})
     }, G.ctrl.signal);
     const text = String(r.text || '');
     if (text.trim().length < 20) throw new Error('The AI sent an empty reply.');
@@ -248,19 +323,37 @@ async function runGeneration() {
   paintGen();
 
   while (!G.stop && G.questions.length < cfg.count) {
+    const unit = G.units[G.ui];
+    if (!unit) break;
+    if (G.uDone >= unit.count) { G.ui++; G.uDone = 0; G.unitQs = []; stalls = 0; continue; }
     const have = G.questions.length;
-    const need = Math.min(LIMITS.batchSize, cfg.count - have);
-    $('gen-state').textContent = `Writing questions ${have + 1} to ${have + need}…`;
+    const need = Math.min(LIMITS.batchSize, unit.count - G.uDone);
+    $('gen-state').textContent = unit.text && G.units.length > 1
+      ? `Writing questions ${have + 1} to ${have + need} (material part ${G.ui + 1} of ${G.units.length})…`
+      : `Writing questions ${have + 1} to ${have + need}…`;
     try {
       const raw = await askAI(cfg, need, G);
       const fresh = normalizeQuestions(extractJsonArray(raw), G.questions).slice(0, need);
       if (!fresh.length) {
-        if (++stalls >= 3) throw new Error('The AI keeps repeating itself. Try a broader topic, then press Continue.');
+        if (++stalls >= 3) {
+          if (unit.text) {
+            /* This part of the material has no more new points. Give its remaining questions to the next part. */
+            const spare = unit.count - G.uDone;
+            const next = G.units[G.ui + 1];
+            if (next) next.count += spare;
+            else throw new Error('The AI could not find enough new points in your material. Press Continue to try again, or lower the number of questions.');
+            unit.count = G.uDone;
+            continue;
+          }
+          throw new Error('The AI keeps repeating itself. Try a broader topic, then press Continue.');
+        }
         continue;
       }
       stalls = 0;
       failures = 0;
       G.questions.push(...fresh);
+      G.unitQs.push(...fresh.map(q => q.text));
+      G.uDone += fresh.length;
       appendQuestions(fresh, have);
       paintGen();
     } catch (e) {
@@ -286,8 +379,19 @@ function startGeneration() {
   const cfg = readSetup();
   const err = validateSetup(cfg);
   if (err) return say('msg-setup', err);
+  if (S.docs.some(d => d.status === 'busy')) return say('msg-setup', 'Wait for your files to finish reading.');
+  if (cfg.hasSource) {
+    const least = minCountToCover(cfg.source.length);
+    if (cfg.count < least) {
+      cfg.count = least;
+      $('count').value = String(least);
+      say('msg-setup', `Your material is long, so the quiz needs at least ${fmtNum(least)} questions to include all of it. The number was raised to match.`, 'ok');
+    }
+  }
   if (S.gen && S.gen.questions.length && !confirm('Start over? The questions you have now will be replaced.')) return;
-  S.gen = { cfg, questions: [], running: false, stop: false, ctrl: null, batch: 0, error: '', status: 0 };
+  /* With files, every part of the material gets its share of the questions. */
+  const units = cfg.hasSource ? planUnits(cfg.source, cfg.count) : [{ text: '', count: cfg.count }];
+  S.gen = { cfg, units, ui: 0, uDone: 0, unitQs: [], questions: [], running: false, stop: false, ctrl: null, batch: 0, error: '', status: 0 };
   $('qlist').innerHTML = '';
   $('gen').hidden = false;
   runGeneration();
@@ -327,7 +431,7 @@ async function hostRoom() {
     const r = await api('create', {
       hostName: $('host-name').value.trim().slice(0, 35) || 'Host',
       avatar: S.hostPicker.get(),
-      room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, questions: S.gen.questions }
+      room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
     });
     S.roomId = r.roomId;
     S.link = roomLink(r.roomId);
@@ -904,6 +1008,20 @@ function bindEvents() {
     });
   }));
   $('generate').addEventListener('click', startGeneration);
+  $('docs').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addFiles(e.dataTransfer && e.dataTransfer.files));
+  $('doc-list').addEventListener('click', e => {
+    const x = e.target.closest('.doc-x');
+    if (!x || x.disabled) return;
+    const id = +x.closest('.docitem').dataset.id;
+    S.docs = S.docs.filter(d => d.id !== id);
+    renderDocs();
+  });
+  $('use-rec').addEventListener('click', () => { $('count').value = String(recommendedCount(sourceText().length)); S.countTouched = true; renderDocs(); });
+  $('count').addEventListener('input', () => { S.countTouched = true; renderDocs(); });
   $('gen-stop').addEventListener('click', pauseGeneration);
   $('gen-continue').addEventListener('click', runGeneration);
   $('to-room').addEventListener('click', openRoomStep);
