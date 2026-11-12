@@ -420,14 +420,14 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
  var messages=document.getElementById('dts-messages');if(!messages)return;
  window.dtsGenerateInline=async function(prompt,options){
   options=options||{};
-  var category=/^(logo|banner|flyer|poster|social|design)$/.test(options.category)?options.category:'general';
+  var category=/^(logo|banner|flyer|poster|social|design|fiverr|youtube-thumbnail|event-poster|product-ad|business-card|menu|infographic|packaging|certificate|invitation|mockup|3d-design|2d-design)$/.test(options.category)?options.category:'general';
   var aspectRatio=/^(square|landscape|portrait)$/.test(options.aspectRatio)?options.aspectRatio:'square';
   var item=document.createElement('div');item.className='dts-message dts-ai';
   item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY is bringing your design to life</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
   messages.appendChild(item);item.scrollIntoView({behavior:'smooth',block:'end'});
   try{
    var endpoint=window.AQS_IMGGEN_ENDPOINT;if(!endpoint)throw new Error('Cloudflare image endpoint is not configured.');
-   var response=await fetch(endpoint+'?prompt='+encodeURIComponent(prompt)+'&category='+encodeURIComponent(category)+'&aspectRatio='+encodeURIComponent(aspectRatio),{method:'GET',mode:'cors',cache:'no-store'});
+   var response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt,category:category,aspectRatio:aspectRatio,copy:options.copy||{}})});
    if(!response.ok){var detail=await response.text().catch(function(){return '';});throw new Error('Image service returned HTTP '+response.status+(detail?' — '+detail.slice(0,160):''));}
    var blob=await response.blob();if(!blob.size||String(blob.type||'').indexOf('image/')!==0)throw new Error('The image service returned an invalid image.');
    var sourceUrl=URL.createObjectURL(blob);
