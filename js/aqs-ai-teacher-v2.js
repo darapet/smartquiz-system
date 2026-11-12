@@ -125,7 +125,10 @@ function onNativeVoice(event){
  if(detail.type==='end'&&!thinking&&!speaking)setState('','Ready');
 }
 function startListening(){
- if(thinking||speaking||listening)return;nativeVoice=window.AqsNativeVoice||nativeVoice;
+ if(thinking||listening)return;
+ /* Let the learner interrupt spoken explanations. Stop TTS first to prevent the microphone hearing the teacher's own voice. */
+ if(speaking)stopSpeaking();
+ nativeVoice=window.AqsNativeVoice||nativeVoice;
  if(nativeVoice&&typeof nativeVoice.startListening==='function'){
   try{if(typeof nativeVoice.isRecognitionAvailable==='function'&&!nativeVoice.isRecognitionAvailable()){showToast('Android speech recognition is not available. You can still type your question.');setState('error','Speech service unavailable.');return;}
    setState('listening','Waiting for microphone permission…');nativeVoice.startListening('en-US');
