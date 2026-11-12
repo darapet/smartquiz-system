@@ -38,7 +38,8 @@
     <div class="card">
       <p class="eyebrow">Step 1</p>
       <h1>Build your quiz</h1>
-      <p class="lead">No account or login required. You can host as a guest, and your friends can join with just a name, avatar and room PIN.</p>
+      <p class="lead">No account or login required. Host a quiz or join a friend using a room code and PIN.</p>
+      <div class="row"><button class="btn ghost" id="open-join" type="button">Have a room code? Join a quiz →</button></div>
       <div class="grid">
         <label class="field wide">Quiz name
           <input id="title" maxlength="100" placeholder="e.g. Biology Showdown" autocomplete="off">
@@ -140,7 +141,8 @@
       <div class="linkcard" id="linkcard" hidden>
         <p class="eyebrow">Your room is live</p>
         <div class="linkrow"><code id="link-text"></code><button class="btn ghost" id="copy-link-1" type="button">Copy link</button></div>
-        <p class="hint">Share this link. Players also need the PIN <strong id="link-pin"></strong>.</p>
+        <p class="hint">Players can open the link, or enter the room code and PIN manually in the app. PIN: <strong id="link-pin"></strong></p>
+        <p class="hint">Room code: <strong id="link-code"></strong></p>
         <button class="btn primary big" id="to-lobby" type="button">Go to lobby →</button>
       </div>
     </div>
@@ -151,7 +153,14 @@
     <div class="card">
       <p class="eyebrow">You're invited</p>
       <h1 id="join-title">Join the quiz</h1>
-      <p class="lead">No registration or login needed. Enter your name and room PIN to play as a guest.</p>
+      <p class="lead">Join directly in the app. You do not need a shared link — enter the room code and PIN from the host.</p>
+      <div class="grid">
+        <label class="field wide">Room code
+          <input id="join-room-code" maxlength="16" autocapitalize="characters" placeholder="16-character room code" autocomplete="off">
+          <small>Ask the host for the room code shown in their lobby.</small>
+        </label>
+      </div>
+      <div class="row"><button class="btn ghost" id="find-room-btn" type="button">Find room</button></div>
       <p class="lead" id="join-meta"></p>
       <div class="grid">
         <label class="field">Your name
@@ -177,6 +186,7 @@
         <p class="lobby-meta" id="lobby-meta"></p>
       </div>
       <div class="lobby-share">
+        <div class="pin-box"><small>Room code</small><strong id="room-code">----------------</strong></div>
         <div class="pin-box"><small>Room PIN</small><strong id="room-pin">----</strong></div>
         <div class="share">
           <small>Room link</small>
