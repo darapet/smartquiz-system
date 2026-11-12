@@ -6,7 +6,7 @@ var input=document.getElementById('ait-input'),statusEl=document.getElementById(
 var orb=document.getElementById('ait-orb'),toastEl=document.getElementById('ait-toast'),historyDrawer=document.getElementById('ait-history-drawer');
 var historyBackdrop=document.getElementById('ait-history-backdrop'),historyList=document.getElementById('ait-history-list');
 var nativeVoice=window.AqsNativeVoice||null,activeRecognition=null,activeSpeechId=null,speechQueue=[];
-var voiceEnabled=localStorage.getItem(VOICE_KEY)!=='false',thinking=false,listening=false,speaking=false,toastTimer=null;
+var voiceEnabled=localStorage.getItem(VOICE_KEY)!=='false',thinking=false,listening=false,speaking=false,toastTimer=null,pendingNativeSpeech=null,ttsInitComplete=false;
 var sessions=loadSessions(),currentId=sessions.length?sessions[0].id:makeId();
 var currentSession=sessions.find(function(s){return s.id===currentId;})||makeSession();
 if(!sessions.some(function(s){return s.id===currentId;}))sessions.unshift(currentSession);
@@ -135,7 +135,7 @@ function startListening(){
  startBrowserRecognition();
 }
 function stopSpeaking(){
- speechQueue=[];if(nativeVoice&&typeof nativeVoice.stopSpeaking==='function'){try{nativeVoice.stopSpeaking();}catch(e){}}
+ speechQueue=[];pendingNativeSpeech=null;if(nativeVoice&&typeof nativeVoice.stopSpeaking==='function'){try{nativeVoice.stopSpeaking();}catch(e){}}
  if(window.speechSynthesis){try{window.speechSynthesis.cancel();}catch(e){}}
  activeSpeechId=null;if(speaking)setState('','Ready');
 }
@@ -149,7 +149,11 @@ function speakAnswer(text){
  var clean=String(text).replace(/\x60{3}[\s\S]*?\x60{3}/g,'Code block omitted from speech.').replace(/\[BOARD\][\s\S]*?\[\/BOARD\]/gi,'').replace(/[*_#>]/g,' ').replace(/\s+/g,' ').trim();
  if(!clean)return;nativeVoice=window.AqsNativeVoice||nativeVoice;
  if(nativeVoice&&typeof nativeVoice.speak==='function'){
-  if(typeof nativeVoice.isTtsReady==='function'&&!nativeVoice.isTtsReady()){showToast('Android voice output is not ready. Enable or install a Text-to-Speech voice in Android settings. Your written answer is saved.');return;}
+  if(typeof nativeVoice.isTtsReady==='function'&&!nativeVoice.isTtsReady()){
+   if(!ttsInitComplete){pendingNativeSpeech=clean;setState('','Preparing Android voice…');setTimeout(function(){if(pendingNativeSpeech&&!nativeVoice.isTtsReady()){pendingNativeSpeech=null;setState('','Answer ready.');showToast('Android Text-to-Speech is not ready. Enable or install a voice in Android settings. Your written answer is saved.');}},2800);}
+   else showToast('Android Text-to-Speech is unavailable. Enable or install a voice in Android settings. Your written answer is saved.');
+   return;
+  }
   activeSpeechId='ait-speech-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);setState('speaking','AI Teacher is speaking…');
   try{nativeVoice.speak(clean.slice(0,3800),1,1,activeSpeechId);}catch(e){activeSpeechId=null;setState('error','Android voice output could not start.');showToast('Voice output failed. Your written answer is still available.');}
   return;
@@ -158,6 +162,12 @@ function speakAnswer(text){
 }
 function onNativeSpeechEvent(event){
  var detail=event&&event.detail?event.detail:{};
+ if(detail.type==='tts-ready'){
+  ttsInitComplete=true;
+  if(detail.value==='true'&&pendingNativeSpeech){var queued=pendingNativeSpeech;pendingNativeSpeech=null;speakAnswer(queued);}
+  else if(detail.value!=='true'&&pendingNativeSpeech){pendingNativeSpeech=null;setState('','Answer ready.');showToast('Android Text-to-Speech is unavailable. Enable or install a voice in Android settings.');}
+  return;
+ }
  if(!activeSpeechId||detail.value!==activeSpeechId)return;
  if(detail.type==='speech-start')setState('speaking','AI Teacher is speaking…');
  if(detail.type==='speech-end'){activeSpeechId=null;setState('','Answer ready.');}
