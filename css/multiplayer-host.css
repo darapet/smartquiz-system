@@ -336,3 +336,14 @@ body[data-view="lobby"] .shell,body[data-view="game"] .shell{padding-bottom:96px
 .winner-banner{display:flex;align-items:center;justify-content:center;gap:12px;text-align:center;padding:15px 18px;margin-top:16px;border:1px solid #9cdec9;border-radius:14px;background:#e3f6f1;color:#086b55;font-weight:850;font-size:1rem}
 .feedback.bad{color:#b42318}
 @media(max-width:620px){.live-scoreboard{grid-template-columns:1fr}.scoreboard-heading{align-items:flex-start;flex-direction:column}.history-actions{width:100%}.history-actions .btn{flex:1}}
+
+
+/* Character victory callout: identity, character line and signature performance. */
+.winner-banner{align-items:center;gap:14px;padding:12px 16px;min-height:92px}
+.winner-character{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 58px}
+.winner-character .a{display:block;width:48px;height:58px}
+.winner-character-name{font-size:.68rem;color:var(--muted);font-weight:800;text-align:center;line-height:1.1}
+.winner-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.winner-copy strong{font-size:.95rem}
+.winner-speech{display:block;color:#6b4a12;font-size:.9rem;font-weight:650;font-style:italic}
+@media(max-width:520px){.winner-banner{align-items:flex-start}.winner-copy strong{font-size:.88rem}.winner-speech{font-size:.82rem}}
