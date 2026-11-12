@@ -71,8 +71,9 @@ window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1
    ─────────────────────────────────────────────────────────────────── */
 window._aqsKeysReady = new Promise(function(resolve) {
     window._aqsKeysReadyResolve = resolve;
-    /* Safety timeout: resolve after 5 s even if Firebase never fires */
-    setTimeout(resolve, 5000);
+    /* Firebase settings retrieval allows up to 20 s; keep the shared pool
+       pending slightly longer so slow mobile connections do not look keyless. */
+    setTimeout(resolve, 22000);
 });
 
 (function(){
