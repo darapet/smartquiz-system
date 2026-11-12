@@ -69,9 +69,12 @@ function newChat(){
 /* Let the shared provider pool finish loading its keys and handle fallback.
    A short UI-side key check can incorrectly block Groq/Mistral/HF while Firebase is still loading. */
 function readAIResponse(response){
- if(response&&typeof response.json==='function'&&'ok'in response){
-  if(!response.ok)return response.json().catch(function(){return null;}).then(function(data){
-   var detail=data&&data.error&&(data.error.message||data.error);
+ if(response&&typeof response.text==='function'&&'ok'in response){
+  if(!response.ok)return response.text().catch(function(){return '';}).then(function(raw){
+   var data=null;try{data=raw?JSON.parse(raw):null;}catch(e){}
+   var detail=data&&(data.error&&(data.error.message||data.error)||data.message||data.detail||data.reason);
+   if(detail&&typeof detail==='object'){try{detail=JSON.stringify(detail);}catch(e){detail='The provider returned a structured error.';}}
+   if(!detail&&raw)detail=raw.replace(/\\s+/g,' ').slice(0,360);
    throw new Error(response.status===429?'The AI service is busy. Please try again shortly.':'AI request failed ('+response.status+')'+(detail?': '+detail:'.'));
   });
   return response.json();
