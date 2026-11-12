@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Live Multiplayer Quiz — SmartQuiz</title>
 <link rel="stylesheet" href="css/mp-avatars.css">
-<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-music1">
+<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-schedule1">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body data-view="setup">
@@ -126,6 +126,15 @@
           <small>Players need this PIN to enter.</small>
         </label>
       </div>
+      <div class="field wide">
+        <span class="label">Schedule room opening <small>Optional. Anyone opening the link will see a countdown until the room opens.</small></span>
+        <div class="schedule-fields">
+          <label><input id="schedule-hours" type="number" inputmode="numeric" min="0" max="168" value="0" aria-label="Hours"><span>Hours</span></label>
+          <label><input id="schedule-minutes" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Minutes"><span>Minutes</span></label>
+          <label><input id="schedule-seconds" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Seconds"><span>Seconds</span></label>
+        </div>
+        <small>Leave all three at zero to open immediately. Maximum waiting time: 7 days.</small>
+      </div>
       <label class="field">Your name
         <input id="host-name" maxlength="35" placeholder="Host" autocomplete="nickname">
         <small>Players see this next to the crown in the lobby.</small>
@@ -161,6 +170,21 @@
         <p class="hint">Room code: <strong id="link-code"></strong></p>
         <button class="btn primary big" id="to-lobby" type="button">Go to lobby →</button>
       </div>
+    </div>
+  </section>
+
+  <!-- Scheduled room countdown -->
+  <section class="view" id="v-countdown" hidden>
+    <div class="card countdown-card">
+      <p class="eyebrow">Scheduled multiplayer</p>
+      <h1 id="countdown-title">This room is not open yet</h1>
+      <p class="lead">The host has scheduled this room. It will open when the countdown reaches zero.</p>
+      <div class="countdown-clock" role="timer" aria-live="off">
+        <div><strong id="countdown-hours">00</strong><span>Hours</span></div>
+        <div><strong id="countdown-minutes">00</strong><span>Minutes</span></div>
+        <div><strong id="countdown-seconds">00</strong><span>Seconds</span></div>
+      </div>
+      <p class="hint" id="countdown-status">The room opens automatically when the timer reaches zero.</p>
     </div>
   </section>
 
@@ -282,6 +306,6 @@
 <audio id="room-music" preload="none" loop playsinline></audio>
 <div id="room-music-control" class="room-music-control" hidden><span id="room-music-label">Background music</span><a id="room-music-credit" href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Credit & licence</a><button type="button" id="room-music-host-toggle" class="btn ghost" hidden>Stop for everyone</button><button type="button" id="room-music-toggle" class="btn ghost">Enable music</button><label>Volume <input id="room-music-volume" type="range" min="0" max="30" value="12"></label></div>
 
-<script type="module" src="js/multiplayer-host.js?v=20261112-music1"></script>
+<script type="module" src="js/multiplayer-host.js?v=20261112-schedule1"></script>
 </body>
 </html>
