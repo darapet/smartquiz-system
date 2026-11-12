@@ -1,7 +1,5 @@
-/* SmartQuiz multiplayer avatars: 250 animated characters.
-   25 roles (each with its own skill, prop, effect and animation) x 10 looks.
-   Everything is generated as inline SVG, so no image files are needed.
-   Animations live in css/mp-avatars.css. */
+/* SmartQuiz original multiplayer character collection: 250 variations.
+   25 original roles x 10 visual looks. SVG artwork and animation are original to SmartQuiz. */
 
 export const AVATAR_COUNT = 250;
 
@@ -78,6 +76,16 @@ const PROPS = {
   heartstaff: '<rect x="70" y="42" width="2.6" height="34" rx="1.3" fill="#a16207"/><path d="M71 40q-6-8-10-2t10 12q10-6 10-12t-10 2z" fill="#f43f5e"/>',
   bolt: '<path d="M72 36L64 54L72 54L66 74L84 50L75 50Z" fill="#fde047" stroke="#ca8a04" stroke-width="1.5"/>',
   balls: '',
+  drumsticks: '<path d="M64 66L83 43M68 70L88 49" stroke="#d6a15b" stroke-width="3.5" stroke-linecap="round"/>',
+  fashionbag: '<path d="M66 57h17l-2 19H68z" fill="#db2777" stroke="#831843" stroke-width="1.5"/><path d="M70 57q0-9 5-9t5 9" fill="none" stroke="#831843" stroke-width="2"/>',
+  bird: '<path d="M67 60q8-12 17-3l-4 9-10 2z" fill="#38bdf8" stroke="#075985" stroke-width="1.5"/><circle cx="79" cy="59" r="1.5" fill="#0f172a"/><path d="M84 60l6 2-6 2z" fill="#f59e0b"/>',
+  pet: '<path d="M66 63q-2-9 6-11l4 4 5-4q8 3 7 12l-5 8H71z" fill="#c08457" stroke="#78350f" stroke-width="1.5"/><circle cx="74" cy="62" r="1.5" fill="#1e293b"/><circle cx="82" cy="62" r="1.5" fill="#1e293b"/><ellipse cx="78" cy="67" rx="3" ry="2" fill="#1e293b"/>',
+  camera: '<rect x="65" y="57" width="22" height="15" rx="3" fill="#334155" stroke="#0f172a" stroke-width="1.5"/><circle cx="76" cy="64.5" r="5" fill="#7dd3fc" stroke="#e2e8f0" stroke-width="1.5"/>',
+  confetti: '<path d="M68 65l18-8-7 18z" fill="#38bdf8" stroke="#075985" stroke-width="1.5"/><path d="M82 49l3-5m3 11l6-1M65 48l-3-4" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>',
+  board: '<rect x="60" y="77" width="35" height="6" rx="3" fill="#f97316" stroke="#9a3412" stroke-width="1.5"/><circle cx="67" cy="85" r="3" fill="#334155"/><circle cx="88" cy="85" r="3" fill="#334155"/>',
+  ball: '<circle cx="80" cy="69" r="10" fill="#f8fafc" stroke="#334155" stroke-width="1.8"/><path d="M75 61l7 1 3 6-5 6-7-4z" fill="#1e293b"/>',
+  brush: '<path d="M70 72L84 48" stroke="#92400e" stroke-width="4" stroke-linecap="round"/><path d="M82 50l5-9 4 3-5 9z" fill="#e879f9"/>',
+  book: '<path d="M65 56q8-4 14 1v20q-6-5-14-1zM79 57q7-5 14-1v20q-7-4-14 1z" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>',
   none: ''
 };
 
@@ -95,31 +103,31 @@ const FX = {
 };
 
 const ROLES = [
-  { name: 'Pyromancer', skill: 'Conjures dancing flames', anim: 'magic', gear: 'pyro', prop: 'wand', fx: 'flame' },
-  { name: 'Frost Mage', skill: 'Freezes the air with snowflakes', anim: 'magic', gear: 'frost', prop: 'wand', fx: 'snow' },
-  { name: 'Storm Caller', skill: 'Summons crackling lightning', anim: 'magic', gear: 'storm', prop: 'bolt', fx: 'bolt' },
-  { name: 'Wizard', skill: 'Casts sparkling spells', anim: 'magic', gear: 'wizard', prop: 'wand', fx: 'sparkle' },
-  { name: 'Healer', skill: 'Spreads healing hearts', anim: 'wave', gear: 'healer', prop: 'heartstaff', fx: 'heart' },
-  { name: 'Ninja', skill: 'Backflips through the shadows', anim: 'jump', gear: 'ninja', prop: 'katana', fx: 'none' },
-  { name: 'Samurai', skill: 'Practices blade stances', anim: 'slash', gear: 'samurai', prop: 'katana', fx: 'none' },
-  { name: 'Knight', skill: 'Raises sword and shield', anim: 'flex', gear: 'knight', prop: 'shield', fx: 'none' },
-  { name: 'Archer', skill: 'Never misses a shot', anim: 'slash', gear: 'archer', prop: 'bow', fx: 'none' },
-  { name: 'Robot', skill: 'Dances in perfect sync', anim: 'dance', gear: 'robot', prop: 'none', fx: 'bolt' },
-  { name: 'Astronaut', skill: 'Floats in zero gravity', anim: 'float', gear: 'astronaut', prop: 'none', fx: 'star' },
-  { name: 'DJ', skill: 'Spins the beats', anim: 'bob', gear: 'dj', prop: 'none', fx: 'music' },
-  { name: 'Rocker', skill: 'Shreds the air guitar', anim: 'guitar', gear: 'rocker', prop: 'guitar', fx: 'music' },
-  { name: 'Dancer', skill: 'Pops, locks and grooves', anim: 'dance', gear: null, prop: 'none', fx: 'music' },
-  { name: 'Chef', skill: 'Flips pancakes mid-air', anim: 'slash', gear: 'chef', prop: 'pan', fx: 'none' },
-  { name: 'Detective', skill: 'Spots every clue', anim: 'look', gear: 'detective', prop: 'magnifier', fx: 'none' },
-  { name: 'Pirate', skill: 'Waves the jolly flag', anim: 'wave', gear: 'pirate', prop: 'flag', fx: 'none' },
-  { name: 'Cowboy', skill: 'Spins a mighty lasso', anim: 'lasso', gear: 'cowboy', prop: 'lasso', fx: 'none' },
-  { name: 'Scientist', skill: 'Brews bubbling potions', anim: 'slash', gear: 'scientist', prop: 'flask', fx: 'bubble' },
-  { name: 'Superhero', skill: 'Strikes a power pose', anim: 'flex', gear: 'hero', prop: 'none', fx: 'star' },
-  { name: 'Fairy', skill: 'Sprinkles magic glitter', anim: 'float', gear: 'fairy', prop: 'wand', fx: 'sparkle' },
-  { name: 'Alien', skill: 'Beams signals home', anim: 'jump', gear: 'alien', prop: 'none', fx: 'bolt', skin: '#86efac' },
-  { name: 'Monk', skill: 'Meditates in total calm', anim: 'meditate', gear: 'monk', prop: 'none', fx: 'sparkle' },
-  { name: 'Gamer', skill: 'Button-mashes at light speed', anim: 'shake', gear: 'gamer', prop: 'controller', fx: 'star' },
-  { name: 'Clown', skill: 'Juggles colorful balls', anim: 'juggle', gear: 'clown', prop: 'balls', fx: 'none' }
+  { name: 'Drummer', skill: 'Plays a big victory drum solo', anim: 'drum', gear: null, prop: 'drumsticks', fx: 'music', speech: 'That answer hit like a drum solo! Let us go!', pitch: 0.92, rate: 1.02 },
+  { name: 'Singer', skill: 'Sings a bright victory note', anim: 'sing', gear: 'fairy', prop: 'mic', fx: 'music', speech: 'This is my moment! Everybody sing along!', pitch: 1.28, rate: 0.94 },
+  { name: 'Fashion Icon', skill: 'Shows off a signature runway pose', anim: 'pose', gear: null, prop: 'fashionbag', fx: 'sparkle', speech: 'A perfect answer and a perfect look. Iconic!', pitch: 1.18, rate: 1.0 },
+  { name: 'Bird Keeper', skill: 'Celebrates with a clever little bird', anim: 'bird', gear: null, prop: 'bird', fx: 'heart', speech: 'We did it! My little bird says well played!', pitch: 1.12, rate: 0.96 },
+  { name: 'Pet Trainer', skill: 'Celebrates with a loyal pet companion', anim: 'pet', gear: null, prop: 'pet', fx: 'heart', speech: 'Good job, team! My best friend is celebrating too!', pitch: 0.98, rate: 0.98 },
+  { name: 'Guitarist', skill: 'Plays a quick electric guitar riff', anim: 'guitar', gear: 'rocker', prop: 'guitar', fx: 'music', speech: 'That was a winning riff! Rock on!', pitch: 0.9, rate: 1.08 },
+  { name: 'DJ', skill: 'Drops a celebratory beat', anim: 'bob', gear: 'dj', prop: 'controller', fx: 'music', speech: 'DJ in the house! That point is mine!', pitch: 0.86, rate: 1.12 },
+  { name: 'Dancer', skill: 'Pops, locks and grooves', anim: 'dance', gear: null, prop: 'none', fx: 'music', speech: 'I answered right and I brought the moves!', pitch: 1.2, rate: 1.08 },
+  { name: 'Ninja', skill: 'Performs a quick shadow-style flip', anim: 'jump', gear: 'ninja', prop: 'katana', fx: 'star', speech: 'Quick thinking. Clean victory!', pitch: 0.82, rate: 1.08 },
+  { name: 'Energy Hero', skill: 'Releases a harmless burst of game energy', anim: 'energy', gear: 'hero', prop: 'bolt', fx: 'bolt', speech: 'Power up! Another smart answer wins!', pitch: 0.9, rate: 1.0 },
+  { name: 'Firework Artist', skill: 'Launches a colourful confetti celebration', anim: 'energy', gear: 'pyro', prop: 'confetti', fx: 'sparkle', speech: 'A brilliant answer deserves a brilliant celebration!', pitch: 1.05, rate: 0.96 },
+  { name: 'Astronaut', skill: 'Floats in a zero-gravity celebration', anim: 'float', gear: 'astronaut', prop: 'none', fx: 'star', speech: 'Victory confirmed. Mission accomplished!', pitch: 0.88, rate: 0.92 },
+  { name: 'Skater', skill: 'Shows off a smooth skating trick', anim: 'skate', gear: null, prop: 'board', fx: 'star', speech: 'Smooth move! I landed that answer!', pitch: 1.0, rate: 1.08 },
+  { name: 'Photographer', skill: 'Snaps a winner celebration photo', anim: 'camera', gear: 'detective', prop: 'camera', fx: 'sparkle', speech: 'Hold that pose. That is a winning moment!', pitch: 1.08, rate: 0.98 },
+  { name: 'Chef', skill: 'Flips a celebratory dish', anim: 'slash', gear: 'chef', prop: 'pan', fx: 'sparkle', speech: 'Fresh answer, freshly served! Delicious!', pitch: 0.96, rate: 1.0 },
+  { name: 'Scientist', skill: 'Celebrates a successful discovery', anim: 'energy', gear: 'scientist', prop: 'flask', fx: 'bubble', speech: 'The results are in. My answer was correct!', pitch: 1.04, rate: 0.96 },
+  { name: 'Gamer', skill: 'Celebrates a perfect gaming moment', anim: 'shake', gear: 'gamer', prop: 'controller', fx: 'star', speech: 'Easy points! GG, everyone!', pitch: 0.9, rate: 1.14 },
+  { name: 'Football Star', skill: 'Scores an imaginary winning goal', anim: 'kick', gear: null, prop: 'ball', fx: 'star', speech: 'What a finish! That is a top-class answer!', pitch: 0.92, rate: 1.02 },
+  { name: 'Artist', skill: 'Paints a little victory sparkle', anim: 'pose', gear: null, prop: 'brush', fx: 'sparkle', speech: 'A masterpiece of an answer!', pitch: 1.16, rate: 0.98 },
+  { name: 'Guardian', skill: 'Raises a shield in a heroic pose', anim: 'flex', gear: 'knight', prop: 'shield', fx: 'star', speech: 'The team is safe. The point is secured!', pitch: 0.84, rate: 0.98 },
+  { name: 'Magician', skill: 'Performs a sparkling trick', anim: 'magic', gear: 'wizard', prop: 'wand', fx: 'sparkle', speech: 'And now, the magic of a correct answer!', pitch: 1.12, rate: 0.98 },
+  { name: 'Explorer', skill: 'Waves a flag after a discovery', anim: 'wave', gear: 'cowboy', prop: 'flag', fx: 'star', speech: 'Another discovery! We are moving forward!', pitch: 0.96, rate: 0.98 },
+  { name: 'Speedster', skill: 'Dashes into a victory pose', anim: 'jump', gear: null, prop: 'bolt', fx: 'bolt', speech: 'Too quick! I got there first!', pitch: 1.24, rate: 1.18 },
+  { name: 'Comedian', skill: 'Delivers a cheerful victory pose', anim: 'juggle', gear: 'clown', prop: 'balls', fx: 'heart', speech: 'I came, I saw, I answered correctly!', pitch: 1.22, rate: 1.04 },
+  { name: 'Scholar', skill: 'Raises a book after a smart answer', anim: 'pose', gear: null, prop: 'book', fx: 'star', speech: 'Knowledge wins again. Keep learning!', pitch: 0.94, rate: 0.94 }
 ];
 
 const MAX_ID = AVATAR_COUNT - 1;
@@ -127,7 +135,7 @@ const clampId = id => Math.min(MAX_ID, Math.max(0, Number.isInteger(+id) ? +id :
 
 export const AVATARS = Array.from({ length: AVATAR_COUNT }, (_, id) => {
   const role = ROLES[id % ROLES.length], look = LOOKS[Math.floor(id / ROLES.length)];
-  return { id, name: `${look.name} ${role.name}`, role: role.name, skill: role.skill, anim: role.anim };
+  return { id, name: `${look.name} ${role.name}`, role: role.name, skill: role.skill, anim: role.anim, speech: role.speech, pitch: role.pitch || 1, rate: role.rate || 1 };
 });
 
 const cache = new Map();
@@ -142,16 +150,18 @@ function build(id) {
     ? '<g class="balls"><circle class="b1" cx="22" cy="40" r="5" fill="#ef4444"/><circle class="b2" cx="50" cy="40" r="5" fill="#22c55e"/><circle class="b3" cx="78" cy="40" r="5" fill="#3b82f6"/></g>'
     : '';
   const coat = role.gear === 'scientist' ? '<rect x="36" y="50" width="28" height="30" rx="10" fill="#f8fafc"/><rect x="48" y="52" width="4" height="26" fill="#e2e8f0"/>' : '';
+  const stageProps = role.prop === 'drumsticks' ? '<g class="drum-kit"><ellipse cx="31" cy="82" rx="12" ry="7" fill="#dc2626" stroke="#7f1d1d" stroke-width="2"/><ellipse cx="31" cy="79" rx="12" ry="5" fill="#fecaca"/><ellipse cx="70" cy="83" rx="11" ry="6" fill="#2563eb" stroke="#1e3a8a" stroke-width="2"/><ellipse cx="70" cy="80" rx="11" ry="4" fill="#bfdbfe"/></g>' : '';
+  const companion = role.prop === 'bird' ? '<g class="companion bird-companion"><ellipse cx="25" cy="54" rx="9" ry="11" fill="#38bdf8"/><circle cx="22" cy="51" r="1.5" fill="#0f172a"/><path d="M16 55l-6 2 6 2z" fill="#f59e0b"/></g>' : role.prop === 'pet' ? '<g class="companion pet-companion"><circle cx="24" cy="62" r="10" fill="#c08457"/><path d="M17 56l-5-7 9 2m5 5l6-7-1 10" fill="#92400e"/><circle cx="21" cy="61" r="1.4" fill="#1e293b"/><circle cx="28" cy="61" r="1.4" fill="#1e293b"/></g>' : '';
   return `<svg class="mpav a-${role.anim}" viewBox="0 0 100 120" role="img" aria-label="${AVATARS[id].name}" xmlns="http://www.w3.org/2000/svg">
-<g class="av-fx">${FX[role.fx]}</g>
+<defs><linearGradient id="shirt-${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".3"/><stop offset=".5" stop-color="${outfit}"/><stop offset="1" stop-color="#0f172a" stop-opacity=".24"/></linearGradient><radialGradient id="skin-${id}" cx="35%" cy="25%"><stop offset="0" stop-color="#ffffff" stop-opacity=".35"/><stop offset="1" stop-color="${skin}"/></radialGradient></defs>\n<g class="av-fx">${FX[role.fx]}</g>${companion}
 <ellipse class="av-shadow" cx="50" cy="111" rx="20" ry="4" fill="#0f172a" fill-opacity=".16"/>
 <g class="av-body">${behind}
 <g class="av-legs"><rect x="39" y="76" width="9" height="26" rx="4.5" fill="#334155"/><rect x="52" y="76" width="9" height="26" rx="4.5" fill="#334155"/><ellipse cx="42" cy="103" rx="7" ry="4" fill="#0f172a"/><ellipse cx="58" cy="103" rx="7" ry="4" fill="#0f172a"/></g>
-<rect x="35" y="50" width="30" height="30" rx="11" fill="${outfit}"/>${coat}
+<rect x="35" y="50" width="30" height="30" rx="11" fill="url(#shirt-${id})"/>${coat}
 <g class="av-arm-l"><rect x="28" y="52" width="9" height="24" rx="4.5" fill="${outfit}"/><circle cx="32.5" cy="78" r="4.6" fill="${skin}"/></g>
 <g class="av-arm-r"><rect x="63" y="52" width="9" height="24" rx="4.5" fill="${outfit}"/><circle cx="67.5" cy="78" r="4.6" fill="${skin}"/>${PROPS[role.prop] || ''}</g>
 ${balls}
-<g class="av-head"><circle cx="50" cy="34" r="17" fill="${skin}"/>${front}
+<g class="av-head"><circle cx="50" cy="34" r="17" fill="url(#skin-${id})"/>${front}
 <circle cx="44" cy="34" r="2.3" fill="#1e293b"/><circle cx="56" cy="34" r="2.3" fill="#1e293b"/><circle cx="44.8" cy="33.2" r=".8" fill="#fff"/><circle cx="56.8" cy="33.2" r=".8" fill="#fff"/>
 <ellipse cx="39.5" cy="40" rx="3.2" ry="2" fill="#f472b6" fill-opacity=".38"/><ellipse cx="60.5" cy="40" rx="3.2" ry="2" fill="#f472b6" fill-opacity=".38"/>
 <path d="M45 41Q50 46 55 41" fill="none" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round"/></g>
