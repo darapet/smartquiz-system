@@ -52,6 +52,7 @@ const S = {
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
   voice: null, speaking: new Set(), voiceSyncTimer: 0,
+  musicDraft: null, musicAudio: null, musicTrackKey: '', musicEnabledLocally: true, musicPlayBlocked: false,
   q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0 }, tick: 0
 };
 
@@ -414,6 +415,135 @@ function pauseGeneration() {
   if (G.ctrl) G.ctrl.abort();
 }
 
+
+/* ───────────────────────── licensed background music ───────────────────────── */
+const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
+const MUSIC_ALLOWED_LICENSE = /^(CC0|CC BY(?:-[0-9.]+)?|Public domain|Public Domain)$/i;
+const cleanMeta = value => String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&#0*39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim().slice(0, 240);
+
+function setMusicDraft(track) {
+  S.musicDraft = track;
+  const box = $('music-selected');
+  if (!track) { box.hidden = true; box.textContent = ''; return; }
+  box.hidden = false;
+  box.innerHTML = '<strong></strong><span></span><button type="button" class="btn ghost" id="music-clear">Remove selection</button>';
+  box.querySelector('strong').textContent = track.title;
+  box.querySelector('span').textContent = (track.artist || 'Artist not listed') + ' · ' + track.license + ' · ' + track.credit;
+  $('music-clear').addEventListener('click', () => setMusicDraft(null));
+}
+
+async function searchLicensedMusic() {
+  const query = $('music-search').value.trim();
+  if (query.length < 2) return say('music-search-status', 'Enter at least two characters to search.');
+  $('music-search-btn').disabled = true;
+  $('music-results').replaceChildren();
+  say('music-search-status', 'Searching the licensed music catalogue…');
+  try {
+    const params = new URLSearchParams({
+      action: 'query', format: 'json', origin: '*',
+      generator: 'search', gsrnamespace: '6', gsrlimit: '30',
+      gsrsearch: query + ' filemime:audio',
+      prop: 'imageinfo', iiprop: 'url|extmetadata'
+    });
+    const response = await fetch(COMMONS_API + '?' + params.toString());
+    if (!response.ok) throw new Error('The music catalogue is temporarily unavailable.');
+    const data = await response.json();
+    const pages = Object.values(data.query && data.query.pages || {});
+    const tracks = pages.map(page => {
+      const info = page.imageinfo && page.imageinfo[0];
+      const meta = info && info.extmetadata || {};
+      const license = cleanMeta(meta.LicenseShortName && meta.LicenseShortName.value);
+      const url = info && info.url || '';
+      const mime = String(info && info.mime || '');
+      if (!info || !/^https:\/\/upload\.wikimedia\.org\//i.test(url) || !/^audio\/(mpeg|ogg|wav|flac|opus|x-wav)$/i.test(mime) || !MUSIC_ALLOWED_LICENSE.test(license)) return null;
+      const title = String(page.title || '').replace(/^File:/, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+      const artist = cleanMeta(meta.Artist && meta.Artist.value) || cleanMeta(meta.Credit && meta.Credit.value) || 'Artist not listed';
+      const licenseUrl = cleanMeta(meta.LicenseUrl && meta.LicenseUrl.value);
+      const pageUrl = 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(String(page.title || '').replace(/ /g, '_'));
+      const credit = license.toUpperCase() === 'CC0' || /^public domain$/i.test(license) ? 'No attribution required by licence' : 'Credit: ' + artist + ' — ' + license;
+      return { id: String(page.pageid), title: title.slice(0, 100), artist: artist.slice(0, 140), license, licenseUrl, pageUrl, url, mime, credit };
+    }).filter(Boolean).slice(0, 12);
+    const host = $('music-results');
+    host.replaceChildren();
+    if (!tracks.length) {
+      say('music-search-status', 'No matching CC0, Public Domain or CC BY audio tracks were found. Try another search.');
+      return;
+    }
+    say('music-search-status', tracks.length + ' licensed tracks found. Preview a track, then select it.');
+    tracks.forEach(track => {
+      const card = document.createElement('article');
+      card.className = 'music-result';
+      const info = document.createElement('div');
+      const title = document.createElement('strong'); title.textContent = track.title;
+      const artist = document.createElement('small'); artist.textContent = track.artist + ' · ' + track.license;
+      const credit = document.createElement('small'); credit.textContent = track.credit;
+      info.append(title, artist, credit);
+      const actions = document.createElement('div'); actions.className = 'music-result-actions';
+      const preview = document.createElement('button'); preview.type = 'button'; preview.className = 'btn ghost'; preview.textContent = 'Preview';
+      preview.addEventListener('click', () => previewMusic(track));
+      const choose = document.createElement('button'); choose.type = 'button'; choose.className = 'btn primary'; choose.textContent = 'Select';
+      choose.addEventListener('click', () => { setMusicDraft(track); $('music-enabled').checked = true; });
+      actions.append(preview, choose); card.append(info, actions); host.append(card);
+    });
+  } catch (error) {
+    say('music-search-status', error.message || 'Could not search music right now.');
+  } finally { $('music-search-btn').disabled = false; }
+}
+
+let musicPreview = null;
+function previewMusic(track) {
+  if (!musicPreview) musicPreview = new Audio();
+  musicPreview.pause(); musicPreview.src = track.url; musicPreview.volume = 0.18;
+  musicPreview.play().catch(() => say('music-search-status', 'Tap Preview again if your browser blocked audio playback.'));
+}
+function stopMusicPreview() { if (musicPreview) { musicPreview.pause(); musicPreview.removeAttribute('src'); musicPreview.load(); } }
+
+function initRoomMusic() {
+  S.musicAudio = $('room-music');
+  const volume = Number($('room-music-volume').value) / 100;
+  S.musicAudio.volume = volume;
+  try { S.musicEnabledLocally = localStorage.getItem('sq-room-music-muted') !== '1'; } catch (_) {}
+  $('room-music-volume').addEventListener('input', e => { S.musicAudio.volume = Number(e.target.value) / 100; });
+  $('room-music-toggle').addEventListener('click', async () => {
+    S.musicEnabledLocally = !S.musicEnabledLocally;
+    try { localStorage.setItem('sq-room-music-muted', S.musicEnabledLocally ? '0' : '1'); } catch (_) {}
+    if (!S.musicEnabledLocally) { S.musicAudio.pause(); $('room-music-toggle').textContent = 'Enable music'; return; }
+    await playRoomMusic();
+  });
+}
+async function playRoomMusic() {
+  const track = S.room && S.room.music && S.room.music.enabled && S.room.music.track;
+  if (!track || !S.musicAudio || !S.musicEnabledLocally) return;
+  try {
+    await S.musicAudio.play();
+    S.musicPlayBlocked = false;
+    $('room-music-toggle').textContent = 'Mute music';
+  } catch (_) {
+    S.musicPlayBlocked = true;
+    $('room-music-toggle').textContent = 'Enable music';
+  }
+}
+function syncRoomMusic(music) {
+  const active = !!(music && music.enabled && music.track && music.track.url);
+  const panel = $('room-music-control');
+  panel.hidden = !active || !['lobby', 'game'].includes(S.view);
+  if (!active) {
+    if (S.musicAudio) { S.musicAudio.pause(); S.musicAudio.removeAttribute('src'); S.musicAudio.load(); }
+    S.musicTrackKey = '';
+    return;
+  }
+  const track = music.track;
+  $('room-music-label').textContent = '♪ ' + track.title + ' — ' + (track.artist || 'Unknown artist');
+  const key = track.id + '|' + track.url;
+  if (key !== S.musicTrackKey) {
+    S.musicTrackKey = key;
+    S.musicAudio.src = track.url;
+    S.musicAudio.load();
+  }
+  if (S.musicEnabledLocally) playRoomMusic();
+  else $('room-music-toggle').textContent = 'Enable music';
+}
+
 /* ───────────────────────── step 2: room settings ───────────────────────── */
 
 function openRoomStep() {
@@ -437,11 +567,12 @@ async function hostRoom() {
 
   $('host-btn').disabled = true;
   say('msg-room', 'Creating your room…', 'ok');
+  stopMusicPreview();
   try {
     const r = await api('create', {
       hostName: $('host-name').value.trim().slice(0, 35) || 'Host',
       avatar: S.hostPicker.get(),
-      room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
+      room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, music: { enabled: !!$('music-enabled').checked && !!S.musicDraft, track: S.musicDraft }, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
     });
     S.roomId = r.roomId;
     S.link = roomLink(r.roomId);
@@ -562,6 +693,8 @@ function cleanupRoom() {
   S.unsubs.forEach(f => { try { f(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   if (S.voice) { S.voice.stop(); S.voice = null; }
+  if (S.musicAudio) { S.musicAudio.pause(); S.musicAudio.removeAttribute('src'); S.musicAudio.load(); }
+  $('room-music-control').hidden = true;
   S.tiles.clear();
   $('stage').innerHTML = '';
   S.room = null;
@@ -590,6 +723,7 @@ function onRoom(snap) {
   }
   const d = snap.data();
   S.room = d;
+  syncRoomMusic(d.music);
   S.isHost = d.hostUid === auth.currentUser.uid;
   if (d.phase === 'lobby') {
     if (S.view !== 'lobby') { show('lobby'); initLobby(); }
@@ -1077,6 +1211,10 @@ function bindEvents() {
   $('next-btn').addEventListener('click', hostNext);
   $('end-btn').addEventListener('click', hostEnd);
   $('mic-toggle').addEventListener('click', toggleMic);
+  $('music-enabled').addEventListener('change', e => { $('music-search-area').hidden = !e.target.checked; if (!e.target.checked) setMusicDraft(null); });
+  $('music-search-btn').addEventListener('click', searchLicensedMusic);
+  $('music-search').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchLicensedMusic(); } });
+  initRoomMusic();
 
   /* Keep the room tidy when someone closes the tab: free their avatar, seat and mic slot. */
   window.addEventListener('pagehide', e => {
