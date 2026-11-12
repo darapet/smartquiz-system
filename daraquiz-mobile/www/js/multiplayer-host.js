@@ -418,7 +418,7 @@ function pauseGeneration() {
 
 /* ───────────────────────── licensed background music ───────────────────────── */
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
-const MUSIC_ALLOWED_LICENSE = /^(?:CC0(?:\\s+1\\.0)?|CC BY(?:\\s+[0-9.]+)?|Public domain)$/i;
+const MUSIC_ALLOWED_LICENSE = /^(?:CC0(?:\s+1\.0)?|CC BY(?:\s+[0-9.]+)?|Public domain)$/i;
 const cleanMeta = value => String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&#0*39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim().slice(0, 240);
 
 function setMusicDraft(track) {
@@ -500,20 +500,35 @@ function stopMusicPreview() { if (musicPreview) { musicPreview.pause(); musicPre
 
 function initRoomMusic() {
   S.musicAudio = $('room-music');
-  const volume = Number($('room-music-volume').value) / 100;
-  S.musicAudio.volume = volume;
+  S.musicAudio.volume = Number($('room-music-volume').value) / 100;
   try { S.musicEnabledLocally = localStorage.getItem('sq-room-music-muted') !== '1'; } catch (_) {}
   $('room-music-volume').addEventListener('input', e => { S.musicAudio.volume = Number(e.target.value) / 100; });
-  $('room-music-host-toggle').addEventListener('click', async () => {\n    if (!S.isHost || !S.room || !S.room.music || !S.room.music.track) return;\n    const button = $('room-music-host-toggle'); button.disabled = true;\n    try { await api('setMusic', { roomId: S.roomId, enabled: !S.room.music.enabled, track: S.room.music.track }); }\n    catch (error) { toast(error.message || 'Could not update room music.'); }\n    finally { button.disabled = false; }\n  });\n  $('room-music-toggle').addEventListener('click', async () => {
+  $('room-music-host-toggle').addEventListener('click', async () => {
+    if (!S.isHost || !S.room || !S.room.music || !S.room.music.track) return;
+    const button = $('room-music-host-toggle');
+    button.disabled = true;
+    try {
+      await api('setMusic', { roomId: S.roomId, enabled: !S.room.music.enabled, track: S.room.music.track });
+    } catch (error) {
+      toast(error.message || 'Could not update room music.');
+    } finally { button.disabled = false; }
+  });
+  $('room-music-toggle').addEventListener('click', async () => {
+    if (!S.room || !S.room.music || !S.room.music.enabled) return;
     S.musicEnabledLocally = !S.musicEnabledLocally;
     try { localStorage.setItem('sq-room-music-muted', S.musicEnabledLocally ? '0' : '1'); } catch (_) {}
-    if (!S.musicEnabledLocally) { S.musicAudio.pause(); $('room-music-toggle').textContent = 'Enable music'; return; }
+    if (!S.musicEnabledLocally) {
+      S.musicAudio.pause();
+      $('room-music-toggle').textContent = 'Enable music';
+      return;
+    }
     await playRoomMusic();
   });
 }
+
 async function playRoomMusic() {
   const track = S.room && S.room.music && S.room.music.enabled && S.room.music.track;
-  if (!track || !S.room.music.enabled || !S.musicAudio || !S.musicEnabledLocally) return;
+  if (!track || !S.musicAudio || !S.musicEnabledLocally) return;
   try {
     await S.musicAudio.play();
     S.musicPlayBlocked = false;
@@ -523,25 +538,39 @@ async function playRoomMusic() {
     $('room-music-toggle').textContent = 'Enable music';
   }
 }
+
 function syncRoomMusic(music) {
-  const active = !!(music && music.enabled && music.track && music.track.url);
+  const track = music && music.track;
+  const hasTrack = !!(track && track.url);
+  const active = hasTrack && music.enabled === true;
   const panel = $('room-music-control');
-  panel.hidden = !active || !['lobby', 'game'].includes(S.view);
-  if (!active) {
+  panel.hidden = !hasTrack || !['lobby', 'game'].includes(S.view);
+  $('room-music-host-toggle').hidden = !S.isHost || !hasTrack;
+  $('room-music-host-toggle').textContent = active ? 'Stop for everyone' : 'Play for everyone';
+  $('room-music-toggle').disabled = !active;
+  if (!hasTrack) {
     if (S.musicAudio) { S.musicAudio.pause(); S.musicAudio.removeAttribute('src'); S.musicAudio.load(); }
     S.musicTrackKey = '';
     return;
   }
-  const track = music.track;
-  $('room-music-label').textContent = (active ? '♪ ' : 'Ⅱ ') + track.title + ' — ' + (track.artist || 'Unknown artist');\n  $('room-music-credit').href = track.pageUrl || 'https://commons.wikimedia.org/';\n  $('room-music-credit').title = track.credit || track.license || 'Music source and licence';\n  $('room-music-credit').textContent = track.license || 'Source & licence';
+  $('room-music-label').textContent = (active ? '♪ ' : 'Ⅱ ') + track.title + ' — ' + (track.artist || 'Unknown artist');
+  $('room-music-credit').href = track.pageUrl || 'https://commons.wikimedia.org/';
+  $('room-music-credit').title = track.credit || track.license || 'Music source and licence';
+  $('room-music-credit').textContent = track.license || 'Source & licence';
   const key = track.id + '|' + track.url;
   if (key !== S.musicTrackKey) {
     S.musicTrackKey = key;
     S.musicAudio.src = track.url;
     S.musicAudio.load();
   }
-  if (S.musicEnabledLocally) playRoomMusic();
-  else $('room-music-toggle').textContent = 'Enable music';
+  if (!active) {
+    S.musicAudio.pause();
+    $('room-music-toggle').textContent = 'Off by host';
+  } else if (S.musicEnabledLocally) {
+    playRoomMusic();
+  } else {
+    $('room-music-toggle').textContent = 'Enable music';
+  }
 }
 
 /* ───────────────────────── step 2: room settings ───────────────────────── */
