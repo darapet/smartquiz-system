@@ -305,7 +305,7 @@ function validateMusicTrack(track) {
   try { parsed = new URL(url); } catch (_) { throw new Error('Invalid music stream URL.'); }
   if (parsed.protocol !== 'https:' || parsed.hostname !== 'upload.wikimedia.org') throw new Error('Only approved Wikimedia Commons audio streams are allowed.');
   const license = String(track.license || '').trim();
-  if (!/^(CC0|CC BY(?:-[0-9.]+)?|Public domain|Public Domain)$/i.test(license)) throw new Error('This music licence is not approved for multiplayer.');
+  if (!/^(?:CC0(?:\\s+1\\.0)?|CC BY(?:\\s+[0-9.]+)?|Public domain)$/i.test(license)) throw new Error('This music licence is not approved for multiplayer.');
   const title = String(track.title || '').trim().slice(0, 100);
   const id = String(track.id || '').trim().slice(0, 40);
   if (!title || !id) throw new Error('The selected music track is missing its details.');
