@@ -161,6 +161,7 @@ function build(id) {
 <g class="av-arm-l"><rect x="28" y="52" width="9" height="24" rx="4.5" fill="${outfit}"/><circle cx="32.5" cy="78" r="4.6" fill="${skin}"/></g>
 <g class="av-arm-r"><rect x="63" y="52" width="9" height="24" rx="4.5" fill="${outfit}"/><circle cx="67.5" cy="78" r="4.6" fill="${skin}"/>${PROPS[role.prop] || ''}</g>
 ${balls}
+${stageProps}
 <g class="av-head"><circle cx="50" cy="34" r="17" fill="url(#skin-${id})"/>${front}
 <circle cx="44" cy="34" r="2.3" fill="#1e293b"/><circle cx="56" cy="34" r="2.3" fill="#1e293b"/><circle cx="44.8" cy="33.2" r=".8" fill="#fff"/><circle cx="56.8" cy="33.2" r=".8" fill="#fff"/>
 <ellipse cx="39.5" cy="40" rx="3.2" ry="2" fill="#f472b6" fill-opacity=".38"/><ellipse cx="60.5" cy="40" rx="3.2" ry="2" fill="#f472b6" fill-opacity=".38"/>
