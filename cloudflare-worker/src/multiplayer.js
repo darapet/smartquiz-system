@@ -524,7 +524,7 @@ const actions = {
     await runTransaction(fs, async tx => {
       const room = await tx.get(roomP(id));
       requireHost(room, uid);
-      if (room.phase !== 'question' || !room.deadlineAt || room.deadlineAt.toMillis() > Date.now()) throw new Error('Room state changed; try again.');
+      if (room.phase !== 'question' || !room.deadlineAt || (room.deadlineAt.toMillis() > Date.now() && !(room.lastWinner && room.lastWinner.questionIndex === room.currentQuestion))) throw new Error('Room state changed; try again.');
       const next = room.currentQuestion + 1;
       if (next >= room.questionCount) {
         tx.update(roomP(id), { phase: 'complete', completedAt: SERVER_TS, ...clearRound });
