@@ -893,8 +893,13 @@
                 } else if (plan.action === 'generate' && plan.prompt) {
                     imageDesignSessionActive = false;
                     var imageData = await window.dtsGenerateInline(plan.prompt,{category:plan.category,aspectRatio:plan.aspectRatio,copy:plan.copy||{}});
-                    if (imageData && imageData.type === 'generated-image') chatHistory.push({role:'assistant',content:imageData});
-                    else chatHistory.push({role:'assistant',content:'Image generation failed. Please try again.'});
+                    if (imageData && imageData.type === 'generated-image') {
+                        chatHistory.push({role:'assistant',content:imageData});
+                    } else {
+                        var failedMessage = 'I could not generate that image. Please check the message above for the service error, then try again.';
+                        chatHistory.push({role:'assistant',content:failedMessage});
+                        appendMessage('assistant',failedMessage);
+                    }
                     saveSession(); renderHistoryList();
                 } else {
                     throw new Error('The design plan was incomplete. Please describe the design again.');
