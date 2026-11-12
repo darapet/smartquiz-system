@@ -579,6 +579,61 @@ function syncRoomMusic(music) {
   }
 }
 
+/* ───────────────────────── host history ───────────────────────── */
+const HOST_HISTORY_KEY = 'smartquiz_host_history_v1';
+function readHostHistory() {
+  try {
+    const rows = JSON.parse(localStorage.getItem(HOST_HISTORY_KEY) || '[]');
+    return Array.isArray(rows) ? rows.filter(x => x && ROOM_ID.test(String(x.roomId || ''))) : [];
+  } catch { return []; }
+}
+function saveHostHistory(item) {
+  const rows = readHostHistory().filter(x => x.roomId !== item.roomId);
+  rows.unshift(item);
+  try { localStorage.setItem(HOST_HISTORY_KEY, JSON.stringify(rows.slice(0, 30))); } catch {}
+  renderHostHistory();
+}
+function renderHostHistory() {
+  const section = $('host-history');
+  const list = $('host-history-list');
+  if (!section || !list) return;
+  const rows = readHostHistory();
+  section.hidden = rows.length === 0;
+  list.replaceChildren();
+  rows.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'history-item';
+    const info = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = item.title || 'Untitled quiz';
+    const meta = document.createElement('small');
+    meta.textContent = 'Room ' + item.roomId + (item.createdAt ? ' · ' + new Date(item.createdAt).toLocaleString() : '');
+    info.append(name, meta);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn primary';
+    button.textContent = 'Continue';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.textContent = 'Opening…';
+      try {
+        const problem = await ensureSignedIn();
+        if (problem) throw new Error(problem);
+        const uid = auth.currentUser && auth.currentUser.uid;
+        const room = await api('peek', { roomId: item.roomId });
+        if (!uid || room.hostUid !== uid) throw new Error('This browser is no longer recognised as the host of this room.');
+        enterRoom(item.roomId);
+      } catch (e) {
+        toast(e.message || 'Could not reopen this room.');
+        button.disabled = false;
+        button.textContent = 'Continue';
+      }
+    });
+    card.append(info, button);
+    list.append(card);
+  });
+}
+
 /* ───────────────────────── step 2: room settings ───────────────────────── */
 
 function openRoomStep() {
@@ -610,6 +665,7 @@ async function hostRoom() {
       avatar: S.hostPicker.get(),
       room: { title, pin, capacity, secondsPerQuestion: seconds, scheduledDelaySeconds: delay, difficulty: S.gen.cfg.level, music: { enabled: !!$('music-enabled').checked && !!S.musicDraft, track: S.musicDraft }, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
     });
+    saveHostHistory({ roomId: r.roomId, title, pin, createdAt: Date.now() });
     S.roomId = r.roomId;
     S.link = roomLink(r.roomId);
     $('link-text').textContent = S.link;
@@ -1274,6 +1330,7 @@ function confetti() {
 /* ───────────────────────── start-up and events ───────────────────────── */
 
 function bindEvents() {
+  renderHostHistory();
   document.querySelectorAll('#levels .level').forEach(b => b.addEventListener('click', () => {
     S.level = b.dataset.level;
     document.querySelectorAll('#levels .level').forEach(x => {
