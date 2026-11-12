@@ -212,7 +212,7 @@ export async function handleImage(request, env) {
       });
       const rawBody = imageBody(image);
       if (rawBody instanceof ArrayBuffer || ArrayBuffer.isView(rawBody)) {
-        const svg = composeDesignSvg(new Uint8Array(rawBody.buffer || rawBody, rawBody.byteOffset || 0, rawBody.byteLength), design, prompt);
+        const svg = composeDesignSvg(new Uint8Array(rawBody.buffer || rawBody, rawBody.byteOffset || 0, rawBody.byteLength), design, prompt, payload.copy);
         if (svg) {
           return new Response(svg, {
             status: 200,
