@@ -314,3 +314,6 @@ body[data-view="lobby"] .shell,body[data-view="game"] .shell{padding-bottom:96px
 .join-notice{margin:10px 0 0;padding:11px 14px;border:1px solid #b6e3d8;border-radius:12px;background:var(--teal-soft);color:var(--teal);font-weight:800}
 .join-notice[hidden]{display:none}
 .game-join-notice{margin:12px 0}
+
+/* Host history */
+.host-history{margin-top:18px}.history-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line,rgba(127,127,127,.2))}.history-item>div{display:grid;gap:4px;min-width:0}.history-item strong{overflow-wrap:anywhere}.history-item small{opacity:.72;overflow-wrap:anywhere}@media(max-width:520px){.history-item{align-items:flex-start;flex-direction:column}.history-item .btn{width:100%}}
