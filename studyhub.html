@@ -54,21 +54,6 @@ a{text-decoration:none;color:inherit;}
 /* Keep old .sh-tab hidden for backward compat */
 .sh-tabs-wrap{display:none;}
 
-/* ── TESLA INTRO OVERLAY ── */
-#ait-tesla-intro{position:fixed;inset:0;z-index:500;background:#faf3ea;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:opacity .4s;}
-#ait-tesla-canvas{position:absolute;inset:0;width:100%;height:100%;}
-.ait-tesla-center{position:relative;z-index:2;text-align:center;pointer-events:none;}
-.ait-tesla-title{font-size:2.2rem;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:-.01em;}
-.ait-tesla-sub{font-size:.78rem;font-weight:800;color:#12304a;letter-spacing:.18em;text-transform:uppercase;opacity:.8;}
-.ait-tesla-hint{position:absolute;bottom:36px;left:0;right:0;text-align:center;z-index:2;animation:ait-hint-pulse 1.6s ease-in-out infinite;}
-.ait-tesla-hint span{font-size:.75rem;color:#334155;font-weight:600;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:6px 18px;border-radius:20px;}
-@keyframes ait-hint-pulse{0%,100%{opacity:.5}50%{opacity:1}}
-.ait-tesla-skip{position:absolute;top:18px;right:18px;z-index:3;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 14px;color:#475569;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
-.ait-tesla-skip:hover{color:#12304a;background:rgba(255,255,255,.1);}
-.ait-tesla-welcome{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;}
-.ait-tesla-streak{font-size:1.15rem;font-weight:900;color:#f59e0b;letter-spacing:.01em;text-shadow:0 0 18px rgba(245,158,11,.35);}
-.ait-tesla-last{font-size:.72rem;color:#334155;font-weight:600;max-width:260px;text-align:center;line-height:1.5;}
-
 /* PANELS */
 .sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
 .sh-panel.active{display:block;}
@@ -170,8 +155,8 @@ a{text-decoration:none;color:inherit;}
   .sh-panel{padding:16px 14px;}
   .sh-gpa-row{grid-template-columns:1fr 90px 80px 28px;}
   .sh-result-grid{grid-template-columns:repeat(2,1fr);}
-  .sh-timer-display{font-size:2.4rem;}
-  .ait-voice-grid{grid-template-columns:repeat(3,1fr);}
+  
+  
 }
 /* ── AI Visual Board (Canvas Concept Animator) ── */
 .ait-visual-board{width:100%;border-radius:12px;overflow:hidden;border:1px solid rgba(232,145,45,.22);background:#faf3ea;margin-bottom:14px;flex-shrink:0;}
