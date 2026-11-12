@@ -6,7 +6,7 @@ var input=document.getElementById('ait-input'),statusEl=document.getElementById(
 var orb=document.getElementById('ait-orb'),toastEl=document.getElementById('ait-toast'),historyDrawer=document.getElementById('ait-history-drawer');
 var historyBackdrop=document.getElementById('ait-history-backdrop'),historyList=document.getElementById('ait-history-list');
 var nativeVoice=window.AqsNativeVoice||null,activeRecognition=null,activeSpeechId=null,speechQueue=[];
-var voiceEnabled=localStorage.getItem(VOICE_KEY)!=='false',thinking=false,listening=false,speaking=false,toastTimer=null,pendingNativeSpeech=null,ttsInitComplete=false;
+var voiceEnabled=localStorage.getItem(VOICE_KEY)!=='false',thinking=false,listening=false,speaking=false,toastTimer=null,pendingNativeSpeech=null,ttsInitComplete=false,activeMode='voice';
 var sessions=loadSessions(),currentId=sessions.length?sessions[0].id:makeId();
 var currentSession=sessions.find(function(s){return s.id===currentId;})||makeSession();
 if(!sessions.some(function(s){return s.id===currentId;}))sessions.unshift(currentSession);
@@ -40,6 +40,16 @@ function renderMessage(message){
  if(window.MathJax&&window.MathJax.typesetPromise)window.MathJax.typesetPromise([bubble]).catch(function(){});
 }
 function renderMessages(){messagesEl.innerHTML='';messages.forEach(renderMessage);app.classList.toggle('has-messages',messages.length>0);scrollConversation();}
+function setMode(mode){
+ activeMode=mode==='text'?'text':'voice';
+ document.getElementById('ait-voice-screen').classList.toggle('active',activeMode==='voice');
+ document.getElementById('ait-text-screen').classList.toggle('active',activeMode==='text');
+ app.classList.toggle('mode-voice',activeMode==='voice');app.classList.toggle('mode-text',activeMode==='text');
+ var vb=document.getElementById('ait-mode-voice'),tb=document.getElementById('ait-mode-text');
+ vb.classList.toggle('active',activeMode==='voice');tb.classList.toggle('active',activeMode==='text');
+ vb.setAttribute('aria-pressed',String(activeMode==='voice'));tb.setAttribute('aria-pressed',String(activeMode==='text'));
+ if(activeMode==='text')scrollConversation();
+}
 function addMessage(role,content){
  var message={role:role,content:String(content||''),at:Date.now()};messages.push(message);renderMessage(message);
  app.classList.add('has-messages');persist();scrollConversation();
@@ -58,12 +68,12 @@ function renderHistory(){
 }
 function openSession(id){
  stopListening();stopSpeaking();persist();var found=sessions.find(function(s){return s.id===id;});if(!found)return;
- currentSession=found;currentId=found.id;messages=found.messages.slice();renderMessages();closeHistory();
+ currentSession=found;currentId=found.id;messages=found.messages.slice();renderMessages();setMode('text');closeHistory();
  setState('','Previous conversation opened. You can continue learning.');
 }
 function newChat(){
  stopListening();stopSpeaking();persist();currentSession=makeSession();currentId=currentSession.id;messages=[];
- renderMessages();persist();closeHistory();input.value='';input.focus();
+ renderMessages();persist();setMode('voice');closeHistory();input.value='';
  setState('','New conversation. What would you like to learn?');
 }
 /* Let the shared provider pool finish loading its keys and handle fallback.
@@ -93,7 +103,7 @@ function requestAI(){
  var model=(window.AQS_CONFIG&&window.AQS_CONFIG.groqModel)||window._AQS_GROQ_MODEL||'openai/gpt-oss-20b';
  var body={model:model,messages:[{role:'system',content:'You are a patient, highly capable university study tutor. Explain ideas in clear, simple English. Break difficult concepts into numbered steps, define technical words, and use practical examples. Be accurate and honest when uncertain. Keep answers focused and readable, using short paragraphs, numbered steps and simple bullet points. Avoid Markdown heading, bold or italic markers, code fences and special board tags. Use LaTeX only when it helps explain mathematics. Finish with one short question that checks the student understands.'}].concat(messages.filter(function(m){return m.role==='user'||m.role==='assistant';}).slice(-MAX_CONTEXT).map(function(m){return{role:m.role,content:String(m.content||'')};})),temperature:0.55,max_tokens:1200};
  Promise.resolve().then(function(){return fetcher(body,{signal:(window.AbortSignal&&AbortSignal.timeout)?AbortSignal.timeout(60000):undefined});})
- .then(readAIResponse).then(function(data){var answer=extractAIText(data).trim();if(!answer)throw new Error('The AI returned an empty answer. Please try again.');addMessage('assistant',answer);setState('','Answer ready. You can ask a follow-up question.');if(voiceEnabled)speakAnswer(answer);})
+ .then(readAIResponse).then(function(data){var answer=extractAIText(data).trim();if(!answer)throw new Error('The AI returned an empty answer. Please try again.');addMessage('assistant',answer);setState('','Answer ready. You can ask a follow-up question.');if(voiceEnabled&&activeMode==='voice')speakAnswer(answer);})
  .catch(function(error){var message=error&&error.message?error.message:'Something went wrong.';addMessage('assistant','I could not answer that just now. '+message);setState('error','I could not complete that answer. Try again.');console.error('[AI Teacher]',error);});
 }
 function submitQuestion(value){
@@ -196,6 +206,8 @@ function setupKeyboard(){
  syncViewport();
 }
 function bindUI(){
+ document.getElementById('ait-mode-voice').addEventListener('click',function(){setMode('voice');});
+ document.getElementById('ait-mode-text').addEventListener('click',function(){setMode('text');});
  document.getElementById('ait-send').addEventListener('click',function(){submitQuestion(input.value);});
  document.getElementById('ait-mic').addEventListener('click',function(){if(listening)stopListening();else startListening();});
  document.getElementById('ait-voice-toggle').addEventListener('click',toggleVoice);
@@ -214,7 +226,7 @@ function init(){
  var button=document.getElementById('ait-voice-toggle');button.textContent=voiceEnabled?'🔊':'🔇';button.title=voiceEnabled?'Voice on':'Voice off';button.setAttribute('aria-label',voiceEnabled?'Turn voice off':'Turn voice on');
  document.getElementById('ait-voice-state').textContent=voiceEnabled?'Voice enabled':'Voice muted';
  currentSession=sessions.find(function(s){return s.id===currentId;})||currentSession;messages=Array.isArray(currentSession.messages)?currentSession.messages.slice():[];
- renderMessages();persist();bindUI();setupKeyboard();setState('',messages.length?'Welcome back. Continue your learning conversation.':'Ask a question or tap the microphone to speak.');
+ renderMessages();persist();bindUI();setupKeyboard();setMode('voice');setState('',messages.length?'Welcome back. Tap the microphone and speak.':'Tap the microphone and speak to your AI Teacher.');
 }
 init();
 })();
