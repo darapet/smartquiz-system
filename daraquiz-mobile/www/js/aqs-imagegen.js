@@ -124,10 +124,12 @@
   function detectCategory(prompt) {
     var text = String(prompt || '').toLowerCase();
     var rules = [
+      { value: 'birthday', label: 'Birthday flyer', words: ['birthday', 'happy birthday', 'birthday flyer', 'birthday poster'] },
       { value: 'logo', label: 'Logo / brand mark', words: ['logo', 'logomark', 'brand mark', 'brand identity', 'monogram', 'wordmark', 'emblem'] },
       { value: 'banner', label: 'Banner / hero graphic', words: ['banner', 'hero image', 'header image', 'cover photo', 'website header', 'wide graphic', 'billboard'] },
       { value: 'social', label: 'Social media visual', words: ['social media', 'instagram', 'facebook post', 'linkedin', 'tiktok', 'twitter', 'x post', 'social post', 'carousel'] },
-      { value: 'portrait', label: 'Portrait / character', words: ['portrait', 'headshot', 'profile photo', 'avatar', 'character', 'person', 'human face'] }
+      { value: 'portrait', label: 'Portrait / character', words: ['portrait', 'headshot', 'profile photo', 'avatar', 'character', 'person', 'human face'] },
+      { value: 'design', label: 'Graphics & print design', words: ['graphic design', 'graphics design', 'print design', 'print-ready', 'print ready', 'flyer', 'poster', 'brochure', 'business card', 'invitation', 'menu design', 'certificate', 'packaging design', 'leaflet', 'pamphlet', 'advert design'] }
     ];
     for (var i = 0; i < rules.length; i += 1) {
       if (rules[i].words.some(function (word) { return text.indexOf(word) !== -1; })) return rules[i];
@@ -136,7 +138,7 @@
   }
 
   function displayCategory(value) {
-    var labels = { logo: 'Logo / brand mark', banner: 'Banner / hero graphic', social: 'Social media visual', portrait: 'Portrait / character', general: 'General creative' };
+    var labels = { birthday: 'Birthday flyer', logo: 'Logo / brand mark', banner: 'Banner / hero graphic', social: 'Social media visual', portrait: 'Portrait / character', design: 'Graphics & print design', general: 'General creative' };
     return labels[value] || labels.general;
   }
 
@@ -178,7 +180,9 @@
   function requestPayload() {
     var detected = detectCategory(promptInput.value);
     var category = categorySelect.value === 'auto' ? detected.value : categorySelect.value;
-    var ratio = ratioSelect.value === 'auto' ? (category === 'banner' ? 'landscape' : category === 'portrait' || category === 'social' ? 'portrait' : 'square') : ratioSelect.value;
+    var ratio = ratioSelect.value === 'auto'
+      ? (category === 'banner' ? 'landscape' : category === 'portrait' || category === 'social' ? 'portrait' : category === 'design' && /banner|billboard|business card|landscape/i.test(promptInput.value) ? 'landscape' : category === 'design' && /flyer|poster|leaflet|brochure|invitation|portrait/i.test(promptInput.value) ? 'portrait' : 'square')
+      : ratioSelect.value;
     return { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId() };
   }
 
@@ -200,20 +204,29 @@
   }
 
   async function fetchCloudflare(payload) {
-    var query = '?prompt=' + encodeURIComponent(payload.prompt);
-    query += '&category=' + encodeURIComponent(payload.category || 'general');
-    query += '&aspectRatio=' + encodeURIComponent(payload.aspectRatio || 'square');
-    if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
-    var response = await fetch(cloudflareEndpoint + query, {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-store',
-      signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+    var requestPayload = Object.assign({}, payload, { engine: 'cloudflare' });
+    if (String(config.cloudflareModel || '').trim()) requestPayload.engineModel = String(config.cloudflareModel).trim();
+    var response = await fetch(cloudflareEndpoint, {
+      method: 'POST', mode: 'cors', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload),
+      signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined
     });
-    if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
+    if (!response.ok) {
+      var rawError = await response.text().catch(function () { return ''; });
+      var detail = rawError;
+      try { var parsedError = JSON.parse(rawError); detail = parsedError.error || parsedError.detail || rawError; } catch (_) {}
+      if (response.status === 504) throw new Error('The image service timed out (504). The image engine took too long to respond. Please try again with a shorter, simpler prompt.');
+      throw new Error((detail || 'The Cloudflare image engine is unavailable.') + ' (HTTP ' + response.status + ').');
+    }
     var blob = await response.blob();
-    if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
-    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
+    if (!blob.size || !/^image\//i.test(blob.type || '')) {
+      var invalidBody = await blob.text().catch(function () { return ''; });
+      var invalidMessage = 'The image service returned an invalid image. Please try again.';
+      try { var invalidJson = JSON.parse(invalidBody); invalidMessage = invalidJson.error || invalidMessage; } catch (_) {}
+      throw new Error(invalidMessage);
+    }
+    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI', createdAt: new Date().toISOString(), mediaType: 'image' };
   }
 
   function chooseEngine() {
@@ -238,7 +251,8 @@
 
   function friendlyError(error) {
     var text = error && error.message ? error.message : 'Image generation failed. Please try again.';
-    if (/failed to fetch|network|timeout/i.test(text)) return 'The image service could not be reached. Check your connection and try again.';
+    if (/504|gateway timeout|upstream timed out/i.test(text)) return 'The image service timed out. Try a shorter, simpler prompt, then generate again.';
+    if (/failed to fetch|network|timeout|abort/i.test(text)) return 'The image service could not be reached. Check your connection and try again.';
     return text;
   }
 
