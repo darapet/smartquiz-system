@@ -48,7 +48,7 @@ const ICON = {
 };
 
 const S = {
-  roomId: '', room: null, players: [], me: null, isHost: false, view: '',
+  roomId: '', room: null, players: [], me: null, isHost: false, view: '', countdownTimer: 0, countdownTarget: 0,
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
   voice: null, speaking: new Set(), voiceSyncTimer: 0,
@@ -590,7 +590,8 @@ async function hostRoom() {
   const title = setup.title;
   const capacity = parseInt($('capacity').value, 10);
   const pin = $('pin').value.trim();
-  const err = (!title && 'Give your quiz a name.') ||
+  const delay = scheduleDelaySeconds();
+  const err = (!Number.isInteger(delay) || delay < 0 || delay > 604800 ? 'Scheduled opening must be between 0 seconds and 7 days.' : '') || (!title && 'Give your quiz a name.') ||
     (!Number.isInteger(seconds) || seconds < LIMITS.minSeconds || seconds > LIMITS.maxSeconds ? 'Time per question must be 5 to 120 seconds.' : '') ||
     validateRoomSettings({ capacity, pin });
   if (err) return say('msg-room', err);
@@ -602,7 +603,7 @@ async function hostRoom() {
     const r = await api('create', {
       hostName: $('host-name').value.trim().slice(0, 35) || 'Host',
       avatar: S.hostPicker.get(),
-      room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, music: { enabled: !!$('music-enabled').checked && !!S.musicDraft, track: S.musicDraft }, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
+      room: { title, pin, capacity, secondsPerQuestion: seconds, scheduledDelaySeconds: delay, difficulty: S.gen.cfg.level, music: { enabled: !!$('music-enabled').checked && !!S.musicDraft, track: S.musicDraft }, questions: S.gen.cfg.hasSource && $('mix').checked ? shuffled(S.gen.questions) : S.gen.questions }
     });
     S.roomId = r.roomId;
     S.link = roomLink(r.roomId);
@@ -629,12 +630,6 @@ async function bootPlayer(rid, pinParam, notice) {
   const problem = await ensureSignedIn();
   if (problem) return say('msg-join', problem);
 
-  /* Already in this room (a refresh, or the host coming back)? Go straight in. */
-  try {
-    const snap = await fs.getDoc(fs.doc(db, 'multiplayerRooms', rid));
-    if (snap.exists()) return enterRoom(rid);
-  } catch (e) { /* not a member yet */ }
-
   let info;
   try {
     info = await api('peek', { roomId: rid });
@@ -642,6 +637,14 @@ async function bootPlayer(rid, pinParam, notice) {
     return say('msg-join', e.message);
   }
   S.roomId = rid;
+  if (info.startAt && info.startAt > now()) return showScheduledCountdown(info.startAt, () => bootPlayer(rid, pinParam));
+
+  /* Existing member (refresh or host returning) can re-enter after the scheduled opening. */
+  try {
+    const snap = await fs.getDoc(fs.doc(db, 'multiplayerRooms', rid));
+    if (snap.exists()) return enterRoom(rid);
+  } catch (e) { /* not a member yet */ }
+
   $('join-room-code').value = rid;
   $('join-title').textContent = info.title;
   $('join-meta').textContent = `${info.secondsPerQuestion} seconds per question · ${info.questionCount} questions · ${info.difficulty} · ${info.playerCount} of ${info.capacity} players`;
@@ -696,6 +699,37 @@ async function joinRoom() {
 }
 
 /* ───────────────────────── live room ───────────────────────── */
+
+function scheduleDelaySeconds() {
+  const hours = Number($('schedule-hours').value || 0);
+  const minutes = Number($('schedule-minutes').value || 0);
+  const seconds = Number($('schedule-seconds').value || 0);
+  if (![hours, minutes, seconds].every(Number.isInteger) || hours < 0 || hours > 168 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) return NaN;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function showScheduledCountdown(target, onDone, title) {
+  clearInterval(S.countdownTimer);
+  S.countdownTarget = Number(target) || 0;
+  $('countdown-title').textContent = title || 'This room is not open yet';
+  show('countdown');
+  const paint = () => {
+    const remaining = Math.max(0, S.countdownTarget - now());
+    const totalSeconds = Math.ceil(remaining / 1000);
+    $('countdown-hours').textContent = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    $('countdown-minutes').textContent = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    $('countdown-seconds').textContent = String(totalSeconds % 60).padStart(2, '0');
+    if (remaining <= 0) {
+      clearInterval(S.countdownTimer);
+      S.countdownTimer = 0;
+      $('countdown-status').textContent = 'The room is opening…';
+      if (typeof onDone === 'function') onDone();
+    }
+  };
+  $('countdown-status').textContent = 'The room opens automatically when the timer reaches zero.';
+  paint();
+  if (S.countdownTarget > now()) S.countdownTimer = setInterval(paint, 250);
+}
 
 function enterRoom(rid) {
   cleanupRoom();
@@ -754,6 +788,12 @@ function onRoom(snap) {
   const d = snap.data();
   S.room = d;
   S.isHost = d.hostUid === auth.currentUser.uid;
+  const scheduledAt = ms(d.startAt);
+  if (scheduledAt > now()) {
+    syncRoomMusic(d.music);
+    showScheduledCountdown(scheduledAt, () => { if (S.room) { show('lobby'); initLobby(); paintLobbyInfo(); } }, 'Your multiplayer room opens soon');
+    return;
+  }
   if (d.phase === 'lobby') {
     if (S.view !== 'lobby') { show('lobby'); initLobby(); }
     paintLobbyInfo();
@@ -1220,6 +1260,7 @@ function bindEvents() {
   $('back-setup').addEventListener('click', () => show('setup'));
   $('random-pin').addEventListener('click', () => { $('pin').value = randomPin(); });
   $('pin').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); });
+  ['schedule-hours','schedule-minutes','schedule-seconds'].forEach(id => $(id).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, id === 'schedule-hours' ? 3 : 2); }));
   $('join-pin').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); });
   $('host-btn').addEventListener('click', hostRoom);
   $('copy-link-1').addEventListener('click', () => copyText(S.link));
