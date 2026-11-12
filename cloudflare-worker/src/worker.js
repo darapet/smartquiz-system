@@ -1,36 +1,11 @@
+import { directDesign } from './design-director.js';
+
 const DEFAULT_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 const PROFESSIONAL_IMAGE_MODEL = '@cf/leonardo/lucid-origin';
 const LUCID_DAILY_REQUEST_LIMIT = 3;
 const LUCID_DAILY_BUDGET_KEY = 'xzily-lucid-usage:';
 const MAX_PROMPT_LENGTH = 2000;
 
-/*
- * Keep the quality policy here rather than in the browser. This means every
- * request that reaches the free engine gets the same image-quality guidance,
- * including requests made by older cached clients.
- */
-const QUALITY_DIRECTION = {
-  logo: 'Create a polished, scalable brand mark with one memorable symbol, balanced geometry, clean edges, intentional negative space, and a simple presentation on a plain background. Keep it vector-like and production-ready. Do not add random lettering, mockup scenes, gradients, shadows, or extra symbols unless requested.',
-  banner: 'Create a premium website hero banner with clear visual hierarchy, one strong focal subject, refined lighting, controlled detail, and deliberate negative space for headline text. Keep the composition wide, balanced, and suitable for a professional landing page.',
-  social: 'Create a polished social-media campaign visual with a clear focal subject, strong mobile-first composition, refined color grading, clean separation from the background, and enough breathing room for a short caption. Make it feel designed, not like a random snapshot.',
-  portrait: 'Create a professional portrait or character image with a clear silhouette, natural anatomy, expressive but controlled pose, flattering light, detailed face and clothing, and a clean background. Include only the subjects requested.',
-  general: 'Create one coherent, professionally art-directed composition. Keep the requested subjects, relationships, setting, colors, mood, and action faithful to the brief. Remove clutter and unrelated objects.',
-};
-
-function enrichedPrompt(prompt, category, aspectRatio) {
-  const brief = String(prompt || '').replace(/\s+/g, ' ').trim();
-  const direction = QUALITY_DIRECTION[category] || QUALITY_DIRECTION.general;
-  const canvas = aspectRatio === 'landscape' ? 'Use a wide landscape composition.'
-    : aspectRatio === 'portrait' ? 'Use a tall portrait composition.'
-      : 'Use a balanced square composition.';
-  return [
-    direction,
-    canvas,
-    'User brief: "' + brief + '".',
-    'Prioritize accurate subject identity, intentional composition, crisp edges, believable materials, professional color harmony, and a clean final finish.',
-    'Avoid watermarks, logos not requested, random text, malformed letters, duplicate subjects, extra limbs, blur, noise, clutter, and unfinished artifacts.',
-  ].join(' ');
-}
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
@@ -217,7 +192,8 @@ export async function handleImage(request, env) {
   }
 
   try {
-    const category = String(payload.category || 'general').toLowerCase();
+    const design = directDesign(prompt, payload.category, payload.aspectRatio);
+    const category = design.category;
     const model = modelFor(env, payload.engineModel, category);
     if (model === PROFESSIONAL_IMAGE_MODEL) {
       const slotAvailable = await reserveLucidDailySlot(env);
@@ -227,19 +203,16 @@ export async function handleImage(request, env) {
           code: 'LUCID_DAILY_LIMIT',
         }, 429);
       }
-      const dimensions = payload.aspectRatio === 'landscape' ? { width: 1024, height: 576 }
-        : payload.aspectRatio === 'portrait' ? { width: 576, height: 1024 }
-          : { width: 768, height: 768 };
       const image = await env.AI.run(model, {
-        prompt: enrichedPrompt(prompt, category, payload.aspectRatio),
-        ...dimensions,
+        prompt: design.prompt,
+        ...design.dimensions,
         num_steps: 12,
         guidance: 5,
       });
       return imageResponse(request, env, image, model);
     }
     const image = await env.AI.run(model, {
-      prompt: enrichedPrompt(prompt, category, payload.aspectRatio),
+      prompt: design.prompt,
     });
     return imageResponse(request, env, image, model);
   } catch (error) {
