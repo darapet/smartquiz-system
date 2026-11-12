@@ -125,3 +125,5 @@ body:has(#ait-voice-screen.active) .ait-screen-voice .ait-voice-note{display:non
  body:has(#ait-voice-screen.active) .ait-voice-mic{width:60px;min-width:60px;height:60px;bottom:calc(22px + env(safe-area-inset-bottom,0px))}
 }
 @media(prefers-reduced-motion:reduce){body:has(#ait-voice-screen.active) .ait-orb,body:has(#ait-voice-screen.active) .ait-orb::before,body:has(#ait-voice-screen.active) .ait-orb-wave,body:has(#ait-voice-screen.active) .ait-orb-ribbon{animation:none!important}}
+
+body:has(#ait-voice-screen.active) .ait-history-count{display:none!important}
