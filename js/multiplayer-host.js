@@ -1130,7 +1130,7 @@ function newQuestion(d) {
   if (!pq) return;
   Object.assign(S.q, {
     index: d.currentQuestion, start: ms(d.questionStartedAt), end: ms(d.deadlineAt),
-    answered: false, picked: -1, result: null, timeUp: false, revealTries: 0
+    answered: false, picked: -1, result: null, timeUp: false, revealTries: 0, autoAdvanceScheduled: false
   });
   $('game-progress').textContent = `Question ${d.currentQuestion + 1} of ${d.questionCount}`;
   $('q-eyebrow').textContent = `Question ${d.currentQuestion + 1} · first correct answer wins ${POINTS} points`;
