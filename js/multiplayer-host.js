@@ -723,7 +723,6 @@ function onRoom(snap) {
   }
   const d = snap.data();
   S.room = d;
-  syncRoomMusic(d.music);
   S.isHost = d.hostUid === auth.currentUser.uid;
   if (d.phase === 'lobby') {
     if (S.view !== 'lobby') { show('lobby'); initLobby(); }
@@ -734,6 +733,7 @@ function onRoom(snap) {
   } else if (d.phase === 'complete') {
     if (S.view !== 'results') showResults();
   }
+  syncRoomMusic(d.music);
   updateHeader();
 }
 
