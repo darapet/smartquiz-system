@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Live Multiplayer Quiz — SmartQuiz</title>
 <link rel="stylesheet" href="css/mp-avatars.css">
-<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-schedule1">
+<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-history1">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body data-view="setup">
@@ -40,6 +40,9 @@
       <h1>Build your quiz</h1>
       <p class="lead">No account or login required. Host a quiz or join a friend using a room code and PIN.</p>
       <div class="row"><button class="btn ghost" id="open-join" type="button">Have a room code? Join a quiz →</button></div>
+      <section class="card host-history" id="host-history" hidden aria-labelledby="host-history-title">
+        <p class="eyebrow">Your previous rooms</p><h2 id="host-history-title">Host History</h2><p class="hint">Return to a room you hosted on this browser.</p><div id="host-history-list" aria-live="polite"></div>
+      </section>
       <div class="grid">
         <label class="field wide">Quiz name
           <input id="title" maxlength="100" placeholder="e.g. Biology Showdown" autocomplete="off">
@@ -323,6 +326,6 @@
 <audio id="room-music" preload="none" loop playsinline></audio>
 <div id="room-music-control" class="room-music-control" hidden><span id="room-music-label">Background music</span><a id="room-music-credit" href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Credit & licence</a><button type="button" id="room-music-host-toggle" class="btn ghost" hidden>Stop for everyone</button><button type="button" id="room-music-toggle" class="btn ghost">Enable music</button><label>Volume <input id="room-music-volume" type="range" min="0" max="30" value="12"></label></div>
 
-<script type="module" src="js/multiplayer-host.js?v=20261112-schedule1"></script>
+<script type="module" src="js/multiplayer-host.js?v=20261112-history1"></script>
 </body>
 </html>
