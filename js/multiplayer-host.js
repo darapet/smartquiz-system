@@ -49,6 +49,7 @@ const ICON = {
 
 const S = {
   roomId: '', room: null, players: [], me: null, isHost: false, view: '', countdownTimer: 0, countdownTarget: 0,
+  joinPhase: 'lobby', playerIds: null, joinNoticeTimer: 0,
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
   voice: null, speaking: new Set(), voiceSyncTimer: 0,
@@ -652,13 +653,25 @@ async function bootPlayer(rid, pinParam, notice) {
   const user = auth.currentUser;
   if (user && !user.isAnonymous && user.displayName && !$('join-name').value) $('join-name').value = user.displayName.slice(0, 35);
 
-  const taken = new Set(info.takenAvatars);
-  if (S.joinPicker) S.joinPicker.setTaken(taken);
-  else S.joinPicker = createPicker($('join-picker'), { taken });
+  S.joinPhase = info.phase;
+  const inProgress = info.phase === 'question';
+  $('join-avatar-section').hidden = inProgress;
+  $('join-btn').textContent = inProgress ? 'Join active game →' : 'Join the lobby';
 
-  if (info.phase !== 'lobby') say('msg-join', 'This game has already started.');
-  else if (info.playerCount >= info.capacity) say('msg-join', 'This room is full.');
-  else $('join-btn').disabled = false;
+  if (!inProgress) {
+    const taken = new Set(info.takenAvatars);
+    if (S.joinPicker) S.joinPicker.setTaken(taken);
+    else S.joinPicker = createPicker($('join-picker'), { taken });
+  }
+
+  if (!['lobby', 'question'].includes(info.phase)) {
+    say('msg-join', info.phase === 'complete' ? 'This game has ended.' : 'This room is not accepting players.');
+  } else if (info.playerCount >= info.capacity) {
+    say('msg-join', 'This room is full.');
+  } else {
+    $('join-btn').disabled = false;
+    if (inProgress) say('msg-join', 'The game is already running. Enter your name and PIN to join the live game.', 'ok');
+  }
 }
 
 async function findRoom() {
@@ -683,8 +696,11 @@ async function joinRoom() {
   $('join-btn').disabled = true;
   say('msg-join', 'Joining…', 'ok');
   try {
-    await api('join', { roomId: S.roomId, pin, name, avatar: S.joinPicker.get() });
+    const payload = { roomId: S.roomId, pin, name };
+    if (S.joinPhase !== 'question') payload.avatar = S.joinPicker.get();
+    await api('join', payload);
     enterRoom(S.roomId);
+    toast(name + ' joined');
   } catch (e) {
     $('join-btn').disabled = false;
     say('msg-join', e.message);
@@ -764,6 +780,7 @@ function cleanupRoom() {
   S.room = null;
   S.players = [];
   S.me = null;
+  S.playerIds = null;
   S.q = { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0 };
 }
 
@@ -807,8 +824,26 @@ function onRoom(snap) {
   updateHeader();
 }
 
+function announcePlayerJoined(name) {
+  const message = String(name || 'A player') + ' joined';
+  toast(message);
+  const target = S.view === 'lobby' ? $('lobby-join-notice')
+    : S.view === 'game' ? $('game-join-notice') : null;
+  if (!target) return;
+  target.textContent = message;
+  target.hidden = false;
+  clearTimeout(S.joinNoticeTimer);
+  S.joinNoticeTimer = setTimeout(() => { target.hidden = true; }, 5000);
+}
+
 function onPlayers(snap) {
-  S.players = snap.docs.map(x => ({ uid: x.id, ...x.data() }));
+  const nextPlayers = snap.docs.map(x => ({ uid: x.id, ...x.data() }));
+  if (S.playerIds !== null) {
+    const previous = S.playerIds;
+    nextPlayers.forEach(p => { if (!previous.has(p.uid)) announcePlayerJoined(p.name); });
+  }
+  S.playerIds = new Set(nextPlayers.map(p => p.uid));
+  S.players = nextPlayers;
   S.me = S.players.find(p => p.uid === auth.currentUser.uid) || null;
   scheduleRender();
   clearTimeout(S.voiceSyncTimer);
