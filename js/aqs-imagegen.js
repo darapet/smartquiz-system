@@ -19,6 +19,7 @@
   var submitLabel = $('#aqs-imagegen-submit-label');
   var categorySelect = $('#aqs-imagegen-category');
   var ratioSelect = $('#aqs-imagegen-ratio');
+  var modelSelect = $('#aqs-imagegen-model');
   var promptCount = $('#aqs-imagegen-prompt-count');
   var detectionPill = $('#aqs-imagegen-detection-pill');
   var detectionConfidence = $('#aqs-imagegen-detection-confidence');
@@ -164,6 +165,7 @@
     promptInput.disabled = isLoading;
     categorySelect.disabled = isLoading;
     ratioSelect.disabled = isLoading;
+    modelSelect.disabled = isLoading;
     $('#aqs-imagegen-clear').disabled = isLoading;
     if (isLoading) {
       emptyState.hidden = true;
@@ -182,7 +184,7 @@
     var detected = detectCategory(promptInput.value);
     var category = categorySelect.value === 'auto' ? detected.value : categorySelect.value;
     var ratio = ratioSelect.value === 'auto' ? (category === 'banner' ? 'landscape' : category === 'portrait' || category === 'social' ? 'portrait' : 'square') : ratioSelect.value;
-    var payload = { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId() };
+    var payload = { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId(), engineModel: modelSelect.value };
     if (category === 'birthday') {
       var name = ($('#aqs-birthday-name').value || '').trim();
       var relationship = $('#aqs-birthday-relationship').value;
@@ -224,25 +226,43 @@
         body: JSON.stringify(payload),
         signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
       });
-      if (!birthdayResponse.ok) throw new Error('The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').');
+      if (!birthdayResponse.ok) {
+        var birthdayErrorBody = await birthdayResponse.json().catch(function () { return {}; });
+        var birthdayDetail = String(birthdayErrorBody.detail || birthdayErrorBody.error || '');
+        var birthdayQuota = /4006|daily free allocation|free allocation.*used up|quota exceeded|insufficient.*credits/i.test(birthdayDetail);
+        var birthdayError = new Error(birthdayQuota
+          ? 'Cloudflare’s daily free image-generation allowance has been used up. No image was generated, and Studio AI will not switch to another provider automatically. Please try again after the allowance resets.'
+          : String(birthdayErrorBody.error || 'The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').'));
+        if (birthdayQuota) birthdayError.code = 'PROVIDER_QUOTA_EXHAUSTED';
+        throw birthdayError;
+      }
       var birthdayBlob = await birthdayResponse.blob();
       if (!birthdayBlob.size || (birthdayBlob.type && birthdayBlob.type.indexOf('image/') !== 0)) throw new Error('The birthday flyer engine returned an invalid image.');
-      return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
+      return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell') + ' · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
     }
     var query = '?prompt=' + encodeURIComponent(payload.prompt);
     query += '&category=' + encodeURIComponent(payload.category || 'general');
     query += '&aspectRatio=' + encodeURIComponent(payload.aspectRatio || 'square');
-    if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
+    if (payload.engineModel) query += '&model=' + encodeURIComponent(payload.engineModel);
     var response = await fetch(cloudflareEndpoint + query, {
       method: 'GET',
       mode: 'cors',
       cache: 'no-store',
       signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
     });
-    if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
+    if (!response.ok) {
+      var cloudflareErrorBody = await response.json().catch(function () { return {}; });
+      var cloudflareDetail = String(cloudflareErrorBody.detail || cloudflareErrorBody.error || '');
+      var cloudflareQuota = /4006|daily free allocation|free allocation.*used up|quota exceeded|insufficient.*credits/i.test(cloudflareDetail);
+      var cloudflareError = new Error(cloudflareQuota
+        ? 'Cloudflare’s daily free image-generation allowance has been used up. No image was generated, and Studio AI will not switch to another provider automatically. Please try again after the allowance resets.'
+        : String(cloudflareErrorBody.error || 'The Cloudflare image engine is unavailable (HTTP ' + response.status + ').'));
+      if (cloudflareQuota) cloudflareError.code = 'PROVIDER_QUOTA_EXHAUSTED';
+      throw cloudflareError;
+    }
     var blob = await response.blob();
     if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
-    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
+    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell'), createdAt: new Date().toISOString(), mediaType: 'image' };
   }
 
   function chooseEngine() {
@@ -289,7 +309,7 @@
         try {
           result = await fetchCloudflare(payload);
         } catch (cloudflareError) {
-          if (!firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
+          if (cloudflareError.code === 'PROVIDER_QUOTA_EXHAUSTED' || !firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
           loadingCopy.textContent = 'Cloudflare is busy, switching to the secure Gemini fallback…';
           result = await fetchGemini(payload);
           result.provider = 'Google Gemini · fallback after Cloudflare';
@@ -377,6 +397,7 @@
     $('#aqs-birthday-details').value = '';
     categorySelect.value = 'auto';
     ratioSelect.value = 'auto';
+    modelSelect.value = '@cf/black-forest-labs/flux-1-schnell';
     setError('');
     updateDetection();
     emptyState.hidden = false;

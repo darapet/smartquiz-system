@@ -39,21 +39,18 @@ function json(request, env, body, status = 200) {
   });
 }
 
-function modelFor(env, requestedModel, category) {
-  const configured = String(env.CF_IMAGE_MODEL || '').trim();
+function modelFor(requestedModel) {
   const requested = String(requestedModel || '').trim();
-  const model = requested || configured || DEFAULT_IMAGE_MODEL;
   const allowed = new Set([
     '@cf/stabilityai/stable-diffusion-xl-base-1.0',
     '@cf/iohg/flux-1-schnell',
     '@cf/black-forest-labs/flux-1-schnell',
     PROFESSIONAL_IMAGE_MODEL,
   ]);
-  if (allowed.has(requested)) return requested;
-  if (['logo', 'banner', 'flyer', 'birthday', 'poster', 'social', 'design', 'fiverr', 'youtube-thumbnail', 'event-poster', 'product-ad', 'business-card', 'menu', 'infographic', 'packaging', 'certificate', 'invitation', 'mockup', '3d-design', '2d-design'].includes(String(category || '').toLowerCase())) {
-    return PROFESSIONAL_IMAGE_MODEL;
-  }
-  return allowed.has(configured) ? configured : DEFAULT_IMAGE_MODEL;
+
+  // Use FLUX.1 schnell by default for every category. A different model,
+  // including Lucid Origin, is used only when the caller explicitly requests it.
+  return allowed.has(requested) ? requested : DEFAULT_IMAGE_MODEL;
 }
 
 async function reserveLucidDailySlot(env) {
@@ -194,8 +191,7 @@ export async function handleImage(request, env) {
 
   try {
     const design = directDesign(prompt, payload.category, payload.aspectRatio);
-    const category = design.category;
-    const model = modelFor(env, payload.engineModel, category);
+    const model = modelFor(payload.engineModel);
     if (model === PROFESSIONAL_IMAGE_MODEL) {
       let image;
       let imageModel = model;
