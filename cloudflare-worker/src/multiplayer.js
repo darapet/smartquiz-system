@@ -309,9 +309,11 @@ function validateMusicTrack(track) {
   const title = String(track.title || '').trim().slice(0, 100);
   const id = String(track.id || '').trim().slice(0, 40);
   if (!title || !id) throw new Error('The selected music track is missing its details.');
+  const mime = String(track.mime || '').trim();
+  if (!/^audio\/(mpeg|ogg|wav|flac|opus|x-wav)$/i.test(mime)) throw new Error('This audio format is not supported.');
   const pageUrl = String(track.pageUrl || '');
   if (!pageUrl.startsWith('https://commons.wikimedia.org/wiki/')) throw new Error('Invalid music source page.');
-  return { id, title, artist: String(track.artist || 'Artist not listed').slice(0, 140), license, licenseUrl: String(track.licenseUrl || '').slice(0, 240), pageUrl, url, mime: String(track.mime || '').slice(0, 60), credit: String(track.credit || '').slice(0, 240) };
+  return { id, title, artist: String(track.artist || 'Artist not listed').slice(0, 140), license, licenseUrl: String(track.licenseUrl || '').slice(0, 240), pageUrl, url, mime: mime.slice(0, 60), credit: String(track.credit || '').slice(0, 240) };
 }
 
 function requireHost(room, uid, message) {
