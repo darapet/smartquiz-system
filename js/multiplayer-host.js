@@ -167,7 +167,17 @@ async function api(action, payload = {}, signal) {
   return body;
 }
 
-const roomLink = id => `${location.origin}${location.pathname}?room=${id}`;
+/* Shareable room links must use a public HTTPS page. Capacitor's local
+   capacitor://localhost origin only exists on the host's device, so players on
+   other phones cannot open it. Keep the current web host when already online. */
+const roomLink = id => {
+  const nativeOrLocal = /^(capacitor|ionic):$/i.test(location.protocol)
+    || ['localhost', '127.0.0.1'].includes(location.hostname);
+  const page = nativeOrLocal
+    ? 'https://darapet.github.io/smartquiz-system/multiplayer-host.html'
+    : `${location.origin}${location.pathname}`;
+  return `${page}?room=${encodeURIComponent(id)}`;
+};
 
 /* ───────────────────────── step 1: build the quiz with AI ───────────────────────── */
 
