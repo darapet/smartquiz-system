@@ -210,8 +210,10 @@
           <input id="join-pin" inputmode="numeric" maxlength="4" placeholder="4 digits" autocomplete="off">
         </label>
       </div>
-      <h2>Choose your avatar</h2>
-      <div id="join-picker"></div>
+      <div id="join-avatar-section">
+        <h2>Choose your avatar</h2>
+        <div id="join-picker"></div>
+      </div>
       <div class="row"><button class="btn primary big" id="join-btn" type="button">Join the lobby</button></div>
       <p class="msg" id="msg-join" role="status" aria-live="polite"></p>
     </div>
@@ -236,6 +238,19 @@
       </div>
     </div>
 
+    <div class="card mp-rules" aria-labelledby="mp-rules-title">
+      <p class="eyebrow">Quick guide</p>
+      <h2 id="mp-rules-title">Multiplayer rules</h2>
+      <ul>
+        <li>Answer each question before its timer reaches zero.</li>
+        <li>The first player to answer correctly earns 5 points.</li>
+        <li>You get one answer per question. Once submitted, your answer is locked.</li>
+        <li>The correct answer is revealed when the timer ends.</li>
+        <li>The host controls when the next question starts.</li>
+        <li>If you join after the game starts, you enter the live game and can answer the current question if time remains.</li>
+      </ul>
+    </div>
+
     <div class="card">
       <div class="stage-head">
         <h2><span id="player-count">0</span> / <span id="player-cap">0</span> players <span class="ready-count" id="ready-count"></span></h2>
@@ -246,6 +261,7 @@
         </div>
       </div>
       <p class="msg" id="msg-lobby" role="status" aria-live="polite"></p>
+      <p class="join-notice" id="lobby-join-notice" role="status" aria-live="polite" hidden></p>
       <div class="stage" id="stage" aria-live="polite"></div>
     </div>
   </section>
@@ -257,6 +273,7 @@
       <div class="top3" id="top3" aria-label="Top three players"></div>
       <div class="me" id="me-box"></div>
     </div>
+    <p class="join-notice game-join-notice" id="game-join-notice" role="status" aria-live="polite" hidden></p>
     <div class="timer" role="timer" aria-live="off"><i id="timer-fill"></i><span id="timer-text"></span></div>
     <div class="card qcard" id="qcard">
       <div class="countdown" id="countdown" hidden aria-live="assertive"></div>
