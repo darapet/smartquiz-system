@@ -398,9 +398,18 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
         if (!response.ok) {
             var details = await response.text().catch(function(){ return ''; });
-            var workerError = new Error(details || 'The free Cloudflare image engine is unavailable.');
+            var workerBody = {};
+            try { workerBody = JSON.parse(details || '{}'); } catch(e) {}
+            var rawDetail = String(workerBody.detail || workerBody.error || details || '');
+            var quotaExhausted = /4006|daily free allocation|free allocation.*used up|quota exceeded|insufficient.*credits/i.test(rawDetail);
+            var workerMessage = quotaExhausted
+                ? 'Cloudflare’s daily free image-generation allowance has been used up. No image was generated, and Studio AI will not switch to a potentially paid provider automatically. Please try again after the allowance resets.'
+                : String(workerBody.error || 'The free Cloudflare image engine is unavailable.');
+            var workerError = new Error(workerMessage);
             workerError.workerStatus = response.status;
-            workerError.fallbackEligible = response.status >= 500 || response.status === 404;
+            workerError.code = quotaExhausted ? 'PROVIDER_QUOTA_EXHAUSTED' : 'IMAGE_PROVIDER_UNAVAILABLE';
+            workerError.fallbackEligible = !quotaExhausted && (response.status >= 500 || response.status === 404);
+            if (quotaExhausted) _aqsLog('warn', 'Cloudflare Workers AI daily free image allowance exhausted; paid-provider fallback was intentionally skipped.');
             throw workerError;
         }
         var blob = await response.blob();
