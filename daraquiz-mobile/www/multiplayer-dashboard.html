@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Multiplayer Dashboard — SmartQuiz</title>
+<style>
+:root{--ink:#10243a;--muted:#617184;--paper:#f4f2ec;--line:#dfe4e8;--brand:#10243a;--accent:#e08a1e;--teal:#0f8f78}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+header{height:64px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 max(18px,calc((100vw - 900px)/2));position:sticky;top:0}
+.brand{font-weight:850;font-size:1.15rem;text-decoration:none;color:var(--ink)}header a:last-child{color:var(--muted);text-decoration:none;font-weight:650}
+main{max-width:900px;margin:0 auto;padding:30px 16px 70px}h1{font-size:clamp(1.8rem,5vw,2.5rem);margin:0 0 6px;letter-spacing:-.04em}.sub{color:var(--muted);margin:0 0 24px}
+.create{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:24px;background:linear-gradient(130deg,#10243a,#1d4560);color:#fff;border-radius:20px;box-shadow:0 12px 30px #10243a22;text-decoration:none}
+.create .symbol{font-size:2.5rem}.create h2{margin:0 0 5px;font-size:1.35rem}.create p{margin:0;color:#dce7ef}.create .go{background:#e08a1e;color:#fff;border-radius:12px;padding:12px 17px;font-weight:800;white-space:nowrap}
+.section{display:flex;align-items:center;justify-content:space-between;margin:30px 0 12px}.section h2{margin:0;font-size:1.25rem}.count{color:var(--muted);font-size:.85rem}
+.empty,.room{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.empty{color:var(--muted)}
+.room{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:10px 0}.room h3{margin:0 0 4px;font-size:1rem}.meta{color:var(--muted);font-size:.85rem}.continue{background:var(--teal);color:#fff;text-decoration:none;border-radius:10px;padding:10px 15px;font-weight:800;white-space:nowrap}
+@media(max-width:540px){main{padding-top:22px}.create{align-items:flex-start;flex-wrap:wrap}.create .go{width:100%;text-align:center}.room{align-items:flex-start;flex-direction:column}.continue{width:100%;text-align:center}}
+</style></head>
+<body><header><a class="brand" href="index.html">◈ SmartQuiz</a><a href="index.html">← Home</a></header>
+<main><h1>Multiplayer</h1><p class="sub">Host a live quiz with friends or return to a room you created before.</p>
+<a class="create" href="multiplayer-host.html"><div><div class="symbol">＋</div><h2>Create Multiplayer Game</h2><p>Build a quiz, set your room options and invite players.</p></div><span class="go">Create game →</span></a>
+<div class="section"><h2>Previously Created Games</h2><span class="count" id="history-count"></span></div>
+<div id="history-list" aria-live="polite"><div class="empty">Loading your hosted games…</div></div>
+</main>
+<script>
+(function(){
+ const KEY='smartquiz_host_history_v1', list=document.getElementById('history-list'), count=document.getElementById('history-count');
+ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+ let rooms=[];try{rooms=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(rooms))rooms=[];}catch(e){rooms=[];}
+ rooms=rooms.filter(x=>x&&x.roomId);
+ count.textContent=rooms.length+' saved';
+ if(!rooms.length){list.innerHTML='<div class="empty">No hosted games saved on this device yet. After you create your first multiplayer game, it will appear here so you can continue it later.</div>';return;}
+ list.innerHTML=rooms.map(r=>{const date=r.createdAt?new Date(r.createdAt).toLocaleString():'Previously created';return '<article class="room"><div><h3>'+esc(r.title||'Untitled multiplayer game')+'</h3><div class="meta">Room: '+esc(r.roomId)+' · '+esc(date)+'</div></div><a class="continue" href="multiplayer-host.html?room='+encodeURIComponent(r.roomId)+'">Continue →</a></article>';}).join('');
+})();
+</script></body></html>
