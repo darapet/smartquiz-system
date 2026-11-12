@@ -333,7 +333,7 @@ const actions = {
     const [rooms, claims] = await Promise.all([fs.getMany([roomP(id)]), fs.list(`${roomP(id)}/avatarClaims`, { fields: ['uid'] })]);
     const d = rooms.get(roomP(id));
     if (!d) throw new Error('Room not found.');
-    return { title: d.title, phase: d.phase, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.map(x => Number(x.id)) };
+    return { title: d.title, phase: d.phase, startAt: d.startAt && typeof d.startAt.toMillis === 'function' ? d.startAt.toMillis() : 0, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.map(x => Number(x.id)) };
   },
 
   async generate({ fs, uid, body, deps, env }) {
@@ -360,6 +360,7 @@ const actions = {
       roomId: id, title: input.title, hostUid: uid, pin: input.pin, capacity: input.capacity,
       playerCount: 1, voiceCount: 0, difficulty: input.difficulty, secondsPerQuestion: input.secondsPerQuestion,
       questionCount: input.questions.length, phase: 'lobby', currentQuestion: -1,
+      startAt: ts(Date.now() + Math.max(0, Math.min(604800, Number(body.room.scheduledDelaySeconds) || 0)) * 1000),
       music: body.room && body.room.music && body.room.music.enabled === true && body.room.music.track
         ? { enabled: true, track: validateMusicTrack(body.room.music.track) } : { enabled: false, track: null },
       createdAt: SERVER_TS
@@ -393,6 +394,7 @@ const actions = {
       const d = got.get(roomP(id));
       if (!d) throw new Error('Room not found.');
       if (d.pin !== pin) throw new Error('Incorrect room PIN.');
+      if (d.startAt && d.startAt.toMillis() > Date.now()) throw new Error('This room is scheduled to open later. Please wait for the countdown to finish.');
       if (got.get(playerP(id, uid))) return;
       if (d.phase !== 'lobby' || Number(d.playerCount || 0) >= d.capacity) throw new Error('Room is closed or full.');
       if (got.get(claimP(id, avatar))) throw new Error('Avatar already taken.');
@@ -480,7 +482,7 @@ const actions = {
     await runTransaction(fs, async tx => {
       const [room, players] = await Promise.all([tx.get(roomP(id)), tx.list(`${roomP(id)}/players`, { fields: ['ready'] })]);
       requireHost(room, uid);
-      if (room.phase !== 'lobby' || !players.length) throw new Error('Room state changed; try again.');
+      if (room.phase !== 'lobby' || !players.length || (room.startAt && room.startAt.toMillis() > Date.now())) throw new Error('This room is not open yet. Wait for its countdown to finish.');
       if (body.force !== true && players.some(p => !p.data.ready)) throw new Error('Room state changed; try again.');
       const question = await loadQuestion(tx, id, 0);
       const startMs = Date.now() + M.LIMITS.countdownMs;
