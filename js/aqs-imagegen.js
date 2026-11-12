@@ -226,7 +226,16 @@
         body: JSON.stringify(payload),
         signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
       });
-      if (!birthdayResponse.ok) throw new Error('The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').');
+      if (!birthdayResponse.ok) {
+        var birthdayErrorBody = await birthdayResponse.json().catch(function () { return {}; });
+        var birthdayDetail = String(birthdayErrorBody.detail || birthdayErrorBody.error || '');
+        var birthdayQuota = /4006|daily free allocation|free allocation.*used up|quota exceeded|insufficient.*credits/i.test(birthdayDetail);
+        var birthdayError = new Error(birthdayQuota
+          ? 'Cloudflare’s daily free image-generation allowance has been used up. No image was generated, and Studio AI will not switch to another provider automatically. Please try again after the allowance resets.'
+          : String(birthdayErrorBody.error || 'The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').'));
+        if (birthdayQuota) birthdayError.code = 'PROVIDER_QUOTA_EXHAUSTED';
+        throw birthdayError;
+      }
       var birthdayBlob = await birthdayResponse.blob();
       if (!birthdayBlob.size || (birthdayBlob.type && birthdayBlob.type.indexOf('image/') !== 0)) throw new Error('The birthday flyer engine returned an invalid image.');
       return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell') + ' · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
@@ -241,7 +250,16 @@
       cache: 'no-store',
       signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
     });
-    if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
+    if (!response.ok) {
+      var cloudflareErrorBody = await response.json().catch(function () { return {}; });
+      var cloudflareDetail = String(cloudflareErrorBody.detail || cloudflareErrorBody.error || '');
+      var cloudflareQuota = /4006|daily free allocation|free allocation.*used up|quota exceeded|insufficient.*credits/i.test(cloudflareDetail);
+      var cloudflareError = new Error(cloudflareQuota
+        ? 'Cloudflare’s daily free image-generation allowance has been used up. No image was generated, and Studio AI will not switch to another provider automatically. Please try again after the allowance resets.'
+        : String(cloudflareErrorBody.error || 'The Cloudflare image engine is unavailable (HTTP ' + response.status + ').'));
+      if (cloudflareQuota) cloudflareError.code = 'PROVIDER_QUOTA_EXHAUSTED';
+      throw cloudflareError;
+    }
     var blob = await response.blob();
     if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
     return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell'), createdAt: new Date().toISOString(), mediaType: 'image' };
@@ -291,7 +309,7 @@
         try {
           result = await fetchCloudflare(payload);
         } catch (cloudflareError) {
-          if (!firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
+          if (cloudflareError.code === 'PROVIDER_QUOTA_EXHAUSTED' || !firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
           loadingCopy.textContent = 'Cloudflare is busy, switching to the secure Gemini fallback…';
           result = await fetchGemini(payload);
           result.provider = 'Google Gemini · fallback after Cloudflare';
