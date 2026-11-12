@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/aqs-imagegen.css">
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 <style id="aqs-imagegen-layout-polish">
+.aqs-birthday-fields{display:none;margin:18px 0;padding:18px;border:1px solid rgba(190,157,92,.35);border-radius:16px;background:rgba(190,157,92,.07);gap:12px}.aqs-birthday-fields.is-visible{display:grid}.aqs-birthday-fields h3{margin:0;font-size:16px}.aqs-birthday-fields p{margin:0;color:var(--aqs-muted,#777);font-size:13px}.aqs-birthday-fields label{display:grid;gap:6px;font-size:13px;font-weight:600}.aqs-birthday-fields input,.aqs-birthday-fields select,.aqs-birthday-fields textarea{width:100%;min-height:42px;padding:11px 12px;border:1px solid rgba(130,130,130,.28);border-radius:10px;background:var(--aqs-card,#fff);color:inherit;font:inherit}.aqs-birthday-fields textarea{min-height:78px;resize:vertical}.aqs-birthday-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.aqs-birthday-grid{grid-template-columns:1fr}.aqs-birthday-fields{padding:14px}}
 .aqs-imagegen-prompt-wrap textarea{min-height:230px;padding:18px 18px 10px;font-size:15px;line-height:1.75}
 .aqs-imagegen-prompt-footer{padding:10px 16px 12px}
 .aqs-imagegen-create-panel{padding:26px}
@@ -91,6 +92,7 @@
                 <option value="banner">Banner / hero graphic</option>
                 <option value="social">Social media visual</option>
                 <option value="portrait">Portrait / character</option>
+                <option value="birthday">Birthday flyer</option>
                 <option value="general">General creative</option>
               </select>
             </div>
@@ -105,6 +107,15 @@
             </div>
           </div>
 
+          <section class="aqs-birthday-fields" id="aqs-birthday-fields" aria-label="Birthday flyer details">
+            <div><h3>Make it personal</h3><p>Add a few details and we’ll write a birthday message for the flyer.</p></div>
+            <label for="aqs-birthday-name">Who is celebrating? <input id="aqs-birthday-name" maxlength="60" placeholder="Enter their name"></label>
+            <div class="aqs-birthday-grid">
+              <label for="aqs-birthday-relationship">Your relationship <select id="aqs-birthday-relationship"><option value="Someone special">Someone special</option><option>Friend</option><option>Parent</option><option>Sibling</option><option>Colleague</option><option>Partner</option><option>Child</option></select></label>
+              <label for="aqs-birthday-tone">Greeting style <select id="aqs-birthday-tone"><option value="Warm and heartfelt">Warm and heartfelt</option><option>Elegant and classy</option><option>Joyful and playful</option><option>Faith-filled and prayerful</option><option>Short and simple</option></select></label>
+            </div>
+            <label for="aqs-birthday-details">What should the greeting mention? <textarea id="aqs-birthday-details" maxlength="240" placeholder="Their kind heart, achievements, special memories or a prayer…"></textarea></label>
+          </section>
           <div class="aqs-imagegen-preset-heading">Start with a direction</div>
           <div class="aqs-imagegen-presets" role="list">
             <button class="aqs-imagegen-preset" type="button" data-prompt="A polished logo for a modern education brand called " data-category="logo">Logo concept</button>
