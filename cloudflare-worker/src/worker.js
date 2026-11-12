@@ -1,4 +1,5 @@
 import { directDesign } from './design-director.js';
+import { composeDesignSvg } from './design-renderer.js';
 
 const DEFAULT_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 const PROFESSIONAL_IMAGE_MODEL = '@cf/leonardo/lucid-origin';
@@ -204,11 +205,27 @@ export async function handleImage(request, env) {
         }, 429);
       }
       const image = await env.AI.run(model, {
-        prompt: design.prompt,
+        prompt: design.prompt + ' Create the visual artwork/background only. Do not render any words, letters, numbers, captions, labels, logos or watermarks; reserve clean contrast space for separately typeset copy.',
         ...design.dimensions,
         num_steps: 12,
         guidance: 5,
       });
+      const rawBody = imageBody(image);
+      if (rawBody instanceof ArrayBuffer || ArrayBuffer.isView(rawBody)) {
+        const svg = composeDesignSvg(new Uint8Array(rawBody.buffer || rawBody, rawBody.byteOffset || 0, rawBody.byteLength), design, prompt);
+        if (svg) {
+          return new Response(svg, {
+            status: 200,
+            headers: {
+              ...corsHeaders(request, env),
+              'Content-Type': 'image/svg+xml; charset=utf-8',
+              'Content-Disposition': 'inline; filename="xzily-professional-design.svg"',
+              'X-Image-Engine': 'xzily-design-renderer',
+              'X-Image-Model': String(model),
+            },
+          });
+        }
+      }
       return imageResponse(request, env, image, model);
     }
     const image = await env.AI.run(model, {
