@@ -5,7 +5,7 @@ const escapeXml = (value) => String(value || '').replace(/[&<>"']/g, (character)
 function cleanCopy(copy, brief) {
   const source = copy && typeof copy === 'object' ? copy : {};
   const result = {};
-  for (const key of ['headline', 'subline', 'cta', 'brandName', 'details']) {
+  for (const key of ['headline', 'recipientName', 'subline', 'cta', 'brandName', 'details']) {
     const value = source[key];
     if (typeof value === 'string' && value.trim()) result[key] = value.trim().slice(0, key === 'headline' ? 100 : key === 'details' ? 240 : 120);
   }
@@ -81,7 +81,22 @@ export function composeDesignSvg(backgroundBytes, design, originalBrief, supplie
   const base64 = btoa(binary);
   const width = Number(design?.dimensions?.width) || 1024;
   const height = Number(design?.dimensions?.height) || 576;
+
   const category = String(design.category || 'general');
+  if (category === 'birthday') {
+    const recipient = copy.recipientName || copy.headline || '';
+    const nameSize = Math.max(42, Math.round(width * (height > width ? 0.105 : 0.092)));
+    const labelSize = Math.max(22, Math.round(width * 0.036));
+    const detailSize = Math.max(20, Math.round(width * 0.030));
+    const centerX = Math.round(width / 2);
+    const nameLines = wrapWords(recipient, Math.max(8, Math.floor(width * 0.82 / (nameSize * 0.54))), 2);
+    const detailLines = wrapWords(copy.subline || copy.details || '', Math.max(18, Math.floor(width * 0.76 / (detailSize * 0.53))), 2);
+    const centerY = Math.round(height * (height > width ? 0.51 : 0.55));
+    const labelY = centerY - Math.round(nameSize * 1.55);
+    const detailY = centerY + nameLines.length * nameSize * 1.08 + Math.round(height * 0.045);
+    const frameInset = Math.round(Math.min(width, height) * 0.065);
+    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '"><image width="' + width + '" height="' + height + '" preserveAspectRatio="xMidYMid slice" xlink:href="data:image/png;base64,' + base64 + '"/><rect x="' + frameInset + '" y="' + frameInset + '" width="' + (width - frameInset * 2) + '" height="' + (height - frameInset * 2) + '" rx="' + Math.round(frameInset * 0.18) + '" fill="none" stroke="#d6ad58" stroke-width="' + Math.max(2, Math.round(width * 0.004)) + '" opacity=".88"/><circle cx="' + centerX + '" cy="' + Math.round(height * 0.19) + '" r="' + Math.round(width * 0.17) + '" fill="#d6ad58" opacity=".055"/><text x="' + centerX + '" y="' + labelY + '" text-anchor="middle" fill="#f4d58a" font-family="Georgia,serif" font-size="' + labelSize + '" font-weight="700" letter-spacing="' + Math.max(2, Math.round(width * 0.006)) + '">HAPPY BIRTHDAY</text>' + makeText(nameLines, centerX, centerY, nameSize, 'middle', 800, '#ffffff') + makeText(detailLines, centerX, detailY, detailSize, 'middle', 500, '#f7e9c8') + (copy.cta ? '<text x="' + centerX + '" y="' + Math.round(height * 0.88) + '" text-anchor="middle" fill="#e5c477" font-family="Arial,Helvetica,sans-serif" font-size="' + detailSize + '" font-weight="700">' + escapeXml(copy.cta) + '</text>' : '') + '</svg>';
+  }
   const recipe = RECIPES[category] || {
     anchor: height > width ? 'lower' : 'bottom', width: 0.82,
     headline: height > width ? 0.068 : 0.062, subline: 0.024,
