@@ -12,9 +12,9 @@ function cleanCopy(copy, brief) {
   if (!Object.keys(result).length) {
     const text = String(brief || '');
     const patterns = [
-      ['headline', /\b(?:headline|main headline|title)\s*[:=]\s*["“]([^"”]{2,90})["”]/i],
-      ['subline', /\b(?:subheadline|subtitle|supporting text|subline)\s*[:=]\s*["“]([^"”]{2,110})["”]/i],
-      ['cta', /\b(?:call to action|cta|button text)\s*[:=]\s*["“]([^"”]{2,45})["”]/i],
+      ['headline', /\\b(?:headline|main headline|title)\\s*[:=]\\s*["“]([^"”]{2,90})["”]/i],
+      ['subline', /\\b(?:subheadline|subtitle|supporting text|subline)\\s*[:=]\\s*["“]([^"”]{2,110})["”]/i],
+      ['cta', /\\b(?:call to action|cta|button text)\\s*[:=]\\s*["“]([^"”]{2,45})["”]/i],
     ];
     for (const [key, pattern] of patterns) {
       const match = text.match(pattern);
@@ -25,7 +25,7 @@ function cleanCopy(copy, brief) {
 }
 
 function wrapWords(value, maxChars, maxLines) {
-  const words = String(value || '').trim().split(/\s+/).filter(Boolean);
+  const words = String(value || '').trim().split(/\\s+/).filter(Boolean);
   const lines = [];
   let line = '';
   for (const word of words) {
@@ -44,6 +44,32 @@ function wrapWords(value, maxChars, maxLines) {
   return lines;
 }
 
+const RECIPES = {
+  fiverr: { anchor: 'bottom', width: 0.88, headline: 0.092, subline: 0.030, shade: 0.76, maxLines: 2, align: 'start', inset: 0.055 },
+  'youtube-thumbnail': { anchor: 'bottom', width: 0.88, headline: 0.105, subline: 0.032, shade: 0.78, maxLines: 2, align: 'start', inset: 0.055 },
+  social: { anchor: 'bottom', width: 0.84, headline: 0.080, subline: 0.029, shade: 0.72, maxLines: 2, align: 'start', inset: 0.08 },
+  'product-ad': { anchor: 'bottom', width: 0.82, headline: 0.074, subline: 0.027, shade: 0.70, maxLines: 2, align: 'start', inset: 0.075 },
+  flyer: { anchor: 'lower', width: 0.84, headline: 0.070, subline: 0.026, shade: 0.78, maxLines: 3, align: 'start', inset: 0.08 },
+  'event-poster': { anchor: 'lower', width: 0.84, headline: 0.070, subline: 0.026, shade: 0.78, maxLines: 3, align: 'start', inset: 0.08 },
+  banner: { anchor: 'middle', width: 0.48, headline: 0.060, subline: 0.024, shade: 0.66, maxLines: 3, align: 'start', inset: 0.07 },
+  logo: { anchor: 'middle', width: 0.84, headline: 0.075, subline: 0.022, shade: 0.36, maxLines: 2, align: 'center', inset: 0.08 },
+  certificate: { anchor: 'middle', width: 0.78, headline: 0.060, subline: 0.023, shade: 0.60, maxLines: 3, align: 'center', inset: 0.11 },
+  invitation: { anchor: 'lower', width: 0.80, headline: 0.065, subline: 0.023, shade: 0.66, maxLines: 3, align: 'center', inset: 0.10 },
+  'business-card': { anchor: 'middle', width: 0.82, headline: 0.052, subline: 0.021, shade: 0.68, maxLines: 2, align: 'start', inset: 0.08 },
+  menu: { anchor: 'lower', width: 0.84, headline: 0.060, subline: 0.023, shade: 0.76, maxLines: 3, align: 'start', inset: 0.08 },
+  infographic: { anchor: 'top', width: 0.88, headline: 0.058, subline: 0.023, shade: 0.60, maxLines: 3, align: 'start', inset: 0.07 },
+  packaging: { anchor: 'lower', width: 0.82, headline: 0.058, subline: 0.022, shade: 0.70, maxLines: 2, align: 'start', inset: 0.08 },
+  mockup: { anchor: 'bottom', width: 0.78, headline: 0.052, subline: 0.022, shade: 0.64, maxLines: 2, align: 'start', inset: 0.08 },
+};
+
+function makeText(lines, x, y, size, anchor, weight, fill) {
+  if (!lines.length) return '';
+  const tspans = lines.map((line, index) =>
+    '<tspan x="' + x + '" dy="' + (index ? Math.round(size * 1.08) : 0) + '">' + escapeXml(line) + '</tspan>'
+  ).join('');
+  return '<text x="' + x + '" y="' + y + '" text-anchor="' + anchor + '" fill="' + fill + '" font-family="Arial,Helvetica,sans-serif" font-size="' + size + '" font-weight="' + weight + '" paint-order="stroke" stroke="#000" stroke-opacity=".22" stroke-width="2">' + tspans + '</text>';
+}
+
 export function composeDesignSvg(backgroundBytes, design, originalBrief, suppliedCopy) {
   const copy = cleanCopy(suppliedCopy, originalBrief);
   if (!Object.keys(copy).length) return null;
@@ -53,38 +79,48 @@ export function composeDesignSvg(backgroundBytes, design, originalBrief, supplie
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
   }
   const base64 = btoa(binary);
-  const width = design.dimensions.width;
-  const height = design.dimensions.height;
+  const width = Number(design?.dimensions?.width) || 1024;
+  const height = Number(design?.dimensions?.height) || 576;
   const category = String(design.category || 'general');
-  const portrait = height > width;
-  const compact = ['fiverr', 'youtube-thumbnail', 'social', 'product-ad'].includes(category);
-  const formal = ['certificate', 'business-card', 'menu', 'invitation'].includes(category);
-  const left = Math.round(width * (compact ? 0.055 : 0.075));
-  const textWidth = Math.round(width * (compact ? 0.82 : 0.80));
-  const headlineSize = Math.round(width * (compact ? 0.078 : portrait ? 0.072 : 0.064));
-  const headlineLines = wrapWords(copy.headline || copy.brandName || '', Math.max(10, Math.round(textWidth / (headlineSize * 0.54))), compact ? 2 : 3);
-  const headlineY = Math.round(height * (compact ? 0.72 : formal ? 0.25 : portrait ? 0.62 : 0.68));
-  const subSize = Math.max(18, Math.round(width * (compact ? 0.027 : 0.026)));
-  const subLines = wrapWords(copy.subline || copy.details || '', Math.max(18, Math.round(textWidth / (subSize * 0.53))), 2);
-  const subY = headlineY + Math.max(1, headlineLines.length) * headlineSize * 1.02 + Math.round(height * 0.035);
-  const brandY = Math.round(height * (formal ? 0.12 : 0.10));
+  const recipe = RECIPES[category] || {
+    anchor: height > width ? 'lower' : 'bottom', width: 0.82,
+    headline: height > width ? 0.068 : 0.062, subline: 0.024,
+    shade: 0.72, maxLines: 3, align: 'start', inset: 0.075,
+  };
+  const left = Math.round(width * recipe.inset);
+  const textWidth = Math.round(width * recipe.width);
+  const anchor = recipe.align === 'center' ? 'middle' : 'start';
+  const x = recipe.align === 'center' ? Math.round(width / 2) : left;
+  const headlineSize = Math.max(24, Math.round(width * recipe.headline));
+  const subSize = Math.max(18, Math.round(width * recipe.subline));
+  const headline = wrapWords(copy.headline || copy.brandName || '', Math.max(8, Math.floor(textWidth / (headlineSize * 0.54))), recipe.maxLines);
+  const supporting = wrapWords(copy.subline || copy.details || '', Math.max(14, Math.floor(textWidth / (subSize * 0.53))), 2);
+  const brand = copy.brandName && copy.headline ? copy.brandName : '';
+  const brandSize = Math.max(16, Math.round(width * 0.022));
+  const brandY = Math.round(height * (recipe.anchor === 'top' ? 0.10 : recipe.anchor === 'middle' ? 0.30 : 0.12));
+  let headlineY;
+  if (recipe.anchor === 'top') headlineY = Math.round(height * 0.24);
+  else if (recipe.anchor === 'middle') headlineY = Math.round(height * 0.52);
+  else if (recipe.anchor === 'lower') headlineY = Math.round(height * (height > width ? 0.67 : 0.70));
+  else headlineY = Math.round(height * 0.70);
+  if (recipe.anchor === 'middle' && category === 'banner') headlineY = Math.round(height * 0.47);
+  if (recipe.anchor === 'middle' && recipe.align === 'center') headlineY = Math.round(height * 0.54);
+  const headlineHeight = headline.length * headlineSize * 1.08;
+  const subY = headlineY + headlineHeight + Math.round(height * 0.035);
   const ctaY = height - Math.round(height * 0.075);
-  const headlineSvg = headlineLines.map((line, index) =>
-    '<tspan x="' + left + '" dy="' + (index ? Math.round(headlineSize * 1.02) : 0) + '">' + escapeXml(line) + '</tspan>'
-  ).join('');
-  const subSvg = subLines.map((line, index) =>
-    '<tspan x="' + left + '" dy="' + (index ? Math.round(subSize * 1.3) : 0) + '">' + escapeXml(line) + '</tspan>'
-  ).join('');
-  const brandSvg = copy.brandName && copy.headline
-    ? '<text x="' + left + '" y="' + brandY + '" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="' + Math.round(width * 0.026) + '" font-weight="700" letter-spacing="1.4">' + escapeXml(copy.brandName) + '</text>' : '';
-  const ctaWidth = Math.min(width * 0.48, Math.max(150, (copy.cta || '').length * subSize * 0.68 + 48));
-  const textLayer = [
-    '<defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="' + (compact ? 0.38 : formal ? 0.22 : 0.32) + '" stop-color="#000" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity="' + (formal ? '.62' : '.78') + '"/></linearGradient></defs>',
-    '<rect width="100%" height="100%" fill="url(#shade)"/>',
-    brandSvg,
-    (copy.headline || copy.brandName) ? '<text x="' + left + '" y="' + headlineY + '" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="' + headlineSize + '" font-weight="900" letter-spacing="-1.1" paint-order="stroke" stroke="#000" stroke-opacity=".3" stroke-width="2">' + headlineSvg + '</text>' : '',
-    subLines.length ? '<text x="' + left + '" y="' + subY + '" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="' + subSize + '" font-weight="600">' + subSvg + '</text>' : '',
-    copy.cta ? '<g><rect x="' + left + '" y="' + (ctaY - subSize * 1.65) + '" width="' + ctaWidth + '" height="' + (subSize * 2.5) + '" rx="' + (formal ? 4 : subSize * 0.55) + '" fill="#fff"/><text x="' + (left + 20) + '" y="' + ctaY + '" fill="#171923" font-family="Arial,Helvetica,sans-serif" font-size="' + Math.round(subSize * 0.78) + '" font-weight="800">' + escapeXml(copy.cta) + '</text></g>' : '',
-  ].join('');
-  return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '"><image width="' + width + '" height="' + height + '" preserveAspectRatio="xMidYMid slice" xlink:href="data:image/png;base64,' + base64 + '"/>' + textLayer + '</svg>';
+  const ctaFont = Math.max(16, Math.round(subSize * 0.82));
+  const ctaWidth = Math.min(width * 0.46, Math.max(140, (copy.cta || '').length * ctaFont * 0.62 + 42));
+  const shadeStart = recipe.anchor === 'top' ? 0 : recipe.anchor === 'middle' ? 0.18 : 0.34;
+  const shade = '<defs><linearGradient id="xzilyShade" x1="0" y1="0" x2="0" y2="1"><stop offset="' + shadeStart + '" stop-color="#05070d" stop-opacity="0"/><stop offset="1" stop-color="#05070d" stop-opacity="' + recipe.shade + '"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#xzilyShade)"/>';
+  const brandSvg = brand
+    ? '<text x="' + x + '" y="' + brandY + '" text-anchor="' + anchor + '" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="' + brandSize + '" font-weight="700" letter-spacing="1.2">' + escapeXml(brand) + '</text>'
+    : '';
+  const headlineSvg = makeText(headline, x, headlineY, headlineSize, anchor, 900, '#fff');
+  const subSvg = makeText(supporting, x, subY, subSize, anchor, 600, '#fff');
+  const ctaX = recipe.align === 'center' ? Math.round((width - ctaWidth) / 2) : left;
+  const ctaSvg = copy.cta
+    ? '<g><rect x="' + ctaX + '" y="' + (ctaY - subSize * 1.55) + '" width="' + ctaWidth + '" height="' + (subSize * 2.25) + '" rx="' + (['certificate', 'business-card'].includes(category) ? 5 : 14) + '" fill="#fff"/><text x="' + (ctaX + 18) + '" y="' + ctaY + '" fill="#151923" font-family="Arial,Helvetica,sans-serif" font-size="' + ctaFont + '" font-weight="800">' + escapeXml(copy.cta) + '</text></g>'
+    : '';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '"><image width="' + width + '" height="' + height + '" preserveAspectRatio="xMidYMid slice" xlink:href="data:image/png;base64,' + base64 + '"/>' + shade + brandSvg + headlineSvg + subSvg + ctaSvg + '</svg>';
+  return svg;
 }
