@@ -107,6 +107,15 @@
             </div>
           </div>
 
+          <div class="aqs-imagegen-option aqs-imagegen-model-option">
+            <label for="aqs-imagegen-model">Image model</label>
+            <select id="aqs-imagegen-model" name="imageModel">
+              <option value="@cf/black-forest-labs/flux-1-schnell">FLUX.1 schnell · Standard (recommended)</option>
+              <option value="@cf/leonardo/lucid-origin">Lucid Origin · Premium (limited to 3 requests/day)</option>
+            </select>
+            <p class="aqs-imagegen-model-note">FLUX is the default free-allowance option. Lucid Origin uses the limited premium-design allowance.</p>
+          </div>
+
           <section class="aqs-birthday-fields" id="aqs-birthday-fields" aria-label="Birthday flyer details">
             <div><h3>Make it personal</h3><p>Add a few details and we’ll write a birthday message for the flyer.</p></div>
             <label for="aqs-birthday-name">Who is celebrating? <input id="aqs-birthday-name" maxlength="60" placeholder="Enter their name"></label>
