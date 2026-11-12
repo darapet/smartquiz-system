@@ -57,7 +57,7 @@ const S = {
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
   voice: null, speaking: new Set(), voiceSyncTimer: 0,
   musicDraft: null, musicAudio: null, musicTrackKey: '', musicEnabledLocally: true, musicPlayBlocked: false,
-  q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0 }, tick: 0
+  q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0, autoAdvanceScheduled: false }, tick: 0
 };
 
 const now = () => Date.now() + S.skew;
@@ -629,7 +629,19 @@ function renderHostHistory() {
         button.textContent = 'Continue';
       }
     });
-    card.append(info, button);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn danger';
+    remove.textContent = 'Delete';
+    remove.addEventListener('click', () => {
+      if (!confirm(`Remove "${item.title || 'this quiz'}" from your saved history on this device? This will not delete the live room or disable its link.`)) return;
+      try { localStorage.setItem(HOST_HISTORY_KEY, JSON.stringify(readHostHistory().filter(x => x.roomId !== item.roomId))); } catch {}
+      renderHostHistory();
+    });
+    const actions = document.createElement('div');
+    actions.className = 'history-actions';
+    actions.append(button, remove);
+    card.append(info, actions);
     list.append(card);
   });
 }
@@ -1108,6 +1120,8 @@ function onQuestion(d) {
   /* Reveal and winner can change while the same question is on screen. */
   paintWinner(d);
   if (typeof d.revealIndex === 'number') applyReveal(d.revealIndex);
+  else if (d.lastWinner && d.lastWinner.questionIndex === d.currentQuestion && Number.isInteger(d.lastWinner.correctIndex)) applyReveal(d.lastWinner.correctIndex);
+  if (S.isHost && d.lastWinner && d.lastWinner.questionIndex === d.currentQuestion) scheduleAutoAdvance(2200);
   renderGameBar();
 }
 
@@ -1122,6 +1136,7 @@ function newQuestion(d) {
   $('q-eyebrow').textContent = `Question ${d.currentQuestion + 1} · first correct answer wins ${POINTS} points`;
   $('q-text').textContent = pq.text;
   $('options').innerHTML = pq.options.map((o, i) => `<button type="button" class="opt" data-i="${i}" disabled><span class="shape">${'ABCD'[i]}</span><span class="txt">${esc(o.text)}</span></button>`).join('');
+  $('live-scoreboard').innerHTML = '';
   const fb = $('feedback');
   fb.textContent = '';
   fb.className = 'feedback';
@@ -1193,8 +1208,8 @@ async function revealSoon() {
       break;
     } catch (e) { /* the server clock may be a moment behind ours; try again */ }
   }
-  /* Never leave the host stuck: Next works even if the reveal could not be sent. */
-  if (S.view === 'game' && q.index === index) $('next-btn').disabled = false;
+  /* Show the revealed answer briefly, then advance for everyone from the host session. */
+  if (S.view === 'game' && q.index === index) scheduleAutoAdvance(2200);
 }
 
 function setFeedback(text, kind) {
@@ -1241,10 +1256,10 @@ function applyReveal(right) {
     b.classList.toggle('wrong', i === q.picked && i !== right);
     b.classList.toggle('dim', i !== right && i !== q.picked);
   });
-  if (!(q.result && q.result.correct)) {
-    const text = opts[right] ? opts[right].querySelector('.txt').textContent : '';
-    setFeedback(`The correct answer is ${'ABCD'[right]}: ${text}`, 'info');
-  }
+  const text = opts[right] ? opts[right].querySelector('.txt').textContent : '';
+  if (q.result && !q.result.correct) setFeedback(`Your answer was wrong. Correct answer: ${'ABCD'[right]} — ${text}`, 'bad');
+  else if (q.result && q.result.correct && !q.result.firstCorrect) setFeedback('Correct answer! Another player was faster.', 'info');
+  else if (!q.result) setFeedback(`Correct answer: ${'ABCD'[right]} — ${text}`, 'info');
   if (S.isHost) $('next-btn').disabled = false;
 }
 
@@ -1257,14 +1272,27 @@ function paintWinner(d) {
 }
 
 function renderGameBar() {
-  const ranked = rankPlayers(S.players).filter(p => (p.score || 0) > 0).slice(0, 3);
-  $('top3').innerHTML = ranked.length
-    ? ranked.map((p, i) => `<div class="t3"><span class="rk">${i + 1}</span><span class="a">${avatarSvg(p.avatar, { still: true })}</span><span class="who"><b>${esc(p.name)}</b><span>${p.score} pts</span></span></div>`).join('')
+  const ranked = rankPlayers(S.players);
+  $('live-scoreboard').innerHTML = ranked.length
+    ? ranked.map((p, i) => `<div class="score-row ${p.uid === auth.currentUser.uid ? 'mine' : ''}"><span class="score-rank">${i + 1}</span><span class="score-name">${esc(p.name)}${p.uid === auth.currentUser.uid ? ' (you)' : ''}</span><strong>${p.score || 0} pts</strong></div>`).join('')
+    : '<p class="score-empty">Scores will appear here as players answer.</p>';
+  const leaders = ranked.filter(p => (p.score || 0) > 0).slice(0, 3);
+  $('top3').innerHTML = leaders.length
+    ? leaders.map((p, i) => `<div class="t3"><span class="rk">${i + 1}</span><span class="a">${avatarSvg(p.avatar, { still: true })}</span><span class="who"><b>${esc(p.name)}</b><span>${p.score} pts</span></span></div>`).join('')
     : '<span class="chip">No points yet. Be the first!</span>';
   const me = S.me;
   $('me-box').innerHTML = me
     ? `<span class="a">${avatarSvg(me.avatar, { still: true })}</span><span class="who"><b>${me.score || 0}</b><span>your points</span></span>`
     : '';
+}
+
+function scheduleAutoAdvance(delay) {
+  if (!S.isHost || S.q.autoAdvanceScheduled || S.view !== 'game') return;
+  S.q.autoAdvanceScheduled = true;
+  const questionIndex = S.q.index;
+  setTimeout(() => {
+    if (S.view === 'game' && S.q.index === questionIndex && S.isHost) hostNext();
+  }, delay);
 }
 
 async function hostNext() {
