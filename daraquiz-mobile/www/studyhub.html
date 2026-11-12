@@ -592,7 +592,7 @@ function shFC_view(mode){var wrap=document.getElementById('fc-grid-wrap');wrap.h
 function shFC_closeStudy(){document.getElementById('fc-study-area').hidden=true;}
 function shFC_init(){
  shFC_setSource('topic');shFC_renderDeckList();var file=document.getElementById('fc-pdf-file');file.addEventListener('change',function(){document.getElementById('fc-pdf-name').textContent=file.files[0]?file.files[0].name:'No PDF selected';});
- var card=document.getElementById('fc-solo-card');card.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();card.classList.toggle('flipped');}});
+ var card=document.getElementById('fc-solo-card');card.addEventListener('click',function(){card.classList.toggle('flipped');});card.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();card.classList.toggle('flipped');}});
 }
 /* ══════════════════════════════
    3. GPA CALCULATOR
