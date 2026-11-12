@@ -50,7 +50,7 @@ function modelFor(env, requestedModel, category) {
     PROFESSIONAL_IMAGE_MODEL,
   ]);
   if (allowed.has(requested)) return requested;
-  if (['logo', 'banner', 'flyer', 'poster', 'social', 'design', 'fiverr', 'youtube-thumbnail', 'event-poster', 'product-ad', 'business-card', 'menu', 'infographic', 'packaging', 'certificate', 'invitation', 'mockup', '3d-design', '2d-design'].includes(String(category || '').toLowerCase())) {
+  if (['logo', 'banner', 'flyer', 'birthday', 'poster', 'social', 'design', 'fiverr', 'youtube-thumbnail', 'event-poster', 'product-ad', 'business-card', 'menu', 'infographic', 'packaging', 'certificate', 'invitation', 'mockup', '3d-design', '2d-design'].includes(String(category || '').toLowerCase())) {
     return PROFESSIONAL_IMAGE_MODEL;
   }
   return allowed.has(configured) ? configured : DEFAULT_IMAGE_MODEL;
