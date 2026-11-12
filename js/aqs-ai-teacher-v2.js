@@ -15,6 +15,7 @@ function makeId(){return 'chat-'+Date.now()+'-'+Math.random().toString(36).slice
 function makeSession(){var now=Date.now();return{id:makeId(),title:'New conversation',createdAt:now,updatedAt:now,messages:[]};}
 function loadSessions(){try{var data=JSON.parse(localStorage.getItem(STORE_KEY)||'[]');return Array.isArray(data)?data.filter(function(s){return s&&s.id&&Array.isArray(s.messages);}):[];}catch(e){return[];}}
 function persist(){
+ if(!messages.length){updateHistoryCount();return;}
  currentSession.messages=messages.slice();currentSession.updatedAt=Date.now();
  var firstUser=messages.find(function(m){return m.role==='user';});
  currentSession.title=firstUser?String(firstUser.content).replace(/\s+/g,' ').slice(0,58):'New conversation';
@@ -62,7 +63,7 @@ function openSession(id){
 }
 function newChat(){
  stopListening();stopSpeaking();persist();currentSession=makeSession();currentId=currentSession.id;messages=[];
- sessions.unshift(currentSession);renderMessages();persist();closeHistory();input.value='';input.focus();
+ renderMessages();persist();closeHistory();input.value='';input.focus();
  setState('','New conversation. What would you like to learn?');
 }
 function waitForAIKeys(){
