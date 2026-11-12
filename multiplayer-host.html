@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Live Multiplayer Quiz — SmartQuiz</title>
 <link rel="stylesheet" href="css/mp-avatars.css">
-<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-history1">
+<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-livequiz2">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body data-view="setup">
@@ -289,6 +289,7 @@
       <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
       <div class="winner-banner" id="winner-banner" hidden></div>
     </div>
+    <div class="card live-scoreboard-card"><div class="scoreboard-heading"><h2>Live leaderboard</h2><span>Updated in real time</span></div><div id="live-scoreboard" class="live-scoreboard" aria-live="polite"></div></div>
     <div class="row end" id="host-controls" hidden>
       <button class="btn ghost" id="next-btn" type="button">Next question →</button>
       <button class="btn danger" id="end-btn" type="button">End game</button>
@@ -329,6 +330,6 @@
 <audio id="room-music" preload="none" loop playsinline></audio>
 <div id="room-music-control" class="room-music-control" hidden><span id="room-music-label">Background music</span><a id="room-music-credit" href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Credit & licence</a><button type="button" id="room-music-host-toggle" class="btn ghost" hidden>Stop for everyone</button><button type="button" id="room-music-toggle" class="btn ghost">Enable music</button><label>Volume <input id="room-music-volume" type="range" min="0" max="30" value="12"></label></div>
 
-<script type="module" src="js/multiplayer-host.js?v=20261112-history1"></script>
+<script type="module" src="js/multiplayer-host.js?v=20261112-livequiz2"></script>
 </body>
 </html>
