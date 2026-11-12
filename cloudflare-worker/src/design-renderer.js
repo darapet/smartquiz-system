@@ -5,9 +5,9 @@ const escapeXml = (value) => String(value || '').replace(/[&<>"']/g, (character)
 function extractCopy(brief) {
   const source = String(brief || '');
   const patterns = [
-    ['headline', /\\b(?:headline|main headline|title)\\s*[:=]\\s*["“]([^"”]{2,90})["”]/i],
-    ['subline', /\\b(?:subheadline|subtitle|supporting text|subline)\\s*[:=]\\s*["“]([^"”]{2,110})["”]/i],
-    ['cta', /\\b(?:call to action|cta|button text)\\s*[:=]\\s*["“]([^"”]{2,45})["”]/i],
+    ['headline', /\b(?:headline|main headline|title)\s*[:=]\s*["“]([^"”]{2,90})["”]/i],
+    ['subline', /\b(?:subheadline|subtitle|supporting text|subline)\s*[:=]\s*["“]([^"”]{2,110})["”]/i],
+    ['cta', /\b(?:call to action|cta|button text)\s*[:=]\s*["“]([^"”]{2,45})["”]/i],
   ];
   const result = {};
   for (const [key, pattern] of patterns) {
@@ -18,7 +18,7 @@ function extractCopy(brief) {
 }
 
 function wrapWords(value, maxChars, maxLines) {
-  const words = String(value || '').trim().split(/\\s+/).filter(Boolean);
+  const words = String(value || '').trim().split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
   for (const word of words) {
