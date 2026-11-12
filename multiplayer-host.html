@@ -126,6 +126,15 @@
           <small>Players need this PIN to enter.</small>
         </label>
       </div>
+      <div class="field wide">
+        <span class="label">Schedule room opening <small>Optional. Anyone opening the link will see a countdown until the room opens.</small></span>
+        <div class="schedule-fields">
+          <label><input id="schedule-hours" type="number" inputmode="numeric" min="0" max="168" value="0" aria-label="Hours"><span>Hours</span></label>
+          <label><input id="schedule-minutes" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Minutes"><span>Minutes</span></label>
+          <label><input id="schedule-seconds" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Seconds"><span>Seconds</span></label>
+        </div>
+        <small>Leave all three at zero to open immediately. Maximum waiting time: 7 days.</small>
+      </div>
       <label class="field">Your name
         <input id="host-name" maxlength="35" placeholder="Host" autocomplete="nickname">
         <small>Players see this next to the crown in the lobby.</small>
