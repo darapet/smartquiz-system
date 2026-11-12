@@ -1,124 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="css/aqs-category-nav.css">
-    <script defer src="js/aqs-category-nav.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI Teacher — DaraQuiz</title>
-<meta name="description" content="Your personal AI teacher: talk or type, hear clear spoken explanations, watch step-by-step working rendered on a live visual board.">
-<link rel="stylesheet" href="css/aqs-ai-teacher.css">
-<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b1b">
+  <title>AI Teacher — SmartQuiz</title>
+  <meta name="description" content="A voice-first AI learning assistant for clear explanations and study conversations.">
+  <link rel="stylesheet" href="css/aqs-category-nav.css">
+  <link rel="stylesheet" href="css/aqs-bottom-nav.css">
+  <link rel="stylesheet" href="css/aqs-ai-teacher.css">
+  <script defer src="js/aqs-category-nav.js"></script>
+  <script defer src="js/aqs-bottom-nav.js"></script>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 </head>
 <body data-aqs-page="ai-teacher" data-aqs-page-group="studio AI">
-<header class="aqs-phase2-page-header" aria-label="AI Teacher"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">AI Teacher</span></header>
-
-
-<div class="ait-shell">
-
-  <div class="ait-hdr">
-    <a class="ait-logo" href="studyhub.html">← Study Hub</a>
-    <div class="sp"></div>
-    <button class="ait-mini" id="ait-pause" title="Pause / resume speech">⏸</button>
-    <button class="ait-mini" id="ait-stop" title="Stop speaking">⏹</button>
-    <button class="ait-mini" id="ait-reset" title="Restart setup">⟲</button>
-  </div>
-
-  <!-- Orb (always visible) -->
-  <div class="ait-orb-wrap" id="ait-orb-wrap">
-    <div class="ait-orb" id="ait-orb"></div>
-    <div class="ait-orb-state" id="ait-orb-state">Ready</div>
-  </div>
-
-  <!-- Step 0 — welcome -->
-  <section class="ait-card" id="ait-s0" aria-label="AI Teacher welcome">
-    <div class="ait-welcome-mark">✦</div>
-    <h1 class="ait-title">Your AI Teacher</h1>
-    <p class="ait-welcome-line">Welcome to the DARAPET Learning System.</p>
-    <p class="ait-sub">Before we begin, let’s personalise your teacher. I’ll listen, remember your choices, and guide you into a classroom made for you.</p>
-    <div class="ait-row">
-      <button class="ait-btn primary" id="ait-start">Begin setup</button>
-    </div>
-    <p class="ait-hint">Tap the glowing light to begin.</p>
-  </section>
-
-  <!-- Step 1 — teacher name -->
-  <section class="ait-card hidden" id="ait-s1">
-    <h2 class="ait-title">What should I be called?</h2>
-    <p class="ait-sub">Give your teacher a name.</p>
-    <label class="ait-label" for="ait-teacher-name">Teacher name</label>
-    <input class="ait-input" id="ait-teacher-name" placeholder="Professor Ada" autocomplete="off">
-    <div class="ait-row"><button class="ait-btn ghost" id="ait-setup-mic1">🎙 Speak teacher name</button><button class="ait-btn primary" id="ait-next1">Continue</button></div>
-  </section>
-
-  <!-- Step 2 — student name -->
-  <section class="ait-card hidden" id="ait-s2">
-    <h2 class="ait-title">And what should I call you?</h2>
-    <p class="ait-sub">I will address you by name during the lesson.</p>
-    <label class="ait-label" for="ait-student-name">Your name</label>
-    <input class="ait-input" id="ait-student-name" placeholder="Your name" autocomplete="off">
-    <div class="ait-row"><button class="ait-btn ghost" id="ait-setup-mic2">🎙 Speak your name</button><button class="ait-btn primary" id="ait-next2">Continue</button></div>
-  </section>
-
-  <!-- Step 3 — voice + speed -->
-  <section class="ait-card hidden" id="ait-s3">
-    <h2 class="ait-title">Choose my voice</h2>
-    <p class="ait-sub">Here are my ten voices. Tap a numbered voice to hear it, or say its number or name below.</p>
-    <div class="ait-voices" id="ait-voice-list"></div>
-    <div class="ait-voice-choice">
-      <input class="ait-input" id="ait-voice-choice" placeholder="Voice number or name" autocomplete="off">
-      <button class="ait-btn ghost" id="ait-voice-mic">🎙 Choose by voice</button>
-      <button class="ait-btn primary" id="ait-voice-select">Use this voice</button>
-    </div>
-
-    <label class="ait-label" for="ait-rate">Speaking speed — <span class="ait-rate-val" id="ait-rate-val">1.00×</span></label>
-    <input class="ait-range" id="ait-rate" type="range" min="0.6" max="1.6" step="0.05" value="1">
-    <div class="ait-row">
-      <button class="ait-btn ghost" id="ait-rate-test">Test speed</button>
-      <button class="ait-btn primary" id="ait-finish">Enter classroom</button>
-    </div>
-  </section>
-
-</div>
-
-  <!-- Classroom -->
-  <section class="ait-room hidden" id="ait-room">
-
-    <div class="ait-panel">
-      <div class="ait-panel-hd">
-        <span>Visual board</span>
-        <button class="ait-mini wide" id="ait-clear-board" title="Clear the board">Clear</button>
+  <div class="ait-app" id="ait-app">
+    <header class="ait-topbar">
+      <a class="ait-back" href="studyhub.html" aria-label="Back to Study Hub">← <span>Study Hub</span></a>
+      <div class="ait-brand"><span class="ait-brand-mark">✦</span><span>AI Teacher</span></div>
+      <div class="ait-top-actions">
+        <button class="ait-icon-btn" id="ait-voice-toggle" type="button" aria-label="Turn voice off" title="Voice on">🔊</button>
+        <button class="ait-history-btn" id="ait-history-open" type="button"><span>History</span><span class="ait-history-count" id="ait-history-count">0</span></button>
+        <button class="ait-icon-btn" id="ait-new-chat" type="button" aria-label="New conversation" title="New conversation">＋</button>
       </div>
-      <div class="ait-board" id="ait-board">
-        <div class="empty">The board is clear.</div>
+    </header>
+    <main class="ait-main">
+      <section class="ait-hero" id="ait-hero" aria-label="AI Teacher voice visualizer">
+        <div class="ait-orb-stage">
+          <div class="ait-orb-halo ait-halo-one"></div>
+          <div class="ait-orb-halo ait-halo-two"></div>
+          <div class="ait-orb-halo ait-halo-three"></div>
+          <div class="ait-orb" id="ait-orb">
+            <div class="ait-orb-core"></div><div class="ait-orb-shine"></div>
+            <div class="ait-orb-wave ait-wave-one"></div><div class="ait-orb-wave ait-wave-two"></div>
+          </div>
+        </div>
+        <h1 class="ait-hero-title">Your personal AI tutor</h1>
+        <p class="ait-hero-sub" id="ait-status">Ask a question or tap the microphone to speak.</p>
+        <div class="ait-state-pills">
+          <span class="ait-state-pill"><i class="ait-state-dot"></i><span id="ait-state-label">Ready</span></span>
+          <span class="ait-state-pill ait-state-voice" id="ait-voice-state">Voice enabled</span>
+        </div>
+      </section>
+      <section class="ait-conversation" id="ait-conversation" aria-label="Conversation" aria-live="polite">
+        <div class="ait-empty-state" id="ait-empty-state">
+          <div class="ait-empty-icon">✧</div><h2>What would you like to learn?</h2>
+          <p>Ask about a difficult topic, request an example, or type a question below.</p>
+          <div class="ait-starters">
+            <button type="button" class="ait-starter" data-prompt="Explain photosynthesis in simple steps.">Explain a topic</button>
+            <button type="button" class="ait-starter" data-prompt="Give me a simple example and explain each step.">Show an example</button>
+            <button type="button" class="ait-starter" data-prompt="Help me understand this topic and ask me one question to check my understanding.">Test my understanding</button>
+          </div>
+        </div>
+        <div class="ait-messages" id="ait-messages"></div>
+      </section>
+    </main>
+    <div class="ait-composer-wrap" id="ait-composer-wrap">
+      <div class="ait-composer">
+        <textarea id="ait-input" rows="1" maxlength="6000" placeholder="Message your AI Teacher…" aria-label="Type your question"></textarea>
+        <div class="ait-composer-actions">
+          <span class="ait-composer-hint" id="ait-composer-hint">Your questions and answers are saved in History on this device.</span>
+          <div class="ait-composer-buttons">
+            <button class="ait-mic-btn" id="ait-mic" type="button" aria-label="Speak your question" title="Speak your question"><span id="ait-mic-icon">🎙</span></button>
+            <button class="ait-send-btn" id="ait-send" type="button" aria-label="Send question" title="Send question">↑</button>
+          </div>
+        </div>
       </div>
     </div>
-
-    <div class="ait-panel">
-      <div class="ait-panel-hd">
-        <span>Live transcript — <b id="ait-room-teacher">Teacher</b> &amp; <b id="ait-room-student">Student</b></span>
-      </div>
-      <div class="ait-transcript" id="ait-transcript"></div>
-    </div>
-
-  </section>
-
-  <div class="ait-dock hidden" id="ait-dock">
-    <div class="ait-dock-in">
-      <button class="ait-mic" id="ait-mic" title="Talk to your teacher" aria-label="Microphone">🎙</button>
-      <input id="ait-text" placeholder="Type your question, or tap the mic and speak…" autocomplete="off">
-      <button class="ait-btn primary" id="ait-send">Send</button>
-    </div>
   </div>
-
-  <div class="ait-hint hidden" id="ait-toast"></div>
-
-<script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
-<script src="js/aqs-groq-key.js?v=client-keys-1"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script src="js/aqs-ai-teacher.js?v=client-keys-1"></script>
+  <div class="ait-history-backdrop" id="ait-history-backdrop"></div>
+  <aside class="ait-history-drawer" id="ait-history-drawer" aria-label="Conversation history" aria-hidden="true">
+    <div class="ait-history-head">
+      <div><span class="ait-eyebrow">YOUR LEARNING</span><h2>Conversation history</h2></div>
+      <button class="ait-icon-btn" id="ait-history-close" type="button" aria-label="Close history">×</button>
+    </div>
+    <p class="ait-history-note">Your typed questions, spoken questions and AI explanations are saved here so you can read them again.</p>
+    <div class="ait-history-list" id="ait-history-list"></div>
+  </aside>
+  <div class="ait-toast" id="ait-toast" role="status" aria-live="polite"></div>
+  <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
+  <script src="js/aqs-groq-key.js?v=client-keys-1"></script>
+  <script src="js/aqs-ai-teacher-v2.js?v=20261112"></script>
 </body>
 </html>
