@@ -178,6 +178,7 @@ a{text-decoration:none;color:inherit;}
 @media(max-width:768px){#ait-visual-canvas{height:118px;}.ait-visual-board{margin-bottom:10px;}}
 
 /* Professional flashcards workspace */
+.fc-study-complete{margin:22px auto 8px;max-width:540px;padding:26px 20px;text-align:center;border:1px solid rgba(34,197,94,.22);border-radius:16px;background:rgba(34,197,94,.055)}.fc-complete-icon{width:48px;height:48px;margin:0 auto 12px;display:grid;place-items:center;border-radius:50%;background:rgba(34,197,94,.15);color:#16a34a;font-size:1.5rem;font-weight:900}.fc-study-complete strong{display:block;font-size:1rem;color:var(--text)}.fc-study-complete p{font-size:.76rem;line-height:1.55;color:var(--muted);margin:8px auto 16px;max-width:420px}.fc-study-complete[hidden]{display:none!important}
 .fc-create-card{padding:18px!important}.fc-method-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:18px}
 .fc-method{min-height:42px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.035);color:var(--muted);font-size:.78rem;font-weight:800}.fc-method.active{background:rgba(232,145,45,.13);border-color:rgba(232,145,45,.45);color:var(--text);box-shadow:0 4px 14px rgba(232,145,45,.08)}
 .fc-source-pane[hidden],.fc-study-area[hidden],.fc-grid-wrap[hidden]{display:none!important}.fc-options-row{display:flex;align-items:end;gap:14px;margin-top:12px}.fc-options-row>div{width:150px;flex-shrink:0}.fc-options-row p{font-size:.74rem;color:var(--muted);line-height:1.5;margin:0 0 7px}
@@ -313,7 +314,7 @@ a{text-decoration:none;color:inherit;}
   <button type="button" class="sh-btn sh-btn-primary fc-generate-btn" id="fc-generate-btn" onclick="shFC_generate()">✨ Generate flashcards</button><div class="fc-status" id="fc-status" role="status" aria-live="polite"></div>
  </div>
  <div class="fc-decks-section"><div class="fc-section-heading"><div><strong>Your flashcard decks</strong><span>Continue where you stopped.</span></div><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_newDeck()">＋ New deck</button></div><div class="fc-deck-list" id="fc-deck-list"></div></div>
- <section class="fc-study-area" id="fc-study-area" hidden><div class="fc-study-head"><div><span class="fc-study-eyebrow">NOW STUDYING</span><h3 id="fc-study-title">Flashcard deck</h3></div><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_closeStudy()">Close</button></div><div class="fc-progress-stats"><span class="fc-stat-mastered" id="fc-known-count">Mastered: 0</span><span class="fc-stat-review" id="fc-unknown-count">To review: 0</span><span class="fc-stat-position" id="fc-solo-progress">Card 1 of 1</span></div><div class="fc-progress-track"><div id="fc-progress-fill"></div></div><div class="sh-fc-card fc-study-card" id="fc-solo-card" role="button" tabindex="0" aria-label="Reveal answer"><div class="sh-fc-inner"><div class="sh-fc-front"><div class="sh-fc-label">QUESTION</div><div class="sh-fc-text" id="fc-solo-q">—</div><div class="sh-fc-hint">Tap to reveal the answer</div></div><div class="sh-fc-back"><div class="sh-fc-label">ANSWER</div><div class="sh-fc-text" id="fc-solo-a">—</div><div class="sh-fc-hint">Rate how well you remembered it</div></div></div></div><div class="fc-study-controls"><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(-1)">← Previous</button><button type="button" class="sh-btn fc-rate-again" onclick="shFC_mark('again')">Again</button><button type="button" class="sh-btn fc-rate-hard" onclick="shFC_mark('hard')">Hard</button><button type="button" class="sh-btn fc-rate-easy" onclick="shFC_mark('easy')">Got it</button><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(1)">Next →</button></div><div class="fc-study-foot"><span>Cards marked “Got it” return after a longer interval. Difficult cards come back sooner.</span><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_view('grid')">View all cards</button></div><div class="fc-grid-wrap" id="fc-grid-wrap" hidden><div class="sh-fc-grid" id="fc-grid"></div></div></section>
+ <section class="fc-study-area" id="fc-study-area" hidden><div class="fc-study-head"><div><span class="fc-study-eyebrow">NOW STUDYING</span><h3 id="fc-study-title">Flashcard deck</h3></div><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_closeStudy()">Close</button></div><div class="fc-progress-stats"><span class="fc-stat-mastered" id="fc-known-count">Mastered: 0</span><span class="fc-stat-review" id="fc-unknown-count">To review: 0</span><span class="fc-stat-position" id="fc-solo-progress">Card 1 of 1</span></div><div class="fc-progress-track"><div id="fc-progress-fill"></div></div><div class="sh-fc-card fc-study-card" id="fc-solo-card" role="button" tabindex="0" aria-label="Reveal answer"><div class="sh-fc-inner"><div class="sh-fc-front"><div class="sh-fc-label">QUESTION</div><div class="sh-fc-text" id="fc-solo-q">—</div><div class="sh-fc-hint">Tap to reveal the answer</div></div><div class="sh-fc-back"><div class="sh-fc-label">ANSWER</div><div class="sh-fc-text" id="fc-solo-a">—</div><div class="sh-fc-hint">Rate how well you remembered it</div></div></div></div><div class="fc-study-controls"><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(-1)">← Previous</button><button type="button" class="sh-btn fc-rate-again" onclick="shFC_mark('again')">Again</button><button type="button" class="sh-btn fc-rate-hard" onclick="shFC_mark('hard')">Hard</button><button type="button" class="sh-btn fc-rate-easy" onclick="shFC_mark('easy')">Got it</button><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(1)">Next →</button></div><div class="fc-study-foot"><span>Cards marked “Got it” return after a longer interval. Difficult cards come back sooner.</span><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_view('grid')">View all cards</button></div><div class="fc-grid-wrap" id="fc-grid-wrap" hidden><div class="sh-fc-grid" id="fc-grid"></div></div><div class="fc-study-complete" id="fc-study-complete" hidden><div class="fc-complete-icon">✓</div><strong id="fc-complete-title">You are all caught up!</strong><p id="fc-complete-copy">Your next review is scheduled for later. You can still revisit the full deck.</p><button type="button" class="sh-btn sh-btn-primary" onclick="shFC_reviewAll()">Review the full deck</button></div></section>
 </div>
 
 <!-- ═══════════════════════════════════
@@ -496,7 +497,7 @@ function shPrintNotes(){
 /* ══════════════════════════════
    2. FLASHCARDS — AI + manual decks
 ══════════════════════════════ */
-let _fcCards=[],_fcIdx=0,_fcDeckId=null,_fcDeckTitle='My flashcards',_fcSource='topic';
+let _fcCards=[],_fcIdx=0,_fcStudyOrder=[],_fcDeckId=null,_fcDeckTitle='My flashcards',_fcSource='topic';
 const _FC_STORE='aqs_flashcard_decks_v1';
 function shFC_setSource(source){
  _fcSource=source;document.querySelectorAll('.fc-method').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-source')===source);});
@@ -553,26 +554,36 @@ async function shFC_generate(){
 function shFC_startStudy(){
  if(!_fcCards.length){shToast('Create at least one flashcard first.');return;}
  if(_fcSource==='manual')_fcDeckTitle=document.getElementById('fc-manual-title').value.trim()||_fcDeckTitle;
- document.getElementById('fc-study-title').textContent=_fcDeckTitle;document.getElementById('fc-study-area').hidden=false;document.getElementById('fc-grid-wrap').hidden=true;_fcIdx=0;shFC_saveDeck();shFC_render();document.getElementById('fc-study-area').scrollIntoView({behavior:'smooth',block:'start'});
+ document.getElementById('fc-study-title').textContent=_fcDeckTitle;document.getElementById('fc-study-area').hidden=false;document.getElementById('fc-grid-wrap').hidden=true;_fcIdx=0;
+ _fcStudyOrder=_fcCards.map(function(c,i){return i;}).filter(function(i){return !_fcCards[i].dueAt||_fcCards[i].dueAt<=Date.now();});
+ shFC_saveDeck();shFC_showStudyState();document.getElementById('fc-study-area').scrollIntoView({behavior:'smooth',block:'start'});
 }
+function shFC_showStudyState(){
+ var complete=document.getElementById('fc-study-complete'),card=document.getElementById('fc-solo-card'),controls=document.querySelector('.fc-study-controls'),foot=document.querySelector('.fc-study-foot');
+ var done=!_fcStudyOrder.length;complete.hidden=!done;card.hidden=done;controls.hidden=done;foot.hidden=done;
+ document.getElementById('fc-complete-title').textContent=done?'You are all caught up!':'Review the cards due now';
+ document.getElementById('fc-complete-copy').textContent=done?'No cards are due right now. Your difficult cards will return sooner and mastered cards will return later. You can still revisit the full deck.':'You have finished the cards due in this review session. You can still revisit the full deck.';
+ if(!done)shFC_render();
+}
+function shFC_reviewAll(){_fcStudyOrder=_fcCards.map(function(c,i){return i;});_fcIdx=0;shFC_showStudyState();}
 function shFC_loadDeck(id){
  var deck=shFC_getDecks().find(function(d){return d.id===id;});if(!deck)return;_fcDeckId=deck.id;_fcDeckTitle=deck.title||'Flashcard deck';
  document.getElementById('fc-manual-title').value=_fcDeckTitle;_fcCards=(deck.cards||[]).map(function(c){return Object.assign({status:'new',intervalDays:0,dueAt:Date.now(),reviews:0},c);});_fcIdx=0;shFC_startStudy();
 }
 function shFC_render(){
- if(!_fcCards.length)return;var c=_fcCards[_fcIdx];document.getElementById('fc-solo-q').textContent=c.q;document.getElementById('fc-solo-a').textContent=c.a;
- document.getElementById('fc-solo-card').classList.remove('flipped');document.getElementById('fc-solo-progress').textContent='Card '+(_fcIdx+1)+' of '+_fcCards.length;
+ if(!_fcCards.length||!_fcStudyOrder.length)return;var c=_fcCards[_fcStudyOrder[_fcIdx]];document.getElementById('fc-solo-q').textContent=c.q;document.getElementById('fc-solo-a').textContent=c.a;
+ document.getElementById('fc-solo-card').classList.remove('flipped');document.getElementById('fc-solo-progress').textContent='Card '+(_fcIdx+1)+' of '+_fcStudyOrder.length+' due';
  var mastered=_fcCards.filter(function(x){return x.status==='mastered';}).length,due=_fcCards.filter(function(x){return !x.dueAt||x.dueAt<=Date.now();}).length;
  document.getElementById('fc-known-count').textContent='Mastered: '+mastered;document.getElementById('fc-unknown-count').textContent='To review: '+due;document.getElementById('fc-progress-fill').style.width=(mastered/_fcCards.length*100)+'%';
  var grid=document.getElementById('fc-grid');grid.innerHTML='';
  _fcCards.forEach(function(card){var item=document.createElement('div');item.className='sh-fc-card fc-grid-card';var inner=document.createElement('div');inner.className='sh-fc-inner';var front=document.createElement('div');front.className='sh-fc-front';var fl=document.createElement('div');fl.className='sh-fc-label';fl.textContent='QUESTION';var fq=document.createElement('div');fq.className='sh-fc-text';fq.textContent=card.q;var back=document.createElement('div');back.className='sh-fc-back';var bl=document.createElement('div');bl.className='sh-fc-label';bl.textContent='ANSWER';var ba=document.createElement('div');ba.className='sh-fc-text';ba.textContent=card.a;front.appendChild(fl);front.appendChild(fq);back.appendChild(bl);back.appendChild(ba);inner.appendChild(front);inner.appendChild(back);item.appendChild(inner);item.addEventListener('click',function(){item.classList.toggle('flipped');});grid.appendChild(item);});
 }
 function shFC_mark(level){
- var c=_fcCards[_fcIdx];if(!c)return;var now=Date.now();c.reviews=(c.reviews||0)+1;
+ var realIndex=_fcStudyOrder[_fcIdx],c=_fcCards[realIndex];if(!c)return;var now=Date.now();c.reviews=(c.reviews||0)+1;
  if(level==='easy'){c.status='mastered';c.intervalDays=Math.max(3,(c.intervalDays||1)*2);}else if(level==='hard'){c.status='learning';c.intervalDays=Math.max(1,(c.intervalDays||0.5)*1.5);}else{c.status='learning';c.intervalDays=0.01;}
- c.lastReviewed=now;c.dueAt=now+c.intervalDays*86400000;shFC_saveDeck();_fcIdx=(_fcIdx+1)%_fcCards.length;shFC_render();
+ c.lastReviewed=now;c.dueAt=now+c.intervalDays*86400000;shFC_saveDeck();_fcStudyOrder.splice(_fcIdx,1);if(_fcIdx>=_fcStudyOrder.length)_fcIdx=0;shFC_showStudyState();
 }
-function shFC_move(dir){if(!_fcCards.length)return;_fcIdx=(_fcIdx+dir+_fcCards.length)%_fcCards.length;shFC_render();}
+function shFC_move(dir){if(!_fcStudyOrder.length)return;_fcIdx=(_fcIdx+dir+_fcStudyOrder.length)%_fcStudyOrder.length;shFC_render();}
 function shFC_view(mode){var wrap=document.getElementById('fc-grid-wrap');wrap.hidden=mode!=='grid';if(mode==='grid')wrap.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function shFC_closeStudy(){document.getElementById('fc-study-area').hidden=true;}
 function shFC_init(){
