@@ -420,7 +420,7 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
  var messages=document.getElementById('dts-messages');if(!messages)return;
  window.dtsGenerateInline=async function(prompt,options){
   options=options||{};
-  var category=/^(logo|banner|flyer|poster|social|design|fiverr|youtube-thumbnail|event-poster|product-ad|business-card|menu|infographic|packaging|certificate|invitation|mockup|3d-design|2d-design)$/.test(options.category)?options.category:'general';
+  var category=/^(logo|banner|flyer|birthday|poster|social|design|fiverr|youtube-thumbnail|event-poster|product-ad|business-card|menu|infographic|packaging|certificate|invitation|mockup|3d-design|2d-design)$/.test(options.category)?options.category:'general';
   var aspectRatio=/^(square|landscape|portrait)$/.test(options.aspectRatio)?options.aspectRatio:'square';
   var item=document.createElement('div');item.className='dts-message dts-ai';
   item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY is bringing your design to life</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
