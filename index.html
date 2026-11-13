@@ -41,18 +41,62 @@ nav.bottom a.on{color:#e8912d;background:#fbf1e3;border-radius:14px;padding:4px 
 
 /* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
 @media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
+
+/* Home dashboard polish v1 */
+body{background:#f5f7fb;color:#17243a;padding-bottom:calc(94px + env(safe-area-inset-bottom))}
+.home-header{max-width:1180px;margin:0 auto;padding:15px 24px;background:rgba(255,255,255,.92);border:0;border-bottom:1px solid #e8edf5;box-shadow:0 4px 18px rgba(24,39,75,.04)}
+.hleft img{width:46px;height:46px;border-radius:14px}
+.hleft small{color:#718096;font-size:.72rem;font-weight:650;letter-spacing:.04em}
+.hleft b{display:block;color:#17243a;font-size:1.12rem;letter-spacing:-.035em}
+.bell,.avatar{width:44px;height:44px;border:1px solid #e5eaf2;border-radius:14px;background:#fff;color:#263750;box-shadow:0 3px 10px rgba(24,39,75,.05)}
+.avatar{background:#eef0ff;color:#5146bd}
+.wrap{width:min(100% - 40px,1120px);max-width:1120px;margin:0 auto;padding:26px 0 30px}
+.hero{display:flex;flex-direction:column;justify-content:center;min-height:190px;padding:30px clamp(22px,4vw,42px);border:1px solid #293b78;border-radius:24px;background:radial-gradient(circle at 88% 18%,rgba(157,139,255,.32),transparent 30%),linear-gradient(120deg,#111d3b,#202f68 62%,#43358d);box-shadow:0 18px 42px rgba(27,39,91,.18);color:#fff;margin-bottom:30px}
+.hero .tag{color:#c8c5ff;font-size:.7rem;letter-spacing:.16em}
+.hero .big{max-width:720px;margin-top:13px;color:#fff;font:italic clamp(1.35rem,3vw,2rem)/1.4 Georgia,serif;min-height:0}
+.hero .who{margin-top:12px;color:#d6dcf6;font-size:.82rem}
+.home-section{margin:0 0 30px}
+.section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:0 0 15px}
+.eyebrow{display:block;margin-bottom:5px;color:#7771cb;font-size:.65rem;font-weight:850;letter-spacing:.13em}
+.section-heading h2{color:#17243a;font-size:clamp(1.15rem,2vw,1.45rem);font-weight:850;letter-spacing:-.04em}
+.section-heading p{margin-top:5px;color:#78859a;font-size:.86rem}
+.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0}
+.tile{position:relative;min-width:0;min-height:126px;align-items:flex-start;justify-content:center;gap:8px;padding:17px;background:#fff;border:1px solid #e7ebf3;border-radius:18px;box-shadow:0 5px 16px rgba(24,39,75,.045);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.tile:hover{transform:translateY(-3px);border-color:#c9c6ff;box-shadow:0 12px 25px rgba(65,70,150,.1)}
+.tile .ic{width:43px;height:43px;border:0;border-radius:13px;background:#f0f1ff;box-shadow:none;font-size:1.25rem}
+.tile .nm{color:#24324a;font-size:.85rem;font-weight:800;text-align:left}
+.tile-note{color:#8792a5;font-size:.72rem;line-height:1.35}
+.tile-featured{border-color:#c9c6ff;background:linear-gradient(145deg,#fff,#f7f6ff)}
+.sec{margin:0 0 12px}
+.sec h3{color:#17243a;font-size:1.05rem}
+.sec a{color:#5b55c8}
+.empty{display:flex;align-items:center;gap:14px;min-height:88px;padding:19px 21px;border:1px dashed #cfd6e4;border-radius:17px;background:#fff;color:#718096;line-height:1.5}
+.empty:before{content:"📘";display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#f0f1ff;font-size:1.2rem}
+.post{align-items:center;min-height:78px;padding:16px 18px;border:1px solid #e7ebf3;border-radius:17px;box-shadow:0 4px 14px rgba(24,39,75,.035)}
+.post .pic{width:44px;height:44px;border-radius:14px;background:#f0f1ff}
+.post .tt{color:#25334a;font-size:.9rem}
+.post .who{color:#78859a;line-height:1.45}
+.post .chip{background:#f0efff;color:#5b55c8}
+nav.bottom{position:fixed;bottom:0;left:0;right:0;grid-template-columns:repeat(6,minmax(0,1fr));padding:9px 10px calc(9px + env(safe-area-inset-bottom));border-top:1px solid #e7ebf3;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);box-shadow:0 -7px 24px rgba(24,39,75,.06)}
+nav.bottom a{min-width:0;min-height:48px;justify-content:center;gap:2px;color:#7c8799;font-size:.65rem}
+nav.bottom a .ic{font-size:1.15rem}
+nav.bottom a.on{padding:4px 5px;background:#f0efff;color:#5b55c8}
+@media(min-width:769px){nav.bottom{position:static;max-width:1120px;margin:0 auto 24px;border:1px solid #e7ebf3;border-radius:16px;box-shadow:0 4px 14px rgba(24,39,75,.04)}}
+@media(max-width:760px){.home-header{padding:12px 16px}.wrap{width:calc(100% - 28px);padding-top:17px}.hero{min-height:170px;padding:23px 21px;border-radius:20px;margin-bottom:25px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.tile{min-height:106px;padding:12px 10px}.tile .ic{width:39px;height:39px}.tile .nm{font-size:.77rem}.tile-note{display:none}.section-heading p{font-size:.78rem}}
+@media(max-width:390px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hleft{gap:9px}.hleft img{width:40px;height:40px}.hleft b{font-size:1rem}.bell,.avatar{width:40px;height:40px}}
+
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
 <body data-aqs-page="index" data-aqs-page-group="dashboard">
-<header>
+<header class="home-header">
   <div class="hleft">
-    <img src="img/darapet-logo-brand.png" alt="">
+    <img src="img/darapet-logo-brand.png" alt="SmartQuiz logo">
     <span><small id="greet-time">Good morning</small><b id="greet-name">Hi there 👋</b></span>
   </div>
   <div style="display:flex;gap:10px;align-items:center">
     <a class="bell" href="notifications.html" aria-label="Notifications">🔔</a>
-    <a class="avatar" href="login.html" aria-label="Sign in">D</a>
+    <a class="avatar" href="user-dashboard.html" aria-label="Open my profile">D</a>
   </div>
 </header>
 
@@ -63,26 +107,34 @@ nav.bottom a.on{color:#e8912d;background:#fbf1e3;border-radius:14px;padding:4px 
     <div class="who" id="q-author">SmartQuiz daily inspiration</div>
   </section>
 
-  <div class="grid">
-    <a class="tile" href="quiz-setup.html"><span class="ic">🧠</span><span class="nm">Create Quiz</span></a>
-    <a class="tile" href="studyhub.html"><span class="ic">📖</span><span class="nm">Study Hub</span></a>
-    <a class="tile" href="studio.html"><span class="ic">✨</span><span class="nm">Studio AI</span></a>
-    <a class="tile" href="library.html"><span class="ic">📚</span><span class="nm">Library</span></a>
-    <a class="tile" href="image-gen.html"><span class="ic">🎨</span><span class="nm">Image Studio</span></a>
-    <a class="tile" href="studio.html"><span class="ic">⬡</span><span class="nm">Studio AI</span></a>
-    <a class="tile" href="challenge.html"><span class="ic">⚔️</span><span class="nm">Challenge</span></a>
-    <a class="tile" href="puzzle.html"><span class="ic">🧩</span><span class="nm">Puzzle Battle</span></a>
-    <a class="tile" href="user-dashboard.html"><span class="ic">💬</span><span class="nm">Dara Social</span></a>
-    <a class="tile" href="text-to-docs.html"><span class="ic">📄</span><span class="nm">Docs Gen</span></a>
-    <a class="tile" href="tts.html"><span class="ic">🎙️</span><span class="nm">Text to Speech</span></a>
-  </div>
+  <section class="home-section" aria-labelledby="tools-heading">
+    <div class="section-heading"><div><span class="eyebrow">YOUR LEARNING SPACE</span><h2 id="tools-heading">Explore SmartQuiz</h2><p>Everything you need to learn, create and connect.</p></div></div>
+    <div class="grid">
+      <a class="tile tile-featured" href="quiz-setup.html"><span class="ic">🧠</span><span class="nm">Create Quiz</span><span class="tile-note">Build a practice session</span></a>
+      <a class="tile" href="studyhub.html"><span class="ic">📖</span><span class="nm">Study Hub</span></a>
+      <a class="tile" href="studio.html"><span class="ic">✨</span><span class="nm">Studio AI</span></a>
+      <a class="tile" href="library.html"><span class="ic">📚</span><span class="nm">Library</span></a>
+      <a class="tile" href="image-gen.html"><span class="ic">🎨</span><span class="nm">Image Studio</span></a>
+      <a class="tile" href="multiplayer-dashboard.html"><span class="ic">⚡</span><span class="nm">Multiplayer</span></a>
+      <a class="tile" href="challenge.html"><span class="ic">🏆</span><span class="nm">Challenge</span></a>
+      <a class="tile" href="puzzle.html"><span class="ic">🧩</span><span class="nm">Puzzle Battle</span></a>
+      <a class="tile" href="user-dashboard.html"><span class="ic">💬</span><span class="nm">Dara Social</span></a>
+      <a class="tile" href="text-to-docs.html"><span class="ic">📄</span><span class="nm">Docs Gen</span></a>
+      <a class="tile" href="tts.html"><span class="ic">🎙️</span><span class="nm">Text to Speech</span></a>
+    </div>
+  </section>
 
-  <div class="sec"><h3>Today</h3><a href="user-dashboard.html">See all</a></div>
-  <div class="empty">No activity yet — take a quiz or open a tool to get started.</div>
+  <section class="home-section" aria-labelledby="today-heading">
+    <div class="section-heading"><div><span class="eyebrow">KEEP YOUR MOMENTUM</span><h2 id="today-heading">Your learning today</h2><p>A quick starting point for your next study session.</p></div></div><a href="user-dashboard.html">See all</a></div>
+  <div class="empty">Your recent quiz and study activity will appear here as you use SmartQuiz. Ready to begin? Create a quiz or explore the Study Hub.</div>
 
-  <div class="sec"><h3>Discuss</h3><a href="user-dashboard.html">See all</a></div>
-  <div class="post"><div class="pic">💬</div><div><div class="tt">Join the conversation <span class="chip">Community</span></div><div class="who">Sign in to see what learners dey talk about</div></div></div>
-  <div class="post"><div class="pic">📰</div><div><div class="tt">Daily updates <span class="chip">News</span></div><div class="who">NELFUND, campus news, sports and more</div></div></div>
+  <section class="home-section" aria-labelledby="community-heading">
+    <div class="section-heading"><div><span class="eyebrow">LEARN TOGETHER</span><h2 id="community-heading">Dara Social</h2><p>Connect with other learners and join the conversation.</p></div></div>
+    <a class="post community-link" href="user-dashboard.html" style="text-decoration:none;color:inherit">
+      <div class="pic">💬</div><div><div class="tt">Visit the community <span class="chip">Community</span></div><div class="who">Open Dara Social to see posts, connect with friends and chat.</div></div>
+      <span aria-hidden="true" style="margin-left:auto;color:#7771cb;font-size:1.35rem">→</span>
+    </a>
+  </section>
 </div>
 
 <nav class="bottom">
