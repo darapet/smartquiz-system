@@ -358,3 +358,19 @@ body[data-view="lobby"] .shell,body[data-view="game"] .shell{padding-bottom:96px
 .winner-copy strong{font-size:.95rem}
 .winner-speech{display:block;color:#6b4a12;font-size:.9rem;font-weight:650;font-style:italic}
 @media(max-width:520px){.winner-banner{align-items:flex-start}.winner-copy strong{font-size:.88rem}.winner-speech{font-size:.82rem}}
+
+
+/* Avatar feature removed: keep player identity text and initials, not characters. */
+#host-avatar-section,
+#join-avatar-section,
+#change-avatar,
+#picker-dialog,
+.pl .av,
+.pl .sk,
+.top3 .t3 .a,
+.me .a,
+.winner-character,
+.pod .av,
+.who-cell .a{display:none!important}
+.pl{min-height:0}
+.stage{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
