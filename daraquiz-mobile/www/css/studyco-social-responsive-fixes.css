@@ -406,3 +406,16 @@ body.studyco-call-hidden .studyco-context-nav { z-index:590; }
   .studyco-page .studyco-layout { padding-top:18px; }
   .studyco-page .studyco-message .bubble { max-width:min(72%,680px); }
 }
+
+
+/* Final spacing correction: keep every social view close to the primary navigation. */
+.studyco-page .studyco-layout { padding-top:4px !important; }
+.studyco-page .studyco-main { margin-top:0 !important; }
+.studyco-page .studyco-view.active > :first-child { margin-top:0 !important; }
+.studyco-page .studyco-message-page-heading { margin-top:0 !important; }
+@media (max-width:760px) {
+  .studyco-page .studyco-layout { padding-top:4px !important; }
+}
+@media (min-width:761px) {
+  .studyco-page .studyco-layout { padding-top:6px !important; }
+}
