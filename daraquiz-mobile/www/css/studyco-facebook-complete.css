@@ -1,0 +1,75 @@
+/* Complete Facebook-inspired Dara Social UI; preserve Dara theme colours. */
+.studyco-page{--ds-surface:var(--sc-paper,#fff);--ds-page:var(--sc-bg,#f4f5fb);--ds-line:var(--sc-line,#e4e6eb);--ds-text:var(--sc-ink,#1c1e21);--ds-muted:var(--sc-muted,#65676b);--ds-accent:var(--sc-primary,#5b5bd6);background:var(--ds-page)!important;color:var(--ds-text)}
+.studyco-page #studyco-app-screen{min-height:100vh;background:var(--ds-page)}
+.studyco-page .studyco-topbar{position:sticky;top:0;z-index:700;height:64px;min-height:64px;display:flex;align-items:center;gap:16px;padding:0 20px;background:var(--ds-surface);color:var(--ds-text);border-bottom:1px solid var(--ds-line);box-shadow:0 1px 2px #00000010}
+.studyco-page .studyco-brand{min-width:180px;color:var(--ds-accent);font-size:1.35rem;letter-spacing:-.045em}
+.studyco-page .studyco-logo{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--ds-accent);color:#fff}
+.studyco-page .studyco-logo svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.studyco-page .studyco-top-search{width:min(320px,28vw);height:42px;margin:0;padding:0 14px;border:0;border-radius:24px;background:var(--ds-page);color:var(--ds-muted)}
+.studyco-page .studyco-top-search input{display:block;color:var(--ds-text);font-size:14px}.studyco-page .studyco-top-search input::placeholder{color:var(--ds-muted)}
+.studyco-page .studyco-top-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.studyco-page .studyco-circle-action,.studyco-page .studyco-top-avatar{width:42px;height:42px;min-width:42px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--ds-page);color:var(--ds-text)}
+.studyco-page .studyco-menu-panel{z-index:1200;background:var(--ds-surface);border:1px solid var(--ds-line);border-radius:12px;box-shadow:0 8px 28px #0002}
+.studyco-page .studyco-context-nav{position:sticky;top:64px;z-index:650;display:flex;justify-content:center;height:62px;background:var(--ds-surface);border-bottom:1px solid var(--ds-line);box-shadow:0 1px 2px #00000008}
+.studyco-page .studyco-context-nav .studyco-top-nav{width:min(900px,100%);height:62px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.studyco-page .studyco-context-nav .studyco-top-nav button{height:62px;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 10px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--ds-muted)}
+.studyco-page .studyco-context-nav .studyco-top-nav button svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.studyco-page .studyco-context-nav .studyco-top-nav button b{display:block;font-size:11px;font-weight:650;white-space:nowrap}
+.studyco-page .studyco-context-nav .studyco-top-nav button.active{color:var(--ds-accent);border-bottom-color:var(--ds-accent);background:transparent;box-shadow:none}
+.studyco-page .studyco-layout{width:min(1440px,100%);max-width:1440px;min-height:calc(100vh - 126px);margin:0 auto;padding:8px 22px 40px;display:grid;grid-template-columns:minmax(190px,260px) minmax(0,680px) minmax(190px,280px);gap:22px;align-items:start}
+.studyco-page .studyco-left-rail,.studyco-page .studyco-right-rail{position:sticky;top:144px;display:block;min-width:0;height:max-content}
+.studyco-page .studyco-main{width:100%;max-width:680px;min-width:0;margin:0 auto}
+.studyco-page .studyco-view{min-width:0}.studyco-page .studyco-view.active{display:block}
+.studyco-page .studyco-card,.studyco-page .studyco-post,.studyco-page .studyco-composer,.studyco-page .studyco-profile-hero,.studyco-page .studyco-notification-summary,.studyco-page .studyco-messages-shell,.studyco-page .studyco-search-results{border:1px solid var(--ds-line);border-radius:12px;background:var(--ds-surface);box-shadow:0 1px 2px #0000000d}
+.studyco-page .studyco-card{padding:16px;margin:0 0 12px}
+.studyco-page .studyco-page-heading,.studyco-page .studyco-search-page-heading,.studyco-page .studyco-mobile-friends-header,.studyco-page .studyco-profile-page-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:4px 0 10px}
+.studyco-page .studyco-page-heading h1,.studyco-page .studyco-search-page-heading h1,.studyco-page .studyco-mobile-friends-header h1,.studyco-page .studyco-profile-page-header h1{margin:0;color:var(--ds-text);font-size:clamp(22px,3vw,30px);font-weight:750;letter-spacing:-.035em;line-height:1.2}
+.studyco-page .studyco-eyebrow{color:var(--ds-accent)}
+.studyco-page .studyco-composer{margin:0 0 12px;padding:14px;border-radius:12px}.studyco-page .studyco-composer-head{display:flex;align-items:center;gap:10px}
+.studyco-page .studyco-composer-head button{width:100%;min-height:42px;padding:10px 16px;border:0;border-radius:24px;background:var(--ds-page);color:var(--ds-muted);text-align:left}
+.studyco-page .studyco-stories-section{margin:0 0 12px;padding:14px;border:1px solid var(--ds-line);border-radius:12px;background:var(--ds-surface)}
+.studyco-page .studyco-stories-section .studyco-section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.studyco-page .studyco-story-row{gap:10px}.studyco-page .studyco-story{border-radius:12px}
+.studyco-page .studyco-feed{display:grid;gap:12px}.studyco-page .studyco-post{margin:0;padding:16px;border-radius:12px}
+.studyco-page .studyco-post-head{gap:10px}.studyco-page .studyco-post-body{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.studyco-page .studyco-post-actions{display:flex;justify-content:space-around;gap:6px;border-top:1px solid var(--ds-line)}.studyco-page .studyco-post-actions button{flex:1;min-width:0;min-height:40px;border-radius:8px}
+.studyco-page .studyco-people-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 14px;padding:0}
+.studyco-page .studyco-person{overflow:hidden;padding:0 0 12px;border:1px solid var(--ds-line);border-radius:12px;background:var(--ds-surface);box-shadow:0 1px 2px #0000000d}
+.studyco-page .studyco-person .studyco-avatar{width:100%;height:clamp(120px,18vw,190px);border-radius:0}
+.studyco-page .studyco-person strong{display:block;padding:10px 12px 0;color:var(--ds-text);font-size:14px}.studyco-page .studyco-person span{display:block;padding:4px 12px;color:var(--ds-muted);font-size:12px}
+.studyco-page .studyco-person-actions{display:flex;flex-direction:column;gap:7px;padding:4px 12px 0}.studyco-page .studyco-person-actions button{width:100%;min-height:36px}
+.studyco-page .studyco-friends-stack{display:grid;grid-template-columns:1fr;gap:12px}.studyco-page .studyco-friends-stack>.studyco-card{margin:0}
+.studyco-page .studyco-list-row{gap:10px;padding:12px 0;border-bottom:1px solid var(--ds-line)}
+.studyco-page .studyco-profile-hero{overflow:hidden;padding:0;margin:0 0 12px}.studyco-page .studyco-profile-cover{height:clamp(170px,25vw,260px);border-radius:12px 12px 0 0}
+.studyco-page .studyco-profile-identity{padding:0 20px 14px;gap:16px}.studyco-page .studyco-profile-actions{padding:0 20px 16px}
+.studyco-page .studyco-profile-tabs{display:flex;gap:6px;overflow-x:auto;border-top:1px solid var(--ds-line);padding:8px 14px}.studyco-page .studyco-profile-tabs button{flex:0 0 auto;min-height:40px;padding:8px 14px;border-radius:8px}
+.studyco-page .studyco-notification-summary{margin:0 0 12px}.studyco-page .studyco-notification-list,.studyco-page .studyco-notifications-list{display:grid;gap:8px}
+.studyco-page .studyco-messages-shell{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:0;min-height:620px;overflow:hidden}
+.studyco-page .studyco-conversations-panel{min-width:0;border-right:1px solid var(--ds-line);background:var(--ds-surface)}.studyco-page .studyco-chat-panel{min-width:0;background:var(--ds-surface)}
+.studyco-page .studyco-conversations-head,.studyco-page .studyco-chat-head{padding:14px;border-bottom:1px solid var(--ds-line)}
+.studyco-page .studyco-message-search{display:flex;margin:10px 12px;padding:0 12px;border-radius:22px;background:var(--ds-page)}.studyco-page .studyco-message-search input{min-width:0;width:100%;padding:10px 0;border:0;background:transparent}
+.studyco-page .studyco-chat-list{min-width:0}.studyco-page .studyco-chat-item{min-width:0;padding:12px;border-bottom:1px solid var(--ds-line)}
+.studyco-page .studyco-chat-messages{min-height:360px;overflow-y:auto}.studyco-page .studyco-message .bubble{max-width:82%;overflow-wrap:anywhere;white-space:pre-wrap}
+.studyco-page .studyco-chat-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--ds-line)}.studyco-page .studyco-chat-compose textarea{min-width:0;flex:1 1 auto}
+.studyco-page .studyco-search-page-input{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 14px;border-radius:24px;background:var(--ds-surface);border:1px solid var(--ds-line)}
+.studyco-page .studyco-search-page-input input{flex:1;min-width:0;border:0;background:transparent}
+.studyco-page button,.studyco-page input,.studyco-page textarea{font-family:inherit}
+.studyco-page button:focus-visible,.studyco-page a:focus-visible,.studyco-page input:focus-visible,.studyco-page textarea:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
+@media(max-width:1050px){.studyco-page .studyco-layout{grid-template-columns:minmax(0,1fr);max-width:760px;padding:8px 14px 100px}.studyco-page .studyco-left-rail,.studyco-page .studyco-right-rail{display:none}.studyco-page .studyco-main{max-width:100%}}
+@media(max-width:760px){
+.studyco-page .studyco-topbar{height:56px;min-height:56px;padding:0 10px;gap:8px}.studyco-page .studyco-brand{min-width:0;font-size:1.1rem}.studyco-page .studyco-logo{width:34px;height:34px}
+.studyco-page .studyco-top-search{width:38px;height:38px;margin:0;padding:0;justify-content:center}.studyco-page .studyco-top-search input{display:none}
+.studyco-page .studyco-top-actions{gap:5px}.studyco-page .studyco-circle-action,.studyco-page .studyco-top-avatar{width:36px;height:36px;min-width:36px}
+.studyco-page .studyco-context-nav{position:fixed;top:auto;bottom:0;left:0;right:0;height:64px;padding-bottom:env(safe-area-inset-bottom,0px);border-top:1px solid var(--ds-line);border-bottom:0;box-shadow:0 -2px 10px #0000000c}
+.studyco-page .studyco-context-nav .studyco-top-nav{height:60px;width:100%;gap:0}.studyco-page .studyco-context-nav .studyco-top-nav button{height:60px;min-height:60px;gap:2px;padding:4px 1px;border-bottom:0}
+.studyco-page .studyco-context-nav .studyco-top-nav button b{display:block;font-size:9px}.studyco-page .studyco-context-nav .studyco-top-nav button svg{width:21px;height:21px}
+.studyco-page .studyco-layout{padding:8px 8px calc(78px + env(safe-area-inset-bottom,0px))}
+.studyco-page .studyco-page-heading,.studyco-page .studyco-search-page-heading,.studyco-page .studyco-mobile-friends-header,.studyco-page .studyco-profile-page-header{margin-bottom:8px;padding:2px 2px 8px}
+.studyco-page .studyco-people-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.studyco-page .studyco-person .studyco-avatar{height:clamp(112px,34vw,160px)}
+.studyco-page .studyco-messages-shell{display:block;min-height:calc(100dvh - 145px)}.studyco-page .studyco-conversations-panel{border-right:0}
+.studyco-page .studyco-chat-panel,.studyco-page .studyco-chat-panel-full{min-height:calc(100dvh - 165px)}
+.studyco-page .studyco-messages-shell.chat-open .studyco-conversations-panel{display:none}.studyco-page .studyco-messages-shell.chat-open .studyco-chat-panel{display:flex;flex-direction:column}
+.studyco-page .studyco-chat-messages{min-height:220px;flex:1 1 auto}.studyco-page .studyco-chat-compose{flex-wrap:nowrap}.studyco-page .studyco-chat-compose textarea{width:1%;flex:1 1 auto}
+.studyco-page .studyco-profile-identity{padding:0 12px 12px;gap:10px;align-items:flex-end}.studyco-page .studyco-profile-avatar,.studyco-page .studyco-profile-avatar>.studyco-avatar.large{width:92px;height:92px}
+.studyco-page .studyco-profile-actions{padding:0 12px 12px;flex-wrap:wrap}.studyco-page .studyco-card{padding:13px}
+}
+@media(max-width:390px){.studyco-page .studyco-brand{font-size:1rem}.studyco-page .studyco-top-actions{gap:3px}.studyco-page .studyco-circle-action,.studyco-page .studyco-top-avatar{width:33px;height:33px;min-width:33px}.studyco-page .studyco-person-actions{padding-inline:8px}}
