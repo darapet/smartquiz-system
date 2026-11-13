@@ -419,3 +419,45 @@ body.studyco-call-hidden .studyco-context-nav { z-index:590; }
 @media (min-width:761px) {
   .studyco-page .studyco-layout { padding-top:6px !important; }
 }
+
+
+/* Desktop-only correction: keep primary navigation at the top and give Profile the full content canvas. */
+@media (min-width: 761px) {
+  .studyco-page .studyco-context-nav {
+    position: sticky !important;
+    top: 64px !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: 62px !important;
+    margin: 0 !important;
+    z-index: 710 !important;
+  }
+  .studyco-page .studyco-layout:has(#studyco-view-profile.active) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px clamp(20px, 3vw, 48px) 40px !important;
+    box-sizing: border-box !important;
+  }
+  .studyco-page .studyco-layout:has(#studyco-view-profile.active) > .studyco-left-rail,
+  .studyco-page .studyco-layout:has(#studyco-view-profile.active) > .studyco-right-rail {
+    display: none !important;
+  }
+  .studyco-page .studyco-layout:has(#studyco-view-profile.active) > .studyco-main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  .studyco-page #studyco-view-profile.active {
+    width: min(100%, 1180px) !important;
+    max-width: 1180px !important;
+    margin: 0 auto !important;
+  }
+  .studyco-page #studyco-view-profile .studyco-profile-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
