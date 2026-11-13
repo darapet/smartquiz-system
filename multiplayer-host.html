@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Live Multiplayer Quiz — SmartQuiz</title>
-<link rel="stylesheet" href="css/mp-avatars.css?v=20261112-avatarspeech1">
 <link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-avatarspeech1">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
@@ -161,8 +160,7 @@
           <div id="music-selected" class="music-selected" hidden></div>
         </div>
       </section>
-      <h2>Your avatar</h2>
-      <div id="host-picker"></div>
+      <div id="host-avatar-section" hidden><h2>Your avatar</h2><div id="host-picker"></div></div>
       <div class="row">
         <button class="btn ghost" id="back-setup" type="button">← Back</button>
         <button class="btn primary big" id="host-btn" type="button">Host this quiz</button>
@@ -216,10 +214,7 @@
           <input id="join-pin" inputmode="numeric" maxlength="4" placeholder="4 digits" autocomplete="off">
         </label>
       </div>
-      <div id="join-avatar-section">
-        <h2>Choose your avatar</h2>
-        <div id="join-picker"></div>
-      </div>
+      <div id="join-avatar-section" hidden><div id="join-picker"></div></div>
       <div class="row"><button class="btn primary big" id="join-btn" type="button">Join the lobby</button></div>
       <p class="msg" id="msg-join" role="status" aria-live="polite"></p>
     </div>
@@ -261,7 +256,7 @@
       <div class="stage-head">
         <h2><span id="player-count">0</span> / <span id="player-cap">0</span> players <span class="ready-count" id="ready-count"></span></h2>
         <div class="row tight">
-          <button class="btn ghost" id="change-avatar" type="button">Change avatar</button>
+          <button class="btn ghost" id="change-avatar" type="button" hidden>Change avatar</button>
           <button class="btn ready" id="ready-btn" type="button">I'm ready</button>
           <button class="btn primary big" id="start-btn" type="button" hidden>Start game</button>
         </div>
@@ -318,10 +313,10 @@
 
 </main>
 
-<!-- Avatar picker dialog (used from the lobby) -->
-<dialog id="picker-dialog" class="dialog">
+<!-- Retained hidden compatibility container; avatar selection is disabled. -->
+<dialog id="picker-dialog" class="dialog" hidden>
   <div class="dialog-body">
-    <div class="dialog-head"><h2>Choose your avatar</h2><button class="icon-btn" id="picker-close" type="button" aria-label="Close">✕</button></div>
+    <div class="dialog-head"><h2>Avatar selection disabled</h2><button class="icon-btn" id="picker-close" type="button" aria-label="Close">✕</button></div>
     <div id="dialog-picker"></div>
   </div>
 </dialog>
