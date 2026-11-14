@@ -1113,20 +1113,26 @@ async function actionVerifyRegistrationOtp(data) {
 
 async function actionVerifyOtp(data) {
     var user = requireAuth();
-    var code = (data.otp || '').trim();
+    var code = String(data && data.otp || '').trim();
+    var purpose = String(data && data.purpose || 'account_verification');
     var snap = await getDoc(doc(db, 'users', user.uid));
     if (!snap.exists()) throw new Error('User not found.');
     var profile = snap.data();
     if (!profile.otp || profile.otp !== code) throw new Error('Incorrect code. Please try again.');
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
-    await updateDoc(doc(db, 'users', user.uid), {
+
+    var verifiedFields = {
         otp: null,
         otp_exp: null,
-        otp_verified: true,
-        email_verified: true,
-        registration_status: 'profile_pending',
-        status: 'pending'
-    });
+        otp_verified: true
+    };
+    // Password changes must not alter the account's registration or approval state.
+    if (purpose !== 'password_change') {
+        verifiedFields.email_verified = true;
+        verifiedFields.registration_status = 'profile_pending';
+        verifiedFields.status = 'pending';
+    }
+    await updateDoc(doc(db, 'users', user.uid), verifiedFields);
     return { verified: true };
 }
 
