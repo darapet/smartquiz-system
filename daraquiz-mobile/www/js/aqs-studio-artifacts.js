@@ -11,7 +11,7 @@ var FORMATS = {
 };
 function detectFormat(prompt){
  var p=String(prompt||'').toLowerCase();
- var asks=/\b(as|in|into|to|download|export|save|file|document|format|give me|provide|create|make|deliver|send me)\b/i.test(p);
+ var asks=/\b(as|in|into|to|download|export|save|file|document|format|give me|provide|create|make|prepare|build|write|deliver|send me)\b/i.test(p);
  if(!asks)return null;
  if(/\b(docx|doc|word(?: document| file)?|microsoft word)\b/i.test(p))return'docx';
  if(/\bpdf\b/i.test(p))return'pdf';
