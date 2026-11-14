@@ -391,8 +391,8 @@
 </div>
 
 <footer id="dts-footer" class="dts-footer">
-    <input type="file" id="dts-file-input" accept=".txt,.md,.csv,.json,.pdf,.docx,.doc" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
-    <input type="file" id="dts-image-input" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <input type="file" id="dts-file-input" accept=".txt,.md,.csv,.json,.pdf,.docx,.doc" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <input type="file" id="dts-image-input" accept="image/*" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
     <div id="dts-file-status" class="dts-file-status" style="display:none"></div>
     <div class="dts-input-wrap" id="dts-input-wrap">
         <div class="dts-pin-wrap">
@@ -520,6 +520,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
+<script src="js/aqs-studio-attachment-store.js?v=20261114-phase2"></script>
 <script src="js/aqs-studio-artifacts.js?v=20261114-phase2"></script>
 <script src="js/aqs-studio.js?v=20261114-studio-phase2"></script>
 
