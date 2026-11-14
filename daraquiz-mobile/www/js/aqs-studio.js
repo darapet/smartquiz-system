@@ -635,7 +635,21 @@
             item.innerHTML =
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
                 '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-rename" type="button" title="Rename">Rename</button>' +
                 '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
+
+            item.querySelector('.dts-drawer-item-rename').addEventListener('click', function (e) {
+                e.stopPropagation();
+                var nextTitle = window.prompt('Rename this conversation', sess.title);
+                if (!nextTitle || !nextTitle.trim()) return;
+                var allSessions = loadSessions();
+                var target = allSessions.find(function (entry) { return entry.id === sess.id; });
+                if (target) {
+                    target.title = nextTitle.trim().slice(0, 80);
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions)); } catch (saveError) {}
+                    renderHistoryList();
+                }
+            });
 
             item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -658,6 +672,7 @@
         if (!sess) return;
         conversationId = sess.id;
         chatHistory    = sess.messages.slice();
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
         attachedFiles = [];
         attachedImages = [];
         attachedFileText = null;
