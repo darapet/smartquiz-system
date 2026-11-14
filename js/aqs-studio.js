@@ -612,7 +612,7 @@
     function deleteSession(id) {
         var sessions = loadSessions().filter(function (s) { return s.id !== id; });
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
-        try { if (window.dtsStudioAttachmentStore) window.dtsStudioAttachmentStore.removeConversation(id); } catch (e) {}
+        try { if (window.dtsStudioAttachmentStore) window.dtsStudioAttachmentStore.removeConversation(id).catch(function () {}); } catch (e) {}
     }
 
     function renderHistoryList() {
