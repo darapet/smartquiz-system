@@ -889,7 +889,7 @@
         if (isSending) return;
 
         /* Phase 2 image routing: ordinary image generation stays available; professional design is Pro-only. */
-        var PRO_DESIGN_INTENT = /\b(logo|poster|flyer|banner|thumbnail|graphic|graphics|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead)\b/i.test(text) &&
+        var PRO_DESIGN_INTENT = /\b(logo|poster|flyer|banner|thumbnail|graphic|graphics|design|designs|designing|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead)\b/i.test(text) &&
             /\b(create|generate|make|draw|design|produce|render|prepare|craft|develop|i need|i want|help me|build me)\b/i.test(text);
         var ORDINARY_IMAGE_INTENT = /\b(image|picture|photo|illustration|artwork)\b/i.test(text) &&
             /\b(create|generate|make|draw|show|give|produce|render|i need|i want)\b/i.test(text);
