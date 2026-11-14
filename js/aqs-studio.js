@@ -27,6 +27,7 @@
     var attachedImageName  = null;
     var attachedFiles      = [];
     var attachedImages     = [];
+    var lastGeneratedArtifact = null;
     var isSending          = false;
     var deepSearchEnabled   = false;
 
@@ -583,6 +584,7 @@
         attachedFileName = null;
         attachedFiles = [];
         attachedImages = [];
+        lastGeneratedArtifact = null;
     }
 
     function saveSession() {
@@ -675,6 +677,7 @@
         try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
         attachedFiles = [];
         attachedImages = [];
+        lastGeneratedArtifact = null;
         attachedFileText = null;
         attachedFileName = null;
         attachedImageData = null;
@@ -861,13 +864,25 @@
             return Promise.resolve(false);
         }
         return engine.create(prompt, answer).then(function (file) {
-            showTyping(false);
-            var completion = 'Your requested file is ready to download.';
-            chatHistory.push({ role: 'assistant', content: completion });
-            appendMessage('assistant', completion);
-            engine.attachDownload(file);
-            saveSession(); renderHistoryList();
-            return true;
+            var artifactRecord = {
+                id: 'artifact_' + conversationId, conversationId: conversationId, kind: 'artifact',
+                name: file.filename, type: file.format, format: file.format,
+                prompt: String(prompt || ''), text: String(answer || ''), createdAt: Date.now()
+            };
+            var store = window.dtsStudioAttachmentStore;
+            var persist = store && typeof store.save === 'function' ? store.save(artifactRecord).catch(function (storageError) {
+                console.warn('[Studio AI] Could not persist the latest generated document:', storageError);
+            }) : Promise.resolve();
+            return persist.then(function () {
+                lastGeneratedArtifact = { prompt: String(prompt || ''), text: String(answer || ''), format: file.format };
+                showTyping(false);
+                var completion = 'Your requested file is ready to download.';
+                chatHistory.push({ role: 'assistant', content: completion });
+                appendMessage('assistant', completion);
+                engine.attachDownload(file);
+                saveSession(); renderHistoryList();
+                return true;
+            });
         }).catch(function (error) {
             showTyping(false);
             var failure = 'I could not create the requested file. ' + (error && error.message ? error.message : 'Please try again.');
@@ -991,7 +1006,7 @@
             showTyping(true, 'XZILY AI is analysing your image\u2026');
 
             var visionMessages = [
-                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') },
+                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') + (lastGeneratedArtifact ? '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nPreserve previous requirements when revising this output.' : '') },
                 {
                     role: 'user',
                     content: snapImages.map(function (image) {
@@ -1106,6 +1121,7 @@
         /* ── Step 2: Build system prompt with optional web context ── */
         var dynamicSystem = SYSTEM_PROMPT;
         if (attachedFileText) dynamicSystem += '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) + '\nUse these documents as source material for the user\'s current and follow-up instructions. Detect their language automatically.';
+        if (lastGeneratedArtifact) dynamicSystem += '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nThe user may be asking to revise this output. Preserve every previous requirement unless explicitly changed.';
         if (webContext) {
             dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
                              '\n===== END OF WEB DATA =====\n' +
@@ -1290,6 +1306,8 @@
             if (conversationId !== id) return;
             attachedFiles = items.filter(function (item) { return item.kind === 'document'; });
             attachedImages = items.filter(function (item) { return item.kind === 'image'; });
+            var previousArtifacts = items.filter(function (item) { return item.kind === 'artifact' && item.text; }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+            lastGeneratedArtifact = previousArtifacts.length ? { prompt: previousArtifacts[0].prompt || '', text: previousArtifacts[0].text, format: previousArtifacts[0].format || previousArtifacts[0].type || '' } : null;
             refreshAttachmentContext();
             renderAttachmentList();
         }).catch(function (error) {
