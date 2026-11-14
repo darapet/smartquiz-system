@@ -318,7 +318,6 @@
           <label class="prf-privacy-row">Display name <input type="checkbox" data-prf-privacy="displayName" checked></label>
           <label class="prf-privacy-row">Profile photo <input type="checkbox" data-prf-privacy="photoURL" checked></label>
           <label class="prf-privacy-row">Education details <input type="checkbox" data-prf-privacy="education" checked></label>
-          <label class="prf-privacy-row">Learning statistics <input type="checkbox" data-prf-privacy="learningStats" checked></label>
         </div>
         <button class="prf-edit-btn" id="prf-save-privacy" style="margin-top:12px">Save privacy settings</button>
         <div class="prf-edit-status" id="prf-privacy-status" role="status"></div>
@@ -505,7 +504,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
   }
 
   async function loadProfilePrivacy() {
-    const defaults={displayName:true,photoURL:true,education:true,learningStats:true};
+    const defaults={displayName:true,photoURL:true,education:true};
     const visibility=Object.assign({},defaults,_profile.profileVisibility||{});
     document.querySelectorAll('[data-prf-privacy]').forEach(input=>{input.checked=visibility[input.dataset.prfPrivacy]!==false;});
   }
@@ -513,7 +512,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
     const button=this;button.disabled=true;
     const status=document.getElementById('prf-privacy-status');status.textContent='Saving…';
     try{
-      const values={displayName:true,photoURL:true,education:true,learningStats:true};
+      const values=Object.assign({},_profile.profileVisibility||{},{displayName:true,photoURL:true,education:true});
       document.querySelectorAll('[data-prf-privacy]').forEach(input=>{values[input.dataset.prfPrivacy]=input.checked;});
       const app=getApp();const db=(await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')).getFirestore(app);
       const fs=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
