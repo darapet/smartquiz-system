@@ -934,12 +934,12 @@
 
         /* Build user content */
         var userContent = text;
-        if (attachedFileText) {
-            userContent = (text ? text + '\n\n' : 'Please analyse these files:\n\n') +
-                attachedFileText.slice(0, 30000);
+        if (attachedFiles.length) {
+            userContent = (text ? text + '\n\n' : 'Please analyse the files attached to this conversation.') +
+                (userContent ? '\n\n' : '') + 'Available documents: ' + attachedFiles.map(function (file) { return file.name; }).join(', ');
         }
         if (attachedImages.length) {
-            userContent += (userContent ? '\n\n' : '') + 'Attached images: ' + attachedImages.map(function (image) { return image.name; }).join(', ');
+            userContent += (userContent ? '\n\n' : '') + 'Available images: ' + attachedImages.map(function (image) { return image.name; }).join(', ');
         }
 
         /* Route explicit image-edit requests to the image-to-image service. */
@@ -976,13 +976,13 @@
             showTyping(true, 'XZILY AI is analysing your image\u2026');
 
             var visionMessages = [
-                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') },
                 {
                     role: 'user',
                     content: snapImages.map(function (image) {
                         return { type: 'image_url', image_url: { url: image.dataUrl } };
                     }).concat([
-                        { type: 'text', text: (text || 'Please describe and analyse the uploaded image(s) in detail.') + (attachedFileText ? '\n\nDOCUMENTS UPLOADED WITH THIS REQUEST:\n' + attachedFileText.slice(0, 30000) : '') }
+                        { type: 'text', text: text || 'Please describe and analyse the uploaded image(s) in detail.' }
                     ])
                 }
             ];
@@ -1090,6 +1090,7 @@
 
         /* ── Step 2: Build system prompt with optional web context ── */
         var dynamicSystem = SYSTEM_PROMPT;
+        if (attachedFileText) dynamicSystem += '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) + '\nUse these documents as source material for the user\'s current and follow-up instructions. Detect their language automatically.';
         if (webContext) {
             dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
                              '\n===== END OF WEB DATA =====\n' +
