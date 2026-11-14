@@ -1,0 +1,28 @@
+name: Studio AI Phase 2 syntax checks
+
+on:
+  push:
+    branches:
+      - phase2/studio-ai-document-intelligence
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  studio-ai-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check Studio AI JavaScript syntax
+        run: |
+          node --check js/aqs-studio.js
+          node --check js/aqs-studio-artifacts.js
+          node --check js/aqs-studio-attachment-store.js
+          node --check daraquiz-mobile/www/js/aqs-studio.js
+          node --check daraquiz-mobile/www/js/aqs-studio-artifacts.js
+          node --check daraquiz-mobile/www/js/aqs-studio-attachment-store.js

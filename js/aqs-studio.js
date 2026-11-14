@@ -25,6 +25,9 @@
     var attachedFileName   = null;
     var attachedImageData  = null;
     var attachedImageName  = null;
+    var attachedFiles      = [];
+    var attachedImages     = [];
+    var lastGeneratedArtifact = null;
     var isSending          = false;
     var deepSearchEnabled   = false;
 
@@ -41,8 +44,20 @@
         'You are highly intelligent, accurate, and comprehensive — and though xzily is new, it is built to rival and exceed any leading AI assistant in helpfulness and depth. ' +
         'Today\'s date is ' + TODAY + '. ' +
 
+        '\n\n## DOWNLOADABLE OUTPUT & FORMATTING:' +
+        '\n- If the user explicitly requests DOCX, PDF, TXT, CSV, PPTX or XLSX, prepare the content in a structure suitable for that exact format.' +
+        '\n- If no downloadable format is requested, answer normally in the chat; never force a file download.' +
+        '\n- For CSV and XLSX, use a clean, consistent table with clear column headings and one record per row.' +
+        '\n- For PPTX, organize the response into a logical slide deck with concise slide headings and readable bullet points.' +
+        '\n- For DOCX and PDF, use clear document headings, paragraphs, lists and tables where appropriate.' +
+        '\n- Follow explicit font, font-size, line-spacing, margin, page-size and alignment instructions. Do not silently replace requested settings.' +
+        '\n- For bilingual documents, put the original-language version and translated version in separate sections, with the translated section starting on a new page where the format supports it.' +
+        '\n- Do not tell the user to copy content into another app. The Studio will generate the requested downloadable file.' +
+        '\n- Never claim a file has been created unless the file-generation step confirms success.' +
+
         '\n\n## LANGUAGE & TONE RULES:' +
         '\n- Detect the user\'s language and respond in the same language, including Nigerian English and Pidgin when the user uses them.' +
+        '\n- When an uploaded image contains readable text, extract it carefully, identify its language automatically, and translate only when the user asks.' +
         '\n- Respect Nigerian student context, local examples, school terminology and Nigerian English without stereotyping.' +
         '\n- Match the user\'s formality and energy while staying clear, respectful and accurate.' +
 
@@ -565,19 +580,23 @@
     ═══════════════════════════════════════════════════════════ */
     function newSession() {
         conversationId   = 'sess_' + Date.now();
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
         chatHistory      = [];
         attachedFileText = null;
         attachedFileName = null;
+        attachedFiles = [];
+        attachedImages = [];
+        lastGeneratedArtifact = null;
     }
 
     function saveSession() {
-        if (!conversationId || !chatHistory.length) return;
+        if (!conversationId || (!chatHistory.length && !attachedFiles.length && !attachedImages.length)) return;
         var sessions = loadSessions();
         var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
-        var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
+        var title = firstUser ? String(firstUser.content).slice(0, 55) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'Chat');
         if (title.length === 55) title += '\u2026';
-        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
+        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
@@ -594,6 +613,7 @@
     function deleteSession(id) {
         var sessions = loadSessions().filter(function (s) { return s.id !== id; });
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+        try { if (window.dtsStudioAttachmentStore) window.dtsStudioAttachmentStore.removeConversation(id).catch(function () {}); } catch (e) {}
     }
 
     function renderHistoryList() {
@@ -619,7 +639,21 @@
             item.innerHTML =
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
                 '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-rename" type="button" title="Rename">Rename</button>' +
                 '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
+
+            item.querySelector('.dts-drawer-item-rename').addEventListener('click', function (e) {
+                e.stopPropagation();
+                var nextTitle = window.prompt('Rename this conversation', sess.title);
+                if (!nextTitle || !nextTitle.trim()) return;
+                var allSessions = loadSessions();
+                var target = allSessions.find(function (entry) { return entry.id === sess.id; });
+                if (target) {
+                    target.title = nextTitle.trim().slice(0, 80);
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions)); } catch (saveError) {}
+                    renderHistoryList();
+                }
+            });
 
             item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -642,6 +676,16 @@
         if (!sess) return;
         conversationId = sess.id;
         chatHistory    = sess.messages.slice();
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
+        imageDesignSessionActive = chatHistory.some(function (message) { return message.role === 'assistant' && typeof message.content === 'string' && /pro feature and is coming soon/i.test(message.content); });
+        attachedFiles = [];
+        attachedImages = [];
+        lastGeneratedArtifact = null;
+        attachedFileText = null;
+        attachedFileName = null;
+        attachedImageData = null;
+        attachedImageName = null;
+        restoreConversationAttachments(id);
 
         var messages = document.getElementById('dts-messages');
         var welcome  = document.getElementById('dts-welcome');
@@ -808,48 +852,48 @@
         return wrap;
     }
     function wantsDownloadableDocument(prompt) {
-        return /\b(download|export|save|give me|provide|send me|create|make)\b/i.test(prompt || '') &&
-          /\b(file|document|docx|word|pdf)\b/i.test(prompt || '');
+        return !!(window.dtsStudioArtifacts && window.dtsStudioArtifacts.detectFormat(prompt));
     }
-    function loadStudioLibrary(src, test) {
-        return new Promise(function(resolve,reject) {
-            if (test()) return resolve();
-            var existing = document.querySelector('script[data-studio-library="'+src+'"]');
-            if (existing) { existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
-            var script=document.createElement('script');script.src=src;script.async=true;script.dataset.studioLibrary=src;
-            script.onload=resolve;script.onerror=function(){reject(new Error('Could not load document export library.'));};
-            document.head.appendChild(script);
-        });
-    }
-    async function downloadAIArtifact(prompt, answer) {
-        var isPdf = /\bpdf\b/i.test(prompt || '');
-        var isDocx = /\b(docx|word)\b/i.test(prompt || '');
-        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\s+["“]?([^"”.,!?]+)["”]?/i);
-        var name=(titleMatch?titleMatch[1]:'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'XZILY-AI-Document';
-        var plain=String(answer||'').replace(/\r/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*_`#>]/g,'');
-        if(isPdf){
-            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF);});
-            var pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
-            var margin=48,width=pdf.internal.pageSize.getWidth()-margin*2,y=margin;
-            pdf.setFont('helvetica','normal');pdf.setFontSize(11);
-            plain.split(/\n/).forEach(function(line){
-                var wrapped=pdf.splitTextToSize(line||' ',width);
-                wrapped.forEach(function(part){if(y>pdf.internal.pageSize.getHeight()-margin){pdf.addPage();y=margin;}pdf.text(part,margin,y);y+=16;});
-                y+=5;
+
+    function deliverAIArtifact(prompt, answer) {
+        showTyping(true, 'Preparing your downloadable file…');
+        var engine = window.dtsStudioArtifacts;
+        if (!engine || typeof engine.create !== 'function') {
+            showTyping(false);
+            var unavailable = 'File generation is not available right now. Please try again.';
+            chatHistory.push({ role: 'assistant', content: unavailable });
+            appendMessage('assistant', unavailable);
+            saveSession(); renderHistoryList();
+            return Promise.resolve(false);
+        }
+        return engine.create(prompt, answer).then(function (file) {
+            var artifactRecord = {
+                id: 'artifact_' + conversationId, conversationId: conversationId, kind: 'artifact',
+                name: file.filename, type: file.format, format: file.format,
+                prompt: String(prompt || ''), text: String(answer || ''), createdAt: Date.now()
+            };
+            var store = window.dtsStudioAttachmentStore;
+            var persist = store && typeof store.save === 'function' ? store.save(artifactRecord).catch(function (storageError) {
+                console.warn('[Studio AI] Could not persist the latest generated document:', storageError);
+            }) : Promise.resolve();
+            return persist.then(function () {
+                lastGeneratedArtifact = { prompt: String(prompt || ''), text: String(answer || ''), format: file.format };
+                showTyping(false);
+                var completion = 'Your requested file is ready to download.';
+                chatHistory.push({ role: 'assistant', content: completion });
+                appendMessage('assistant', completion);
+                engine.attachDownload(file);
+                saveSession(); renderHistoryList();
+                return true;
             });
-            pdf.save(name+'.pdf');return true;
-        }
-        if(isDocx){
-            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',function(){return !!window.docx;});
-            var d=window.docx;
-            var paragraphs=plain.split(/\n/).map(function(line){return new d.Paragraph({children:[new d.TextRun(line||' ')]});});
-            var doc=new d.Document({sections:[{children:paragraphs}]});
-            var blob=await d.Packer.toBlob(doc);var url=URL.createObjectURL(blob);
-            var a=document.createElement('a');a.href=url;a.download=name+'.docx';document.body.appendChild(a);a.click();a.remove();
-            setTimeout(function(){URL.revokeObjectURL(url);},5000);return true;
-        }
-        appendMessage('assistant','Please specify PDF or DOCX so I can create the correct downloadable file.');
-        return false;
+        }).catch(function (error) {
+            showTyping(false);
+            var failure = 'I could not create the requested file. ' + (error && error.message ? error.message : 'Please try again.');
+            chatHistory.push({ role: 'assistant', content: failure });
+            appendMessage('assistant', failure);
+            saveSession(); renderHistoryList();
+            return false;
+        });
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -860,58 +904,58 @@
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
-        /* CONVERSATIONAL IMAGE DESIGNER: clarify professional briefs before generation. */
-        var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait|graphic|graphics|design|designs|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead|product design)\b/i.test(text) &&
-            /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want|help me|build me|prepare|craft|develop|designing)\b/i.test(text) ||
-            /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration|graphic|banner|flyer|poster|design)\b/i.test(text) ||
-            /^\s*(can you|could you|please)\s+(create|make|design|generate)\b/i.test(text);
-        if (text && !attachedFileText && !attachedImageData && (IMG_INTENT || imageDesignSessionActive)) {
+        /* Phase 2 image routing: ordinary image generation stays available; professional design is Pro-only. */
+        var PRO_DESIGN_INTENT = /\b(logo|poster|flyer|banner|thumbnail|graphic|graphics|design|designs|designing|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead)\b/i.test(text) &&
+            /\b(create|generate|make|draw|design|produce|render|prepare|craft|develop|i need|i want|help me|build me)\b/i.test(text);
+        var ORDINARY_IMAGE_INTENT = (/\b(image|picture|photo|illustration|artwork)\b/i.test(text) &&
+            /\b(create|generate|make|draw|show|give|produce|render|i need|i want)\b/i.test(text)) ||
+            /^\s*(image|picture|photo)\s+of\b/i.test(text);
+
+        if (text && (PRO_DESIGN_INTENT || (imageDesignSessionActive && !ORDINARY_IMAGE_INTENT))) {
+            imageDesignSessionActive = true;
             isSending = true; setSendState(true);
-            var inp0 = document.getElementById('dts-input');
-            if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
+            var designInput = document.getElementById('dts-input');
+            if (designInput) { designInput.value = ''; designInput.style.height = 'auto'; }
             chatHistory.push({ role: 'user', content: text });
             appendMessage('user', text);
-            showTyping(true, 'XZILY is planning your design…');
+            var proNotice = 'This is a Pro feature and is coming soon. Studio AI currently supports ordinary image generation, while professional graphic design and design creation are not available yet.';
+            chatHistory.push({ role: 'assistant', content: proNotice });
+            appendMessage('assistant', proNotice);
+            saveSession(); renderHistoryList();
+            isSending = false; setSendState(false);
+            return;
+        }
+
+        if (text && !attachedFileText && !attachedImageData && ORDINARY_IMAGE_INTENT) {
+            imageDesignSessionActive = false;
+            isSending = true; setSendState(true);
+            var imageInput = document.getElementById('dts-input');
+            if (imageInput) { imageInput.value = ''; imageInput.style.height = 'auto'; }
+            chatHistory.push({ role: 'user', content: text });
+            appendMessage('user', text);
+            saveSession(); renderHistoryList();
+            showTyping(true, 'Creating your image…');
             try {
-                if (typeof window.groqFetch !== 'function') throw new Error('Design assistant is not ready. Please try again.');
-                var recentDesignHistory = chatHistory.slice(-12).map(function(m) {
-                    return { role: m.role === 'assistant' ? 'assistant' : 'user',
-                        content: typeof m.content === 'string' ? m.content : (m.content && m.content.prompt ? '[Previously generated image: '+m.content.prompt+']' : '[image attachment]') };
-                });
-                var plannerSystem = "You are XZILY, a senior professional graphic designer and visual-communication specialist. Handle the full range of graphic design: logos and brand identity, flyers, event posters, website and advertising banners, social posts, Fiverr gig covers, YouTube thumbnails, product adverts, business cards, menus, brochures, packaging, labels, invitations, certificates, infographics, mockups, 2D and 3D graphics, and UI concepts. Understand purpose, audience, platform, dimensions, visual style and required copy. For any birthday flyer or birthday poster, the birthday person's name is essential: if it is missing from the conversation, ask one concise question asking for their name, and optionally their age, relationship to the requester, and a short personal message. Do not generate a birthday design until the name is known. Once known, make the main greeting read HAPPY BIRTHDAY [PERSON NAME], with the name visually prominent; use optional details supplied and never invent personal facts. Ordinary picture requests should generate immediately. For professional designs, ask one concise question only when an essential detail is missing; do not repeat questions or ask for information already in conversation. Never invent brand names, phone numbers, addresses, prices, offers, claims or copy. When ready, return ONLY valid JSON matching one of these shapes:\n{\"action\":\"ask\",\"message\":\"one concise question\"}\n{\"action\":\"generate\",\"prompt\":\"production-ready visual-artwork prompt\",\"category\":\"general|birthday|fiverr|youtube-thumbnail|flyer|event-poster|product-ad|social|banner|logo|business-card|menu|infographic|packaging|certificate|invitation|mockup|3d-design|2d-design\",\"aspectRatio\":\"square|landscape|portrait\",\"copy\":{\"headline\":\"exact supplied headline or empty string\",\"recipientName\":\"exact birthday person name or empty string\",\"subline\":\"exact supplied supporting text or empty string\",\"cta\":\"exact supplied call to action or empty string\",\"brandName\":\"exact supplied brand name or empty string\",\"details\":\"other short exact supplied details or empty string\"}}\nThe copy object must contain only exact wording explicitly supplied by the user or conversation. Do not rewrite, correct, embellish or invent it. Keep each field empty when not supplied. Extract exact wording even when it appears naturally in the brief, not only when labeled. Do not put text into the artwork prompt unless the image needs a visual placeholder; the backend will typeset exact copy separately. For logos, prioritize a clean symbol/mark; use brandName only if supplied. Fiverr gig covers must be compact marketplace thumbnails, not website hero sections. Choose the right category automatically. Use landscape for banners, Fiverr covers and YouTube thumbnails; portrait for flyers, posters, menus and invitations; square for logos and social posts unless the user specifies dimensions/platform. Do not include markdown."
-                var plannerRes = await window.groqFetch({model:'openai/gpt-oss-20b',messages:[{role:'system',content:plannerSystem}].concat(recentDesignHistory),max_tokens:1100,temperature:0.25});
-                var plannerData = await plannerRes.json();
-                var plannerText = plannerData.choices && plannerData.choices[0] && plannerData.choices[0].message && plannerData.choices[0].message.content || '';
-                plannerText = plannerText.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-                var plan = JSON.parse(plannerText);
+                if (typeof window.dtsGenerateInline !== 'function') throw new Error('Image generation is not ready. Please try again.');
+                var generatedImage = await window.dtsGenerateInline(text, { category: 'general', aspectRatio: 'square' });
                 showTyping(false);
-                if (plan.action === 'ask' && plan.message) {
-                    imageDesignSessionActive = true;
-                    chatHistory.push({role:'assistant',content:plan.message});
-                    appendMessage('assistant',plan.message);
-                    saveSession(); renderHistoryList();
-                } else if (plan.action === 'generate' && plan.prompt) {
-                    imageDesignSessionActive = false;
-                    var imageData = await window.dtsGenerateInline(plan.prompt,{category:plan.category,aspectRatio:plan.aspectRatio,copy:plan.copy||{}});
-                    if (imageData && imageData.type === 'generated-image') {
-                        chatHistory.push({role:'assistant',content:imageData});
-                    } else {
-                        var failedMessage = 'I could not generate that image. Please check the message above for the service error, then try again.';
-                        chatHistory.push({role:'assistant',content:failedMessage});
-                        appendMessage('assistant',failedMessage);
-                    }
-                    saveSession(); renderHistoryList();
+                if (generatedImage && generatedImage.type === 'generated-image') {
+                    chatHistory.push({ role: 'assistant', content: generatedImage });
                 } else {
-                    throw new Error('The design plan was incomplete. Please describe the design again.');
+                    var imageFailure = 'I could not generate that image. Please try again.';
+                    chatHistory.push({ role: 'assistant', content: imageFailure });
+                    appendMessage('assistant', imageFailure);
                 }
-            } catch (designError) {
-                showTyping(false);
-                imageDesignSessionActive = false;
-                var designMessage = 'I could not prepare that design yet. ' + (designError && designError.message || 'Please try again.');
-                chatHistory.push({role:'assistant',content:designMessage});
-                appendMessage('assistant',designMessage);
                 saveSession(); renderHistoryList();
-            } finally { isSending = false; setSendState(false); }
+            } catch (imageError) {
+                showTyping(false);
+                var imageErrorMessage = 'Image generation failed: ' + (imageError && imageError.message || 'Please try again.');
+                chatHistory.push({ role: 'assistant', content: imageErrorMessage });
+                appendMessage('assistant', imageErrorMessage);
+                saveSession(); renderHistoryList();
+            } finally {
+                isSending = false; setSendState(false);
+            }
             return;
         }
 
@@ -919,26 +963,31 @@
         setSendState(true);
 
         /* Snapshot and clear attachments before async work */
-        var snapImageData = attachedImageData;
-        var snapImageName = attachedImageName;
+        var snapImages = attachedImages.slice();
+        if (!snapImages.length && attachedImageData) {
+            snapImages.push({ dataUrl: attachedImageData, name: attachedImageName || 'image attachment' });
+        }
+        var snapImageData = snapImages.length ? snapImages[0].dataUrl : null;
+        var snapImageName = snapImages.length ? snapImages[0].name : null;
 
         /* Build user content */
         var userContent = text;
-        if (attachedFileText) {
-            userContent = (text ? text + '\n\n' : 'Please analyse this file:\n\n') +
-                'File: ' + escHtml(attachedFileName || 'attachment') + '\n```\n' +
-                attachedFileText.slice(0, 8000) + '\n```';
+        if (attachedFiles.length) {
+            userContent = (text ? text + '\n\n' : 'Please analyse the files attached to this conversation.') +
+                (userContent ? '\n\n' : '') + 'Available documents: ' + attachedFiles.map(function (file) { return file.name; }).join(', ');
         }
-
-        clearFileAttachment();
+        if (attachedImages.length) {
+            userContent += (userContent ? '\n\n' : '') + 'Available images: ' + attachedImages.map(function (image) { return image.name; }).join(', ');
+        }
 
         /* Route explicit image-edit requests to the image-to-image service. */
         var editIntent = /\b(edit|change|modify|replace|remove|erase|delete|add|insert|put|include|redesign|retouch|restyle|recolour|recolor|crop|resize|brighten|darken|sharpen|clean up|enhance|improve|make it|turn it into|convert it|update|fix|adjust|background|text on|write on|professional|modern|realistic|cartoon|anime|illustration|transparent|white background|black background|social media|profile picture|product photo|remove the background|change the background)\b/i.test(text || '');
-        if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
+        if (snapImageData && snapImages.length <= 1 && !attachedFileText && editIntent && typeof window.dtsEditInline === 'function') {
             var editPrompt = (text || '').replace(/^\s*edit this image[:\s-]*/i, '').trim();
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
             chatHistory.push({ role: 'user', content: userContent });
             appendMessage('user', userContent);
+            saveSession(); renderHistoryList();
             var editInput = document.getElementById('dts-input');
             if (editInput) { editInput.value=''; editInput.style.height='auto'; }
             showTyping(true, 'XZILY AI is editing your image…');
@@ -957,22 +1006,24 @@
         /* --- Image vision path --- */
         if (snapImageData) {
             /* Show user message with thumbnail */
-            var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
+            var imgLabel = userContent + (snapImages.length ? '\n\n🖼️ Images: ' + snapImages.map(function (image) { return image.name; }).join(', ') : '\n\n🖼️ Image: ' + (snapImageName || 'image'));
             chatHistory.push({ role: 'user', content: imgLabel });
             appendMessage('user', imgLabel);
+            saveSession(); renderHistoryList();
             var input2 = document.getElementById('dts-input');
             if (input2) { input2.value = ''; input2.style.height = 'auto'; }
 
             showTyping(true, 'XZILY AI is analysing your image\u2026');
 
             var visionMessages = [
-                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') + (lastGeneratedArtifact ? '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nPreserve previous requirements when revising this output.' : '') },
                 {
                     role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: snapImageData } },
-                        { type: 'text', text: text || 'Please describe and analyse this image in detail.' }
-                    ]
+                    content: snapImages.map(function (image) {
+                        return { type: 'image_url', image_url: { url: image.dataUrl } };
+                    }).concat([
+                        { type: 'text', text: text || 'Please describe and analyse the uploaded image(s) in detail.' }
+                    ])
                 }
             ];
 
@@ -997,8 +1048,12 @@
                     var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
                         ? data.choices[0].message.content
                         : 'Sorry, I could not analyse the image. Please try again.';
+                    if (wantsDownloadableDocument(text)) {
+                        deliverAIArtifact(text, reply).finally(function () { isSending = false; setSendState(false); });
+                        return;
+                    }
                     chatHistory.push({ role: 'assistant', content: reply });
-                    streamReply(reply, function() { if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply); saveSession(); renderHistoryList(); });
+                    streamReply(reply, function () { saveSession(); renderHistoryList(); });
                 }
                 isSending = false; setSendState(false);
             }).catch(function(err) {
@@ -1012,6 +1067,7 @@
 
         chatHistory.push({ role: 'user', content: userContent });
         appendMessage('user', userContent);
+        saveSession(); renderHistoryList();
 
         var input = document.getElementById('dts-input');
         if (input) { input.value = ''; input.style.height = 'auto'; }
@@ -1075,6 +1131,8 @@
 
         /* ── Step 2: Build system prompt with optional web context ── */
         var dynamicSystem = SYSTEM_PROMPT;
+        if (attachedFileText) dynamicSystem += '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) + '\nUse these documents as source material for the user\'s current and follow-up instructions. Detect their language automatically.';
+        if (lastGeneratedArtifact) dynamicSystem += '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nThe user may be asking to revise this output. Preserve every previous requirement unless explicitly changed.';
         if (webContext) {
             dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
                              '\n===== END OF WEB DATA =====\n' +
@@ -1128,9 +1186,12 @@
                         reply = reply + '\n\n---\n' + webSourceTag;
                     }
 
+                    if (wantsDownloadableDocument(text)) {
+                        deliverAIArtifact(text, reply).finally(function () { isSending = false; setSendState(false); });
+                        return;
+                    }
                     chatHistory.push({ role: 'assistant', content: reply });
                     streamReply(reply, function () {
-                        if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply);
                         saveSession();
                         renderHistoryList();
                         if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
@@ -1211,115 +1272,168 @@
     /* ═══════════════════════════════════════════════════════════
        FILE ATTACHMENT
     ═══════════════════════════════════════════════════════════ */
+    function refreshAttachmentContext() {
+        attachedFileText = attachedFiles.map(function (file) {
+            return 'FILE: ' + file.name + '\n' + (file.text || '').slice(0, 12000);
+        }).join('\n\n--- NEXT FILE ---\n\n');
+        attachedFileName = attachedFiles.map(function (file) { return file.name; }).join(', ');
+        attachedImageData = attachedImages.length ? attachedImages[0].dataUrl : null;
+        attachedImageName = attachedImages.length ? attachedImages[0].name : null;
+    }
+
+    function renderAttachmentList() {
+        var status = document.getElementById('dts-file-status');
+        if (!status) return;
+        status.innerHTML = '';
+        var all = attachedFiles.concat(attachedImages);
+        if (!all.length) { status.style.display = 'none'; return; }
+        status.style.display = '';
+        var heading = document.createElement('div');
+        heading.className = 'dts-attachment-heading';
+        heading.textContent = all.length + ' file' + (all.length === 1 ? '' : 's') + ' attached to this conversation';
+        status.appendChild(heading);
+        all.forEach(function (file) {
+            var row = document.createElement('div');
+            row.className = 'dts-attachment-item';
+            var label = document.createElement('span');
+            label.className = 'dts-attachment-name';
+            label.textContent = (file.kind === 'image' ? '🖼️ ' : '📎 ') + file.name;
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'dts-attachment-remove';
+            remove.textContent = 'Remove';
+            remove.setAttribute('aria-label', 'Remove ' + file.name);
+            remove.addEventListener('click', function () { removeConversationAttachment(file.id); });
+            row.appendChild(label);
+            row.appendChild(remove);
+            status.appendChild(row);
+        });
+    }
+
+    function restoreConversationAttachments(id) {
+        var store = window.dtsStudioAttachmentStore;
+        if (!store || typeof store.list !== 'function') return Promise.resolve();
+        return store.list(id).then(function (items) {
+            if (conversationId !== id) return;
+            attachedFiles = items.filter(function (item) { return item.kind === 'document'; });
+            attachedImages = items.filter(function (item) { return item.kind === 'image'; });
+            var previousArtifacts = items.filter(function (item) { return item.kind === 'artifact' && item.text; }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+            lastGeneratedArtifact = previousArtifacts.length ? { prompt: previousArtifacts[0].prompt || '', text: previousArtifacts[0].text, format: previousArtifacts[0].format || previousArtifacts[0].type || '' } : null;
+            refreshAttachmentContext();
+            renderAttachmentList();
+        }).catch(function (error) {
+            console.warn('[Studio AI] Could not restore conversation attachments:', error);
+        });
+    }
+
+    function persistConversationAttachment(item) {
+        var store = window.dtsStudioAttachmentStore;
+        if (!store || typeof store.save !== 'function') throw new Error('Persistent attachment storage is not ready. Refresh the page and try again.');
+        item.conversationId = conversationId;
+        item.createdAt = Date.now();
+        return store.save(item).then(function () {
+            if (item.kind === 'image') attachedImages.push(item);
+            else attachedFiles.push(item);
+            refreshAttachmentContext();
+            renderAttachmentList();
+            saveSession();
+            renderHistoryList();
+        });
+    }
+
+    function removeConversationAttachment(id) {
+        var store = window.dtsStudioAttachmentStore;
+        var remove = store && typeof store.remove === 'function' ? store.remove(id) : Promise.resolve();
+        remove.then(function () {
+            attachedFiles = attachedFiles.filter(function (file) { return file.id !== id; });
+            attachedImages = attachedImages.filter(function (file) { return file.id !== id; });
+            refreshAttachmentContext();
+            renderAttachmentList();
+            saveSession();
+        }).catch(function (error) {
+            alert('Could not remove this file. ' + (error && error.message || 'Please try again.'));
+        });
+    }
+
+    function makeAttachmentId() {
+        return 'att_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    }
+
     function clearFileAttachment() {
         attachedFileText = null;
         attachedFileName = null;
         attachedImageData = null;
         attachedImageName = null;
+        attachedFiles = [];
+        attachedImages = [];
         var status = document.getElementById('dts-file-status');
-        if (status) { status.style.display = 'none'; status.textContent = ''; }
+        if (status) { status.style.display = 'none'; status.innerHTML = ''; status.textContent = ''; }
         var fi = document.getElementById('dts-file-input');
         if (fi) fi.value = '';
         var ii = document.getElementById('dts-image-input');
         if (ii) ii.value = '';
     }
 
-    function handleImageAttach(file) {
+    async function handleImageAttach(file) {
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
+        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB per image.'); return; }
+        if (!/^image\//i.test(file.type)) { alert('Please choose an image file.'); return; }
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = ''; status.textContent = 'Reading ' + file.name + '…'; }
+        try {
+            var dataUrl = await new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function (e) { resolve(e.target.result); };
+                reader.onerror = function () { reject(new Error('Could not read image.')); };
+                reader.readAsDataURL(file);
+            });
+            await persistConversationAttachment({
+                id: makeAttachmentId(), kind: 'image', name: file.name, type: file.type,
+                size: file.size, dataUrl: dataUrl
+            });
+        } catch (error) {
+            if (status) status.textContent = 'Could not save ' + file.name + ': ' + (error.message || 'Please try again.');
+        }
+    }
+
+    async function handleFileAttach(file) {
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB per document.'); return; }
         var name = file.name;
-        var setStatus = function(txt) {
-            var s = document.getElementById('dts-file-status');
-            if (s) { s.style.display = ''; s.textContent = txt; }
-        };
-        setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            attachedImageData = e.target.result;
-            attachedImageName = name;
-            /* Clear any file attachment — image takes precedence */
-            attachedFileText = null;
-            attachedFileName = null;
-            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
-        };
-        reader.onerror = function() { setStatus('\u274C Could not read image'); };
-        reader.readAsDataURL(file);
+        var ext = name.split('.').pop().toLowerCase();
+        var text = '';
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = ''; status.textContent = 'Reading ' + name + '…'; }
+        try {
+            if (ext === 'pdf') {
+                if (typeof window.pdfjsLib === 'undefined') throw new Error('PDF reader is still loading. Please try again in a moment.');
+                var pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                var pages = [];
+                for (var pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+                    var page = await pdf.getPage(pageNo);
+                    var textContent = await page.getTextContent();
+                    pages.push(textContent.items.map(function (item) { return item.str; }).join(' '));
+                }
+                text = pages.join('\n\n');
+            } else if (ext === 'docx' || ext === 'doc') {
+                if (typeof window.mammoth === 'undefined') throw new Error('Word reader is still loading. Please try again in a moment.');
+                var result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+                text = result.value || '';
+            } else if (['txt', 'md', 'csv', 'json'].indexOf(ext) !== -1) {
+                text = await file.text();
+            } else {
+                throw new Error('Unsupported file type. Use PDF, DOCX, TXT, MD, CSV or JSON.');
+            }
+            if (!String(text).trim()) throw new Error('This file appears to contain no readable text.');
+            await persistConversationAttachment({
+                id: makeAttachmentId(), kind: 'document', name: name, type: file.type || ext,
+                size: file.size, text: String(text)
+            });
+        } catch (error) {
+            if (status) { status.style.display = ''; status.textContent = 'Could not read ' + name + ': ' + (error.message || 'Please try again.'); }
+        }
     }
 
-    function handleFileAttach(file) {
-        if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB.'); return; }
-
-        var name  = file.name;
-        var ext   = name.split('.').pop().toLowerCase();
-        var setStatus = function (txt) {
-            var s = document.getElementById('dts-file-status');
-            if (s) { s.style.display = ''; s.textContent = txt; }
-        };
-
-        /* PDF */
-        if (ext === 'pdf') {
-            if (typeof window.pdfjsLib === 'undefined') {
-                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
-                setTimeout(function () { handleFileAttach(file); }, 1800);
-                return;
-            }
-            setStatus('\uD83D\uDCCE Reading PDF\u2026');
-            var r1 = new FileReader();
-            r1.onload = function (e) {
-                window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
-                    var texts = [], done = 0, total = pdf.numPages;
-                    for (var p = 1; p <= total; p++) {
-                        (function (pn) {
-                            pdf.getPage(pn).then(function (pg) {
-                                return pg.getTextContent();
-                            }).then(function (tc) {
-                                texts[pn - 1] = tc.items.map(function (i) { return i.str; }).join(' ');
-                                done++;
-                                if (done === total) {
-                                    attachedFileText = texts.join('\n\n');
-                                    attachedFileName = name;
-                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
-                                }
-                            });
-                        })(p);
-                    }
-                }).catch(function () { setStatus('\u274C Could not read PDF'); });
-            };
-            r1.readAsArrayBuffer(file);
-            return;
-        }
-
-        /* DOCX */
-        if (ext === 'docx' || ext === 'doc') {
-            if (typeof mammoth === 'undefined') {
-                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
-                setTimeout(function () { handleFileAttach(file); }, 1800);
-                return;
-            }
-            setStatus('\uD83D\uDCCE Reading document\u2026');
-            var r2 = new FileReader();
-            r2.onload = function (e) {
-                mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
-                    attachedFileText = result.value;
-                    attachedFileName = name;
-                    setStatus('\uD83D\uDCCE ' + name + ' attached');
-                }).catch(function () { setStatus('\u274C Could not read document'); });
-            };
-            r2.readAsArrayBuffer(file);
-            return;
-        }
-
-        /* Plain text: txt, md, csv, json, etc. */
-        var r3 = new FileReader();
-        r3.onload = function (e) {
-            attachedFileText = e.target.result;
-            attachedFileName = name;
-            setStatus('\uD83D\uDCCE ' + name + ' attached');
-        };
-        r3.onerror = function () { setStatus('\u274C Could not read file'); };
-        r3.readAsText(file);
-    }
 
     /* ═══════════════════════════════════════════════════════════
        VOICE MODE
@@ -1464,6 +1578,7 @@
         stopVoiceListening();
         chatHistory.push({ role: 'user', content: text });
         appendMessage('user', text);
+        saveSession(); renderHistoryList();
         showTyping(true, 'XZILY AI is thinking\u2026');
 
         if (typeof window.groqFetch !== 'function') {
@@ -1803,7 +1918,15 @@
 
     document.addEventListener('DOMContentLoaded', function () {
 
-        newSession();
+        /* Restore the last active conversation instead of silently starting a blank chat. */
+        var savedActiveId = null;
+        try { savedActiveId = localStorage.getItem(ACTIVE_KEY); } catch (restoreError) {}
+        var savedSessions = loadSessions();
+        if (savedActiveId && savedSessions.some(function (session) { return session.id === savedActiveId; })) {
+            loadSessionById(savedActiveId);
+        } else {
+            newSession();
+        }
         renderHistoryList();
 
         /* ── Auto-resize textarea ── */
@@ -1888,7 +2011,11 @@
         var fileInput = document.getElementById('dts-file-input');
         if (fileInput) {
             fileInput.addEventListener('change', function () {
-                if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+                var selectedFiles = Array.prototype.slice.call(this.files || []);
+                this.value = '';
+                selectedFiles.reduce(function (queue, file) {
+                    return queue.then(function () { return handleFileAttach(file); });
+                }, Promise.resolve());
             });
         }
 
@@ -1896,7 +2023,11 @@
         var imageInput = document.getElementById('dts-image-input');
         if (imageInput) {
             imageInput.addEventListener('change', function () {
-                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
+                var selectedImages = Array.prototype.slice.call(this.files || []);
+                this.value = '';
+                selectedImages.reduce(function (queue, file) {
+                    return queue.then(function () { return handleImageAttach(file); });
+                }, Promise.resolve());
             });
         }
 
