@@ -2847,7 +2847,7 @@ async function _aqsRecordAppUse(user) {
     var userRef = doc(db, 'users', user.uid);
     var snap = await getDoc(userRef);
     var profile = snap.exists() ? snap.data() : {};
-    var days = Array.isArray(profile.app_activity_days) ? profile.app_activity_days.filter(function(d){ return /^\\d{4}-\\d{2}-\\d{2}$/.test(d); }) : [];
+    var days = Array.isArray(profile.app_activity_days) ? profile.app_activity_days.filter(function(d){ return /^\d{4}-\d{2}-\d{2}$/.test(d); }) : [];
     if (days.indexOf(dayKey) === -1) {
         days.push(dayKey);
         days.sort();
