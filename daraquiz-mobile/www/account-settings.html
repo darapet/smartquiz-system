@@ -230,28 +230,20 @@
     <section id="password-security" class="card" data-settings-content>
       <div class="card-head">
         <h2>Change password</h2>
-        <p>Verify your email with a one-time code before choosing a new password.</p>
+        <p>Choose a new password for your account.</p>
       </div>
       <div class="card-body">
-        <div class="password-step active" id="password-request">
-          <p class="hint">We will send a six-digit code to <strong id="account-email">your email address</strong>.</p>
-          <div class="actions"><div id="otp-status" class="status" role="status"></div><button class="btn btn-primary" id="send-otp">Send verification code</button></div>
-        </div>
-        <div class="password-step" id="password-verify">
-          <div class="field otp-row"><div><label for="otp-code">Verification code</label><input id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div><button class="btn btn-primary" id="verify-otp">Verify code</button></div>
-          <p class="hint">The code expires in 10 minutes.</p>
-        </div>
-        <div class="password-step" id="password-form">
+        <div class="password-step active" id="password-form">
           <div class="field"><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></div>
           <div class="field"><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="8" placeholder="Enter it again"></div>
           <div class="actions"><div id="password-status" class="status" role="status"></div><button class="btn btn-primary" id="save-password">Change password</button></div>
         </div>
-        <div class="security-note">For your protection, a password change is only unlocked after the code sent to your account email is verified.</div>
+        <div class="security-note">Use a password with at least 8 characters. If your sign-in session has expired, sign in again before changing it.</div>
       </div>
     </section>
   </main>
 
-  <script type="module" src="js/aqs-firebase.js?v=settings-refresh-2"></script>
+  <script type="module" src="js/aqs-firebase.js?v=password-no-otp-1"></script>
   <script type="module">
     import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -263,7 +255,6 @@
     const defaults = { displayName:true, photoURL:true, education:true };
     let user = null;
     let profileVisibility = { ...defaults };
-    let otpVerified = false;
 
     const $ = (id) => document.getElementById(id);
     function setStatus(id, message, type = '') {
@@ -271,13 +262,6 @@
       if (!el) return;
       el.textContent = message;
       el.className = `status ${type}`;
-    }
-    function setStep(id, active) { $(id)?.classList.toggle('active', active); }
-    function runAqsAction(data) {
-      return new Promise((resolve) => {
-        if (typeof window.aqsAjax !== 'function') return resolve({ success:false, data:'Security services are still loading. Please try again.' });
-        window.aqsAjax(data, resolve, (error) => resolve({ success:false, data:error?.message || 'Request failed.' }));
-      });
     }
     function visibilityFromForm() {
       const next = { ...profileVisibility };
@@ -405,57 +389,22 @@
       finally { button.disabled = false; }
     });
 
-    $('send-otp').addEventListener('click', async () => {
-      $('send-otp').disabled = true;
-      setStatus('otp-status', 'Sending code…');
-      const result = await runAqsAction({ action:'aqs_send_otp', purpose:'password_change' });
-      if (!result.success) {
-        setStatus('otp-status', result.data || 'Could not send the code.', 'error');
-        $('send-otp').disabled = false;
-        return;
-      }
-      setStatus('otp-status', 'Code sent. Check your email.', 'success');
-      setStep('password-request', false);
-      setStep('password-verify', true);
-      $('otp-code').focus();
-    });
-
-    $('verify-otp').addEventListener('click', async () => {
-      const code = $('otp-code').value.replace(/\D/g, '');
-      if (code.length !== 6) { setStatus('otp-status', 'Enter the six-digit code.', 'error'); return; }
-      $('verify-otp').disabled = true;
-      setStatus('otp-status', 'Verifying…');
-      const result = await runAqsAction({ action:'aqs_verify_otp', purpose:'password_change', otp:code });
-      if (!result.success) {
-        setStatus('otp-status', result.data || 'That code is not valid.', 'error');
-        $('verify-otp').disabled = false;
-        return;
-      }
-      otpVerified = true;
-      setStatus('otp-status', 'Email verified. Choose a new password.', 'success');
-      setStep('password-verify', false);
-      setStep('password-form', true);
-      $('new-password').focus();
-    });
-
     $('save-password').addEventListener('click', async () => {
       const nextPassword = $('new-password').value;
       const confirmation = $('confirm-password').value;
-      if (!otpVerified) { setStatus('password-status', 'Verify the email code first.', 'error'); return; }
       if (nextPassword.length < 8) { setStatus('password-status', 'Use at least 8 characters.', 'error'); return; }
       if (nextPassword !== confirmation) { setStatus('password-status', 'The passwords do not match.', 'error'); return; }
+      if (!auth.currentUser) { setStatus('password-status', 'Please sign in again before changing your password.', 'error'); return; }
       $('save-password').disabled = true;
       setStatus('password-status', 'Updating password…');
       try {
         await updatePassword(auth.currentUser, nextPassword);
-        await setDoc(doc(db, 'users', user.uid), { otp_verified:false, updatedAt:serverTimestamp() }, { merge:true });
         setStatus('password-status', 'Password changed successfully.', 'success');
         $('new-password').value = '';
         $('confirm-password').value = '';
-        otpVerified = false;
       } catch (error) {
         const message = error.code === 'auth/requires-recent-login'
-          ? 'For security, sign out and sign in again, then request a new code.'
+          ? 'Your sign-in session has expired. Sign out, sign in again, then change your password.'
           : (error.message || 'Password could not be changed.');
         setStatus('password-status', message, 'error');
       } finally { $('save-password').disabled = false; }
