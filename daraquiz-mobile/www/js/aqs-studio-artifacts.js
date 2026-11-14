@@ -45,7 +45,7 @@ function parseTable(markdown){
 function formatOptions(prompt){
  var p=String(prompt||'');
  var font=(p.match(/\b(?:font|typeface)(?:\s+family)?\s*(?:of|:|=|to)?\s*["']?([^,;\n]+?)(?=\s+\d{1,2}\s*(?:pt|point)|[,;\n]|$)/i)||[])[1];
- if(!font)font=(p.match(/\b(Times New Roman|Arial|Calibri|Aptos|Cambria|Georgia|Verdana|Tahoma|Courier New)\s+font\b/i)||[])[1];
+ if(!font)font=(p.match(/\b(Times New Roman|Arial|Calibri|Aptos|Cambria|Georgia|Verdana|Tahoma|Courier New)\b/i)||[])[1];
  var size=(p.match(/\b(\d{1,2})\s*(?:pt|point|points)\b/i)||[])[1];
  var line=(p.match(/\b(1(?:\.0|\.15|\.5|\.75)?|2(?:\.0)?)\s*(?:line\s*)?spacing\b/i)||[])[1];
  var margin=(p.match(/\b(\d+(?:\.\d+)?)\s*-?\s*(inch|inches|in|cm|mm)\s*margins?\b/i)||[]);
