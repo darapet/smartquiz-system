@@ -159,6 +159,14 @@ auth.authStateReady().then(function() {
     onAuthStateChanged(auth, function(user) {
         window._aqsFirebaseUser = user;
         window._aqsAuthUser     = user;
+        /* Record one app-use date per signed-in user per local calendar day.
+           This runs from the shared auth listener, so visits across app pages
+           and devices contribute to the same account activity history. */
+        if (user && !user.isAnonymous) {
+            _aqsRecordAppUse(user).catch(function(error) {
+                console.warn('[AQS activity] Could not record app use:', error && error.message || error);
+            });
+        }
         /* Persist UID + refresh token so dashboard prefetch can load quizzes
            even if the Firebase module is slow or hangs in Android WebView. */
         if (user) {
@@ -2832,13 +2840,48 @@ async function actionGetMyProfile() {
     return snap.data();
 }
 
+async function _aqsRecordAppUse(user) {
+    if (!user || user.isAnonymous) return [];
+    var today = new Date();
+    var dayKey = [today.getFullYear(), String(today.getMonth()+1).padStart(2,'0'), String(today.getDate()).padStart(2,'0')].join('-');
+    var userRef = doc(db, 'users', user.uid);
+    var snap = await getDoc(userRef);
+    var profile = snap.exists() ? snap.data() : {};
+    var days = Array.isArray(profile.app_activity_days) ? profile.app_activity_days.filter(function(d){ return /^\\d{4}-\\d{2}-\\d{2}$/.test(d); }) : [];
+    if (days.indexOf(dayKey) === -1) {
+        days.push(dayKey);
+        days.sort();
+        /* Keep a generous rolling history for the calendar without unbounded growth. */
+        if (days.length > 400) days = days.slice(-400);
+        await setDoc(userRef, {
+            app_activity_days: days,
+            app_last_active_date: dayKey,
+            app_last_active_at: serverTimestamp()
+        }, { merge: true });
+    }
+    return days;
+}
+
+function _aqsGetAppUseStreak(days) {
+    var set = new Set(days || []);
+    var today = new Date();
+    var cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var key = function(d){ return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
+    if (!set.has(key(cursor))) cursor.setDate(cursor.getDate()-1);
+    var streak = 0;
+    while (set.has(key(cursor))) { streak++; cursor.setDate(cursor.getDate()-1); }
+    return streak;
+}
+
 async function actionGetMyStats() {
     var user = auth.currentUser || window._aqsFirebaseUser;
-    if (!user) return { quizzes_taken: 0, quizzes_created: 0, streak: 0, recent_activity: [] };
+    if (!user) return { quizzes_taken: 0, quizzes_created: 0, streak: 0, app_days: [], app_days_count: 0, recent_activity: [] };
 
     var profileSnap = await getDoc(doc(db, 'users', user.uid));
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = profile.name || user.displayName || user.email || '';
+    var appDays = Array.isArray(profile.app_activity_days) ? profile.app_activity_days : [];
+    var streak = _aqsGetAppUseStreak(appDays);
 
     /* Quizzes created by this user */
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
@@ -2856,24 +2899,6 @@ async function actionGetMyStats() {
         attempts.sort(function(a, b) { return b._ms - a._ms; });
     }
 
-    /* Current day streak — count consecutive local calendar days with a completed quiz.
-       If the user has not completed a quiz today, yesterday may still anchor an active streak. */
-    var streak = 0;
-    if (attempts.length) {
-        var days = new Set(attempts.filter(function(a) { return a._ms; }).map(function(a) {
-            return new Date(a._ms).toDateString();
-        }));
-        var today = new Date();
-        var cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        if (!days.has(cursor.toDateString())) {
-            cursor.setDate(cursor.getDate() - 1);
-        }
-        while (days.has(cursor.toDateString())) {
-            streak++;
-            cursor.setDate(cursor.getDate() - 1);
-        }
-    }
-
     var recent = attempts.slice(0, 5).map(function(a) {
         var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
         return { text: 'Took a quiz — scored <b>' + a.score + '/' + a.total + ' (' + pct + '%)</b>', time: (a.time || '').substring(0, 16) };
@@ -2883,6 +2908,8 @@ async function actionGetMyStats() {
         quizzes_taken:   attempts.length,
         quizzes_created: quizzesCreated,
         streak:          streak,
+        app_days:         appDays.slice(-120),
+        app_days_count:   appDays.length,
         recent_activity: recent
     };
 }
