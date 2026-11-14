@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#faf3ea">
-<title>My Profile — xzily AI</title>
+<title>My Profile — SmartQuiz</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-style.css">
 <link rel="stylesheet" href="css/aqs-library.css">
@@ -90,6 +90,51 @@
 @media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
+  <style id="smartquiz-profile-polish-v1">
+    body[data-aqs-page="profile"]{background:#f5f7fb!important;color:#17243a!important;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body[data-aqs-page="profile"] .prf-header{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e7ebf3!important;box-shadow:0 4px 18px rgba(24,39,75,.04)}
+    body[data-aqs-page="profile"] .prf-logo{color:#17243a}
+    body[data-aqs-page="profile"] .prf-nav a{color:#526078}
+    body[data-aqs-page="profile"] .prf-nav a:hover{background:#f0efff;color:#5146bd}
+    body[data-aqs-page="profile"] .prf-hero{background:radial-gradient(circle at 88% 14%,rgba(157,139,255,.32),transparent 32%),linear-gradient(120deg,#111d3b,#202f68 62%,#43358d);border:1px solid #293b78;box-shadow:0 16px 38px rgba(27,39,91,.14)}
+    body[data-aqs-page="profile"] .prf-name{color:#fff}
+    body[data-aqs-page="profile"] .prf-email-hide{color:#d6dcf6}
+    body[data-aqs-page="profile"] .prf-role-badge{color:#e6e4ff;background:rgba(255,255,255,.12);border-color:rgba(210,205,255,.3)}
+    body[data-aqs-page="profile"] .prf-avatar{background:linear-gradient(135deg,#eef0ff,#fff);color:#5146bd;border:4px solid rgba(255,255,255,.8);box-shadow:0 0 0 4px rgba(157,139,255,.28),0 8px 24px rgba(8,15,40,.2)}
+    body[data-aqs-page="profile"] .prf-avatar-edit{background:#fff;border-color:#fff}
+    body[data-aqs-page="profile"] .prf-stat{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16)}
+    body[data-aqs-page="profile"] .prf-stat-num{color:#fff}
+    body[data-aqs-page="profile"] .prf-stat-label{color:#d6dcf6}
+    body[data-aqs-page="profile"] .prf-card{background:#fff;border:1px solid #e7ebf3;box-shadow:0 5px 18px rgba(24,39,75,.045);backdrop-filter:none}
+    body[data-aqs-page="profile"] .prf-card-header{border-bottom:1px solid #edf0f5}
+    body[data-aqs-page="profile"] .prf-card-title{color:#25334a}
+    body[data-aqs-page="profile"] .prf-card-action{color:#5146bd;background:#f0efff;border-color:#dfddff}
+    body[data-aqs-page="profile"] .prf-info-row,body[data-aqs-page="profile"] .prf-activity-item,body[data-aqs-page="profile"] .prf-danger-row{border-color:#edf0f5}
+    body[data-aqs-page="profile"] .prf-info-icon{background:#f0efff;color:#5146bd}
+    body[data-aqs-page="profile"] .prf-info-label,body[data-aqs-page="profile"] .prf-activity-time,body[data-aqs-page="profile"] .prf-danger-sub{color:#7b879b}
+    body[data-aqs-page="profile"] .prf-info-value,body[data-aqs-page="profile"] .prf-activity-text,body[data-aqs-page="profile"] .prf-danger-label{color:#25334a}
+    body[data-aqs-page="profile"] .prf-activity-dot{background:#7771cb}
+    body[data-aqs-page="profile"] .prf-edit-btn{color:#5146bd;border-color:#dcd9ff;background:#fff}
+    body[data-aqs-page="profile"] .prf-edit-btn:hover{background:#f5f4ff}
+    body[data-aqs-page="profile"] .prf-btn-red{color:#c2415d;background:#fff1f3;border-color:#ffd5dd}
+    body[data-aqs-page="profile"] .prf-field-edit{background:rgba(17,29,59,.56);backdrop-filter:blur(8px)}
+    body[data-aqs-page="profile"] .prf-field-box{background:#fff;border-color:#e7ebf3;box-shadow:0 20px 55px rgba(12,22,48,.22);color:#25334a}
+    body[data-aqs-page="profile"] .prf-field-box-title{color:#17243a}
+    body[data-aqs-page="profile"] .prf-empty{color:#7b879b}
+    @media(max-width:760px){
+      body[data-aqs-page="profile"] .prf-header{height:auto;min-height:56px;padding:10px 14px;gap:10px;flex-wrap:wrap}
+      body[data-aqs-page="profile"] .prf-nav{max-width:100%;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+      body[data-aqs-page="profile"] .prf-nav::-webkit-scrollbar{display:none}
+      body[data-aqs-page="profile"] .prf-nav a{padding:7px 9px;font-size:.76rem}
+      body[data-aqs-page="profile"] .prf-page{padding-top:18px}
+      body[data-aqs-page="profile"] .prf-hero{padding:27px 15px 23px;border-radius:20px}
+      body[data-aqs-page="profile"] .prf-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+      body[data-aqs-page="profile"] .prf-stat{padding:12px 5px}
+      body[data-aqs-page="profile"] .prf-stat-label{font-size:.62rem;letter-spacing:.02em}
+      body[data-aqs-page="profile"] .prf-danger-row{align-items:flex-start;gap:12px}
+    }
+    @media(prefers-reduced-motion:reduce){body[data-aqs-page="profile"] *{scroll-behavior:auto!important;transition:none!important}}
+  </style>
 </head>
 <body style="background:#faf3ea;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
 <header class="aqs-phase2-page-header" aria-label="My Profile"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">My Profile</span></header>
@@ -99,7 +144,7 @@
 <header class="prf-header">
   <a href="dashboard.html" class="prf-logo">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e8912d" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-    xzily AI
+    SmartQuiz
   </a>
   <nav class="prf-nav">
     <a href="dashboard.html">Dashboard</a>
