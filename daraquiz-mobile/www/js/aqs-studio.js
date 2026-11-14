@@ -928,22 +928,23 @@
         setSendState(true);
 
         /* Snapshot and clear attachments before async work */
-        var snapImageData = attachedImageData;
-        var snapImageName = attachedImageName;
+        var snapImages = attachedImages.slice();
+        var snapImageData = snapImages.length ? snapImages[0].dataUrl : attachedImageData;
+        var snapImageName = snapImages.length ? snapImages[0].name : attachedImageName;
 
         /* Build user content */
         var userContent = text;
         if (attachedFileText) {
-            userContent = (text ? text + '\n\n' : 'Please analyse this file:\n\n') +
-                'File: ' + escHtml(attachedFileName || 'attachment') + '\n```\n' +
-                attachedFileText.slice(0, 8000) + '\n```';
+            userContent = (text ? text + '\n\n' : 'Please analyse these files:\n\n') +
+                attachedFileText.slice(0, 30000);
         }
-
-        clearFileAttachment();
+        if (attachedImages.length) {
+            userContent += (userContent ? '\n\n' : '') + 'Attached images: ' + attachedImages.map(function (image) { return image.name; }).join(', ');
+        }
 
         /* Route explicit image-edit requests to the image-to-image service. */
         var editIntent = /\b(edit|change|modify|replace|remove|erase|delete|add|insert|put|include|redesign|retouch|restyle|recolour|recolor|crop|resize|brighten|darken|sharpen|clean up|enhance|improve|make it|turn it into|convert it|update|fix|adjust|background|text on|write on|professional|modern|realistic|cartoon|anime|illustration|transparent|white background|black background|social media|profile picture|product photo|remove the background|change the background)\b/i.test(text || '');
-        if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
+        if (snapImageData && snapImages.length <= 1 && !attachedFileText && editIntent && typeof window.dtsEditInline === 'function') {
             var editPrompt = (text || '').replace(/^\s*edit this image[:\s-]*/i, '').trim();
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
             chatHistory.push({ role: 'user', content: userContent });
@@ -966,7 +967,7 @@
         /* --- Image vision path --- */
         if (snapImageData) {
             /* Show user message with thumbnail */
-            var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
+            var imgLabel = userContent + (snapImages.length ? '\n\n🖼️ Images: ' + snapImages.map(function (image) { return image.name; }).join(', ') : '\n\n🖼️ Image: ' + (snapImageName || 'image'));
             chatHistory.push({ role: 'user', content: imgLabel });
             appendMessage('user', imgLabel);
             var input2 = document.getElementById('dts-input');
@@ -978,10 +979,11 @@
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
                     role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: snapImageData } },
-                        { type: 'text', text: text || 'Please describe and analyse this image in detail.' }
-                    ]
+                    content: snapImages.map(function (image) {
+                        return { type: 'image_url', image_url: { url: image.dataUrl } };
+                    }).concat([
+                        { type: 'text', text: (text || 'Please describe and analyse the uploaded image(s) in detail.') + (attachedFileText ? '\n\nDOCUMENTS UPLOADED WITH THIS REQUEST:\n' + attachedFileText.slice(0, 30000) : '') }
+                    ])
                 }
             ];
 
@@ -1963,7 +1965,11 @@
         var fileInput = document.getElementById('dts-file-input');
         if (fileInput) {
             fileInput.addEventListener('change', function () {
-                if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+                var selectedFiles = Array.prototype.slice.call(this.files || []);
+                this.value = '';
+                selectedFiles.reduce(function (queue, file) {
+                    return queue.then(function () { return handleFileAttach(file); });
+                }, Promise.resolve());
             });
         }
 
@@ -1971,7 +1977,11 @@
         var imageInput = document.getElementById('dts-image-input');
         if (imageInput) {
             imageInput.addEventListener('change', function () {
-                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
+                var selectedImages = Array.prototype.slice.call(this.files || []);
+                this.value = '';
+                selectedImages.reduce(function (queue, file) {
+                    return queue.then(function () { return handleImageAttach(file); });
+                }, Promise.resolve());
             });
         }
 
