@@ -913,3 +913,12 @@ main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom))
 .dts-artifact-download-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:0;border-radius:10px;background:#e8912d;color:#17324d!important;text-decoration:none!important;font-size:.88rem;font-weight:700;box-shadow:0 3px 10px rgba(18,48,74,.12);transition:transform .15s,filter .15s}
 .dts-artifact-download-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
 .dts-artifact-filename{font-size:.75rem;color:var(--dts-muted,#526579);overflow-wrap:anywhere}
+
+
+/* Studio AI Phase 2 — persistent multi-file attachment list. */
+.dts-file-status{display:flex;flex-direction:column;gap:7px;max-height:150px;overflow:auto;padding:8px 12px;margin:0 auto 8px;max-width:860px;background:rgba(255,255,255,.92);border:1px solid rgba(18,48,74,.12);border-radius:12px;color:#17324d;font-size:.78rem}
+.dts-attachment-heading{font-weight:700;color:#526579}
+.dts-attachment-item{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.dts-attachment-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dts-attachment-remove{flex-shrink:0;border:1px solid rgba(220,38,38,.22);background:rgba(220,38,38,.06);color:#b91c1c;border-radius:7px;padding:4px 9px;font:inherit;font-weight:600;cursor:pointer}
+.dts-attachment-remove:hover{background:rgba(220,38,38,.12)}
