@@ -43,13 +43,24 @@ function parseTable(markdown){
  return [['Content']].concat(plainText(markdown).split(/\n+/).filter(Boolean).map(function(line){return[line];}));
 }
 function formatOptions(prompt){
- var p=String(prompt||''),font=(p.match(/\b(?:font|typeface)(?:\s+family)?\s*(?:of|:|=|to)?\s*["']?([A-Za-z][A-Za-z0-9 -]{1,35})/i)||[])[1];
+ var p=String(prompt||'');
+ var font=(p.match(/\b(?:font|typeface)(?:\s+family)?\s*(?:of|:|=|to)?\s*["']?([^,;\n]+?)(?=\s+\d{1,2}\s*(?:pt|point)|[,;\n]|$)/i)||[])[1];
  var size=(p.match(/\b(\d{1,2})\s*(?:pt|point|points)\b/i)||[])[1];
  var line=(p.match(/\b(1(?:\.0|\.15|\.5|\.75)?|2(?:\.0)?)\s*(?:line\s*)?spacing\b/i)||[])[1];
- var margin=(p.match(/\b(\d+(?:\.\d+)?)\s*(inch|inches|in|cm|mm)\s*margins?\b/i)||[]);
- var paper=/\bletter\b/i.test(p)?'letter':'a4',fontName=font?font.trim():'Arial';
- if(/times/i.test(fontName))fontName='Times New Roman';else if(/arial|helvetica/i.test(fontName))fontName='Arial';
- return{font:fontName,fontSize:Math.max(8,Math.min(36,parseInt(size,10)||11)),lineSpacing:parseFloat(line)||1.15,marginValue:margin[1]?parseFloat(margin[1]):1,marginUnit:margin[2]||'inch',paper:paper,alignment:/\\b(justified|justify)\\b/i.test(p)?'JUSTIFIED':/\\b(center|centred|centered)\\b/i.test(p)?'CENTER':/\\b(right[- ]aligned|align(?:ment)?\\s+right)\\b/i.test(p)?'RIGHT':'LEFT'};
+ var margin=(p.match(/\b(\d+(?:\.\d+)?)\s*-?\s*(inch|inches|in|cm|mm)\s*margins?\b/i)||[]);
+ var paper=/\bletter\b/i.test(p)?'letter':'a4';
+ var fontName=font?font.trim():'Arial';
+ if(/times/i.test(fontName))fontName='Times New Roman';
+ else if(/arial|helvetica/i.test(fontName))fontName='Arial';
+ return {
+  font:fontName,
+  fontSize:Math.max(8,Math.min(36,parseInt(size,10)||11)),
+  lineSpacing:parseFloat(line)||1.15,
+  marginValue:margin[1]?parseFloat(margin[1]):1,
+  marginUnit:margin[2]||'inch',
+  paper:paper,
+  alignment:/\b(justified|justify)\b/i.test(p)?'JUSTIFIED':/\b(center|centred|centered)\b/i.test(p)?'CENTER':/\b(right[- ]aligned|align(?:ment)?\s+right)\b/i.test(p)?'RIGHT':'LEFT'
+ };
 }
 function marginTwips(o){var n=o.marginValue;if(o.marginUnit==='cm')n*=567;else if(o.marginUnit==='mm')n*=56.7;else n*=1440;return Math.round(n);}
 function parseBlocks(markdown){
