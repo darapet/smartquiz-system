@@ -910,7 +910,7 @@
             /\b(create|generate|make|draw|show|give|produce|render|i need|i want)\b/i.test(text)) ||
             /^\s*(image|picture|photo)\s+of\b/i.test(text);
 
-        if (text && !attachedFileText && !attachedImageData && (PRO_DESIGN_INTENT || (imageDesignSessionActive && !ORDINARY_IMAGE_INTENT))) {
+        if (text && (PRO_DESIGN_INTENT || (imageDesignSessionActive && !ORDINARY_IMAGE_INTENT))) {
             imageDesignSessionActive = true;
             isSending = true; setSendState(true);
             var designInput = document.getElementById('dts-input');
