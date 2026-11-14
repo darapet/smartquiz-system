@@ -2877,6 +2877,8 @@ async function actionGetMyStats() {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) return { quizzes_taken: 0, quizzes_created: 0, streak: 0, app_days: [], app_days_count: 0, recent_activity: [] };
 
+    /* Ensure today's app visit is included even if this stats request races the auth listener. */
+    await _aqsRecordAppUse(user);
     var profileSnap = await getDoc(doc(db, 'users', user.uid));
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = profile.name || user.displayName || user.email || '';
