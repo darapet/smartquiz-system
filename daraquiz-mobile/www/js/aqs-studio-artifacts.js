@@ -45,6 +45,7 @@ function parseTable(markdown){
 function formatOptions(prompt){
  var p=String(prompt||'');
  var font=(p.match(/\b(?:font|typeface)(?:\s+family)?\s*(?:of|:|=|to)?\s*["']?([^,;\n]+?)(?=\s+\d{1,2}\s*(?:pt|point)|[,;\n]|$)/i)||[])[1];
+ if(!font)font=(p.match(/\b(Times New Roman|Arial|Calibri|Aptos|Cambria|Georgia|Verdana|Tahoma|Courier New)\s+font\b/i)||[])[1];
  var size=(p.match(/\b(\d{1,2})\s*(?:pt|point|points)\b/i)||[])[1];
  var line=(p.match(/\b(1(?:\.0|\.15|\.5|\.75)?|2(?:\.0)?)\s*(?:line\s*)?spacing\b/i)||[])[1];
  var margin=(p.match(/\b(\d+(?:\.\d+)?)\s*-?\s*(inch|inches|in|cm|mm)\s*margins?\b/i)||[]);
@@ -112,8 +113,8 @@ async function createArtifact(prompt,answer){
   var d=window.docx,children=parseBlocks(answer).map(function(b){
    if(b.type==='space')return new d.Paragraph({children:[new d.TextRun(' ')]});
    var po={children:[new d.TextRun({text:b.text,font:opts.font,size:opts.fontSize*2})],spacing:{after:120,line:Math.round(240*opts.lineSpacing)}};
-   if(b.type==='heading'){if(/^(translation|translated version|translated text)$/i.test(b.text))po.pageBreakBefore=true;po.alignment=opts.alignment;po.heading=b.level===1?d.HeadingLevel.HEADING_1:b.level===2?d.HeadingLevel.HEADING_2:d.HeadingLevel.HEADING_3;po.spacing.before=180;}
-   if(b.type!=='heading')po.alignment=opts.alignment;if(b.type==='bullet')po.bullet={indent:360};if(b.type==='number')po.numbering={reference:'studio-list',level:0};return new d.Paragraph(po);
+   if(b.type==='heading'){if(/^(translation|translated version|translated text)$/i.test(b.text))po.pageBreakBefore=true;po.alignment=opts.alignment==='CENTER'?d.AlignmentType.CENTER:opts.alignment==='RIGHT'?d.AlignmentType.RIGHT:opts.alignment==='JUSTIFIED'?d.AlignmentType.JUSTIFIED:d.AlignmentType.LEFT;po.heading=b.level===1?d.HeadingLevel.HEADING_1:b.level===2?d.HeadingLevel.HEADING_2:d.HeadingLevel.HEADING_3;po.spacing.before=180;}
+   if(b.type!=='heading')po.alignment=opts.alignment==='CENTER'?d.AlignmentType.CENTER:opts.alignment==='RIGHT'?d.AlignmentType.RIGHT:opts.alignment==='JUSTIFIED'?d.AlignmentType.JUSTIFIED:d.AlignmentType.LEFT;if(b.type==='bullet')po.bullet={indent:360};if(b.type==='number')po.numbering={reference:'studio-list',level:0};return new d.Paragraph(po);
   });
   var m=marginTwips(opts),doc=new d.Document({numbering:{config:[{reference:'studio-list',levels:[{level:0,format:'decimal',text:'%1.',alignment:'start',style:{paragraph:{indent:{left:720,hanging:260}}}}]}]},sections:[{properties:{page:{size:opts.paper==='letter'?{width:12240,height:15840}:{width:11906,height:16838},margin:{top:m,right:m,bottom:m,left:m}}},children:children}]});
   blob=await d.Packer.toBlob(doc);
@@ -126,7 +127,7 @@ async function createArtifact(prompt,answer){
    if(b.type==='space'){yp+=opts.fontSize*.45;return;}
    var heading=b.type==='heading';if(heading&&/^(translation|translated version|translated text)$/i.test(b.text)&&yp>mp) { pdf.addPage(); yp=mp; }pdf.setFont(fontStyle,heading?'bold':'normal');pdf.setFontSize(heading?Math.min(24,opts.fontSize+(4-b.level)*2):opts.fontSize);
    var value=(b.type==='bullet'?'• ':b.type==='number'?'– ':'')+b.text;
-   pdf.splitTextToSize(value,width).forEach(function(part){if(yp>pdf.internal.pageSize.getHeight()-mp){pdf.addPage();yp=mp;}var tx=opts.alignment==='CENTER'?mp+width/2:opts.alignment==='RIGHT'?mp+width:mp;pdf.text(part,tx,yp,{align:opts.alignment==='JUSTIFIED'?'left':opts.alignment.toLowerCase()});yp+=opts.fontSize*opts.lineSpacing;});yp+=heading?7:3;
+   pdf.splitTextToSize(value,width).forEach(function(part){if(yp>pdf.internal.pageSize.getHeight()-mp){pdf.addPage();yp=mp;}var tx=opts.alignment==='CENTER'?mp+width/2:opts.alignment==='RIGHT'?mp+width:mp;pdf.text(part,tx,yp,{align:opts.alignment==='JUSTIFIED'?'justify':opts.alignment.toLowerCase()});yp+=opts.fontSize*opts.lineSpacing;});yp+=heading?7:3;
   });
   blob=pdf.output('blob');
  }
