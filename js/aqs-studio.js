@@ -25,6 +25,8 @@
     var attachedFileName   = null;
     var attachedImageData  = null;
     var attachedImageName  = null;
+    var attachedFiles      = [];
+    var attachedImages     = [];
     var isSending          = false;
     var deepSearchEnabled   = false;
 
@@ -579,16 +581,18 @@
         chatHistory      = [];
         attachedFileText = null;
         attachedFileName = null;
+        attachedFiles = [];
+        attachedImages = [];
     }
 
     function saveSession() {
-        if (!conversationId || !chatHistory.length) return;
+        if (!conversationId || (!chatHistory.length && !attachedFiles.length && !attachedImages.length)) return;
         var sessions = loadSessions();
         var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
-        var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
+        var title = firstUser ? String(firstUser.content).slice(0, 55) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'Chat');
         if (title.length === 55) title += '\u2026';
-        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
+        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
@@ -605,6 +609,7 @@
     function deleteSession(id) {
         var sessions = loadSessions().filter(function (s) { return s.id !== id; });
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+        try { if (window.dtsStudioAttachmentStore) window.dtsStudioAttachmentStore.removeConversation(id); } catch (e) {}
     }
 
     function renderHistoryList() {
@@ -653,6 +658,13 @@
         if (!sess) return;
         conversationId = sess.id;
         chatHistory    = sess.messages.slice();
+        attachedFiles = [];
+        attachedImages = [];
+        attachedFileText = null;
+        attachedFileName = null;
+        attachedImageData = null;
+        attachedImageName = null;
+        restoreConversationAttachments(id);
 
         var messages = document.getElementById('dts-messages');
         var welcome  = document.getElementById('dts-welcome');
@@ -1215,115 +1227,166 @@
     /* ═══════════════════════════════════════════════════════════
        FILE ATTACHMENT
     ═══════════════════════════════════════════════════════════ */
+    function refreshAttachmentContext() {
+        attachedFileText = attachedFiles.map(function (file) {
+            return 'FILE: ' + file.name + '\n' + (file.text || '').slice(0, 12000);
+        }).join('\n\n--- NEXT FILE ---\n\n');
+        attachedFileName = attachedFiles.map(function (file) { return file.name; }).join(', ');
+        attachedImageData = attachedImages.length ? attachedImages[0].dataUrl : null;
+        attachedImageName = attachedImages.length ? attachedImages[0].name : null;
+    }
+
+    function renderAttachmentList() {
+        var status = document.getElementById('dts-file-status');
+        if (!status) return;
+        status.innerHTML = '';
+        var all = attachedFiles.concat(attachedImages);
+        if (!all.length) { status.style.display = 'none'; return; }
+        status.style.display = '';
+        var heading = document.createElement('div');
+        heading.className = 'dts-attachment-heading';
+        heading.textContent = all.length + ' file' + (all.length === 1 ? '' : 's') + ' attached to this conversation';
+        status.appendChild(heading);
+        all.forEach(function (file) {
+            var row = document.createElement('div');
+            row.className = 'dts-attachment-item';
+            var label = document.createElement('span');
+            label.className = 'dts-attachment-name';
+            label.textContent = (file.kind === 'image' ? '🖼️ ' : '📎 ') + file.name;
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'dts-attachment-remove';
+            remove.textContent = 'Remove';
+            remove.setAttribute('aria-label', 'Remove ' + file.name);
+            remove.addEventListener('click', function () { removeConversationAttachment(file.id); });
+            row.appendChild(label);
+            row.appendChild(remove);
+            status.appendChild(row);
+        });
+    }
+
+    function restoreConversationAttachments(id) {
+        var store = window.dtsStudioAttachmentStore;
+        if (!store || typeof store.list !== 'function') return Promise.resolve();
+        return store.list(id).then(function (items) {
+            if (conversationId !== id) return;
+            attachedFiles = items.filter(function (item) { return item.kind === 'document'; });
+            attachedImages = items.filter(function (item) { return item.kind === 'image'; });
+            refreshAttachmentContext();
+            renderAttachmentList();
+        }).catch(function (error) {
+            console.warn('[Studio AI] Could not restore conversation attachments:', error);
+        });
+    }
+
+    function persistConversationAttachment(item) {
+        var store = window.dtsStudioAttachmentStore;
+        if (!store || typeof store.save !== 'function') throw new Error('Persistent attachment storage is not ready. Refresh the page and try again.');
+        item.conversationId = conversationId;
+        item.createdAt = Date.now();
+        return store.save(item).then(function () {
+            if (item.kind === 'image') attachedImages.push(item);
+            else attachedFiles.push(item);
+            refreshAttachmentContext();
+            renderAttachmentList();
+            saveSession();
+            renderHistoryList();
+        });
+    }
+
+    function removeConversationAttachment(id) {
+        var store = window.dtsStudioAttachmentStore;
+        var remove = store && typeof store.remove === 'function' ? store.remove(id) : Promise.resolve();
+        remove.then(function () {
+            attachedFiles = attachedFiles.filter(function (file) { return file.id !== id; });
+            attachedImages = attachedImages.filter(function (file) { return file.id !== id; });
+            refreshAttachmentContext();
+            renderAttachmentList();
+            saveSession();
+        }).catch(function (error) {
+            alert('Could not remove this file. ' + (error && error.message || 'Please try again.'));
+        });
+    }
+
+    function makeAttachmentId() {
+        return 'att_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    }
+
     function clearFileAttachment() {
         attachedFileText = null;
         attachedFileName = null;
         attachedImageData = null;
         attachedImageName = null;
+        attachedFiles = [];
+        attachedImages = [];
         var status = document.getElementById('dts-file-status');
-        if (status) { status.style.display = 'none'; status.textContent = ''; }
+        if (status) { status.style.display = 'none'; status.innerHTML = ''; status.textContent = ''; }
         var fi = document.getElementById('dts-file-input');
         if (fi) fi.value = '';
         var ii = document.getElementById('dts-image-input');
         if (ii) ii.value = '';
     }
 
-    function handleImageAttach(file) {
+    async function handleImageAttach(file) {
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
+        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB per image.'); return; }
+        if (!/^image\//i.test(file.type)) { alert('Please choose an image file.'); return; }
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = ''; status.textContent = 'Reading ' + file.name + '…'; }
+        try {
+            var dataUrl = await new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function (e) { resolve(e.target.result); };
+                reader.onerror = function () { reject(new Error('Could not read image.')); };
+                reader.readAsDataURL(file);
+            });
+            await persistConversationAttachment({
+                id: makeAttachmentId(), kind: 'image', name: file.name, type: file.type,
+                size: file.size, dataUrl: dataUrl
+            });
+        } catch (error) {
+            if (status) status.textContent = 'Could not save ' + file.name + ': ' + (error.message || 'Please try again.');
+        }
+    }
+
+    async function handleFileAttach(file) {
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB per document.'); return; }
         var name = file.name;
-        var setStatus = function(txt) {
-            var s = document.getElementById('dts-file-status');
-            if (s) { s.style.display = ''; s.textContent = txt; }
-        };
-        setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            attachedImageData = e.target.result;
-            attachedImageName = name;
-            /* Clear any file attachment — image takes precedence */
-            attachedFileText = null;
-            attachedFileName = null;
-            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
-        };
-        reader.onerror = function() { setStatus('\u274C Could not read image'); };
-        reader.readAsDataURL(file);
+        var ext = name.split('.').pop().toLowerCase();
+        var text = '';
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = ''; status.textContent = 'Reading ' + name + '…'; }
+        try {
+            if (ext === 'pdf') {
+                if (typeof window.pdfjsLib === 'undefined') throw new Error('PDF reader is still loading. Please try again in a moment.');
+                var pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                var pages = [];
+                for (var pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+                    var page = await pdf.getPage(pageNo);
+                    var textContent = await page.getTextContent();
+                    pages.push(textContent.items.map(function (item) { return item.str; }).join(' '));
+                }
+                text = pages.join('\n\n');
+            } else if (ext === 'docx' || ext === 'doc') {
+                if (typeof window.mammoth === 'undefined') throw new Error('Word reader is still loading. Please try again in a moment.');
+                var result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+                text = result.value || '';
+            } else if (['txt', 'md', 'csv', 'json'].indexOf(ext) !== -1) {
+                text = await file.text();
+            } else {
+                throw new Error('Unsupported file type. Use PDF, DOCX, TXT, MD, CSV or JSON.');
+            }
+            if (!String(text).trim()) throw new Error('This file appears to contain no readable text.');
+            await persistConversationAttachment({
+                id: makeAttachmentId(), kind: 'document', name: name, type: file.type || ext,
+                size: file.size, text: String(text)
+            });
+        } catch (error) {
+            if (status) { status.style.display = ''; status.textContent = 'Could not read ' + name + ': ' + (error.message || 'Please try again.'); }
+        }
     }
 
-    function handleFileAttach(file) {
-        if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB.'); return; }
-
-        var name  = file.name;
-        var ext   = name.split('.').pop().toLowerCase();
-        var setStatus = function (txt) {
-            var s = document.getElementById('dts-file-status');
-            if (s) { s.style.display = ''; s.textContent = txt; }
-        };
-
-        /* PDF */
-        if (ext === 'pdf') {
-            if (typeof window.pdfjsLib === 'undefined') {
-                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
-                setTimeout(function () { handleFileAttach(file); }, 1800);
-                return;
-            }
-            setStatus('\uD83D\uDCCE Reading PDF\u2026');
-            var r1 = new FileReader();
-            r1.onload = function (e) {
-                window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
-                    var texts = [], done = 0, total = pdf.numPages;
-                    for (var p = 1; p <= total; p++) {
-                        (function (pn) {
-                            pdf.getPage(pn).then(function (pg) {
-                                return pg.getTextContent();
-                            }).then(function (tc) {
-                                texts[pn - 1] = tc.items.map(function (i) { return i.str; }).join(' ');
-                                done++;
-                                if (done === total) {
-                                    attachedFileText = texts.join('\n\n');
-                                    attachedFileName = name;
-                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
-                                }
-                            });
-                        })(p);
-                    }
-                }).catch(function () { setStatus('\u274C Could not read PDF'); });
-            };
-            r1.readAsArrayBuffer(file);
-            return;
-        }
-
-        /* DOCX */
-        if (ext === 'docx' || ext === 'doc') {
-            if (typeof mammoth === 'undefined') {
-                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
-                setTimeout(function () { handleFileAttach(file); }, 1800);
-                return;
-            }
-            setStatus('\uD83D\uDCCE Reading document\u2026');
-            var r2 = new FileReader();
-            r2.onload = function (e) {
-                mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
-                    attachedFileText = result.value;
-                    attachedFileName = name;
-                    setStatus('\uD83D\uDCCE ' + name + ' attached');
-                }).catch(function () { setStatus('\u274C Could not read document'); });
-            };
-            r2.readAsArrayBuffer(file);
-            return;
-        }
-
-        /* Plain text: txt, md, csv, json, etc. */
-        var r3 = new FileReader();
-        r3.onload = function (e) {
-            attachedFileText = e.target.result;
-            attachedFileName = name;
-            setStatus('\uD83D\uDCCE ' + name + ' attached');
-        };
-        r3.onerror = function () { setStatus('\u274C Could not read file'); };
-        r3.readAsText(file);
-    }
 
     /* ═══════════════════════════════════════════════════════════
        VOICE MODE
