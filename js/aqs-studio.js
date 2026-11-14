@@ -958,8 +958,11 @@
 
         /* Snapshot and clear attachments before async work */
         var snapImages = attachedImages.slice();
-        var snapImageData = snapImages.length ? snapImages[0].dataUrl : attachedImageData;
-        var snapImageName = snapImages.length ? snapImages[0].name : attachedImageName;
+        if (!snapImages.length && attachedImageData) {
+            snapImages.push({ dataUrl: attachedImageData, name: attachedImageName || 'image attachment' });
+        }
+        var snapImageData = snapImages.length ? snapImages[0].dataUrl : null;
+        var snapImageName = snapImages.length ? snapImages[0].name : null;
 
         /* Build user content */
         var userContent = text;
