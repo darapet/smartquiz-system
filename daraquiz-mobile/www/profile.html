@@ -134,6 +134,27 @@
       body[data-aqs-page="profile"] .prf-danger-row{align-items:flex-start;gap:12px}
     }
     @media(prefers-reduced-motion:reduce){body[data-aqs-page="profile"] *{scroll-behavior:auto!important;transition:none!important}}
+    body[data-aqs-page="profile"] .prf-learning-dashboard{width:min(100%,980px);margin:0 auto 22px}
+    body[data-aqs-page="profile"] .prf-learning-heading{display:flex;align-items:end;justify-content:space-between;gap:14px;margin:0 0 13px}
+    body[data-aqs-page="profile"] .prf-learning-eyebrow{display:block;color:#7771cb;font-size:.66rem;font-weight:850;letter-spacing:.14em;margin-bottom:4px}
+    body[data-aqs-page="profile"] .prf-learning-heading h2{margin:0;color:#17243a;font-size:1.25rem;font-weight:850;letter-spacing:-.035em}
+    body[data-aqs-page="profile"] .prf-learning-heading p{margin:4px 0 0;color:#7b879b;font-size:.8rem}
+    body[data-aqs-page="profile"] .prf-learning-link{flex:0 0 auto;padding:9px 12px;border-radius:11px;background:#f0efff;color:#5146bd;text-decoration:none;font-size:.78rem;font-weight:750}
+    body[data-aqs-page="profile"] .prf-learning-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    body[data-aqs-page="profile"] .prf-learning-card{min-width:0;min-height:132px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;padding:17px 19px;background:#fff;border:1px solid #e7ebf3;border-radius:18px;box-shadow:0 5px 18px rgba(24,39,75,.045)}
+    body[data-aqs-page="profile"] .prf-learning-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#f0efff;font-size:1.08rem}
+    body[data-aqs-page="profile"] .prf-learning-value{color:#17243a;font-size:1.85rem;font-weight:850;line-height:1.1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+    body[data-aqs-page="profile"] .prf-learning-label{color:#526078;font-size:.8rem;font-weight:750}
+    body[data-aqs-page="profile"] .prf-streak-card{background:linear-gradient(145deg,#fff,#f7f6ff);border-color:#dcd9ff}
+    body[data-aqs-page="profile"] .prf-streak-card .prf-learning-icon{background:#fff0e6}
+    body[data-aqs-page="profile"] .prf-streak-caption{color:#8993a5;font-size:.69rem}
+    body[data-aqs-page="profile"] .prf-recent-activity{margin-top:13px;padding:17px 19px;background:#fff;border:1px solid #e7ebf3;border-radius:18px;box-shadow:0 5px 18px rgba(24,39,75,.035)}
+    body[data-aqs-page="profile"] .prf-recent-title{margin-bottom:10px;color:#25334a;font-size:.9rem;font-weight:800}
+    body[data-aqs-page="profile"] .prf-quiz-activity-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #edf0f5}
+    body[data-aqs-page="profile"] .prf-quiz-activity-text{color:#344258;font-size:.79rem;line-height:1.45}
+    body[data-aqs-page="profile"] .prf-quiz-activity-time{flex:0 0 auto;color:#8792a5;font-size:.69rem}
+    @media(max-width:620px){body[data-aqs-page="profile"] .prf-learning-grid{gap:8px}body[data-aqs-page="profile"] .prf-learning-card{min-height:116px;padding:12px 10px}body[data-aqs-page="profile"] .prf-learning-value{font-size:1.5rem}body[data-aqs-page="profile"] .prf-learning-label{font-size:.68rem}body[data-aqs-page="profile"] .prf-learning-heading{align-items:flex-start}body[data-aqs-page="profile"] .prf-learning-link{font-size:.69rem;padding:8px}
+      body[data-aqs-page="profile"] .prf-quiz-activity-item{align-items:flex-start;flex-direction:column;gap:3px}}
   </style>
 </head>
 <body style="background:#faf3ea;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
@@ -194,6 +215,26 @@
       </a>
     </div>
   </div>
+
+  <!-- LEARNING DASHBOARD STATS -->
+  <section class="prf-learning-dashboard" aria-labelledby="prf-learning-title">
+    <div class="prf-learning-heading">
+      <div><span class="prf-learning-eyebrow">YOUR PROGRESS</span><h2 id="prf-learning-title">Learning Dashboard</h2><p>Live totals from your quiz activity</p></div>
+      <a href="user-dashboard.html" class="prf-learning-link">Full dashboard →</a>
+    </div>
+    <div class="prf-learning-grid">
+      <article class="prf-learning-card">
+        <span class="prf-learning-icon">🧠</span><span class="prf-learning-value" id="prf-quizzes-taken">—</span><span class="prf-learning-label">Quizzes Taken</span>
+      </article>
+      <article class="prf-learning-card">
+        <span class="prf-learning-icon">✍️</span><span class="prf-learning-value" id="prf-quizzes-created">—</span><span class="prf-learning-label">Quizzes Created</span>
+      </article>
+      <article class="prf-learning-card prf-streak-card">
+        <span class="prf-learning-icon">🔥</span><span class="prf-learning-value" id="prf-current-streak">—</span><span class="prf-learning-label">Current Streak</span><span class="prf-streak-caption" id="prf-streak-caption">Consecutive active days</span>
+      </article>
+    </div>
+    <div class="prf-recent-activity"><div class="prf-recent-title">Recent Quiz Activity</div><div id="prf-quiz-activity"><div class="prf-empty">Loading quiz activity…</div></div></div>
+  </section>
 
   <!-- ACCOUNT INFO -->
   <div class="prf-card">
@@ -283,6 +324,10 @@
 
 <div class="lib-toast" id="lib-toast"></div>
 
+<script>
+window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.html', create_page_url:'quiz-setup.html', studio_url:'studio.html', dashboard_url:'dashboard.html', is_logged_in:true, is_host:false, is_admin:false, current_user_role:'Member', groq_key:'', plugin_url:'./' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
 <script type="module" src="js/aqs-library.js?v=20260922-profile-upload"></script>
 <script type="module">
@@ -299,6 +344,7 @@
     _user = user;
     document.getElementById('prf-main').style.display='block';
     await loadProfile();
+    await loadLearningStats();
   });
 
   async function loadProfile() {
@@ -345,6 +391,42 @@
             <div class="prf-activity-time">${window.libFormatTime(b.createdAt)} · ${b.views||0} readers · ${b.likes||0} likes</div>
           </div>
         </div>`).join('');
+    }
+  }
+
+  async function loadLearningStats() {
+    const takenEl = document.getElementById('prf-quizzes-taken');
+    const createdEl = document.getElementById('prf-quizzes-created');
+    const streakEl = document.getElementById('prf-current-streak');
+    const activityEl = document.getElementById('prf-quiz-activity');
+    try {
+      const response = await jQuery.post(AQS.ajax_url, { action: 'aqs_get_my_stats' });
+      const stats = response && response.data !== undefined ? response.data : response;
+      if (!stats) throw new Error('No stats returned');
+      takenEl.textContent = Number(stats.quizzes_taken || 0).toLocaleString();
+      createdEl.textContent = Number(stats.quizzes_created || 0).toLocaleString();
+      const streak = Math.max(0, Number(stats.streak || 0));
+      streakEl.textContent = streak + (streak === 1 ? ' day' : ' days');
+      document.getElementById('prf-streak-caption').textContent = streak ? 'Keep your learning going!' : 'Complete a quiz to start your streak';
+      const activities = Array.isArray(stats.recent_activity) ? stats.recent_activity : [];
+      activityEl.innerHTML = activities.length ? activities.map(item => {
+        const row = document.createElement('div');
+        row.className = 'prf-quiz-activity-item';
+        const detail = document.createElement('span');
+        detail.className = 'prf-quiz-activity-text';
+        detail.textContent = String(item.text || 'Completed a quiz').replace(/<[^>]*>/g, '');
+        const time = document.createElement('time');
+        time.className = 'prf-quiz-activity-time';
+        time.textContent = item.time || '';
+        row.append(detail, time);
+        return row.outerHTML;
+      }).join('') : '<div class="prf-empty">No quiz activity yet. Complete a quiz to see your progress here.</div>';
+    } catch (error) {
+      console.warn('[profile] learning stats unavailable', error);
+      takenEl.textContent = '—';
+      createdEl.textContent = '—';
+      streakEl.textContent = '—';
+      activityEl.innerHTML = '<div class="prf-empty">Quiz statistics are temporarily unavailable.</div>';
     }
   }
 
