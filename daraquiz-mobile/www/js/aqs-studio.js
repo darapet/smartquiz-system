@@ -57,6 +57,7 @@
 
         '\n\n## LANGUAGE & TONE RULES:' +
         '\n- Detect the user\'s language and respond in the same language, including Nigerian English and Pidgin when the user uses them.' +
+        '\n- When an uploaded image contains readable text, extract it carefully, identify its language automatically, and translate only when the user asks.' +
         '\n- Respect Nigerian student context, local examples, school terminology and Nigerian English without stereotyping.' +
         '\n- Match the user\'s formality and energy while staying clear, respectful and accurate.' +
 
