@@ -13,7 +13,7 @@ function detectFormat(prompt){
  var p=String(prompt||'').toLowerCase();
  var asks=/\b(as|in|into|to|download|export|save|file|document|format|give me|provide|create|make|deliver|send me)\b/i.test(p);
  if(!asks)return null;
- if(/\b(docx|word(?: document| file)?|microsoft word)\b/i.test(p))return'docx';
+ if(/\b(docx|doc|word(?: document| file)?|microsoft word)\b/i.test(p))return'docx';
  if(/\bpdf\b/i.test(p))return'pdf';
  if(/\b(txt|text file|plain text)\b/i.test(p))return'txt';
  if(/\b(csv|comma[- ]separated)\b/i.test(p))return'csv';
@@ -49,7 +49,7 @@ function formatOptions(prompt){
  var margin=(p.match(/\b(\d+(?:\.\d+)?)\s*(inch|inches|in|cm|mm)\s*margins?\b/i)||[]);
  var paper=/\bletter\b/i.test(p)?'letter':'a4',fontName=font?font.trim():'Arial';
  if(/times/i.test(fontName))fontName='Times New Roman';else if(/arial|helvetica/i.test(fontName))fontName='Arial';
- return{font:fontName,fontSize:Math.max(8,Math.min(36,parseInt(size,10)||11)),lineSpacing:parseFloat(line)||1.15,marginValue:margin[1]?parseFloat(margin[1]):1,marginUnit:margin[2]||'inch',paper:paper};
+ return{font:fontName,fontSize:Math.max(8,Math.min(36,parseInt(size,10)||11)),lineSpacing:parseFloat(line)||1.15,marginValue:margin[1]?parseFloat(margin[1]):1,marginUnit:margin[2]||'inch',paper:paper,alignment:/\\b(justified|justify)\\b/i.test(p)?'JUSTIFIED':/\\b(center|centred|centered)\\b/i.test(p)?'CENTER':/\\b(right[- ]aligned|align(?:ment)?\\s+right)\\b/i.test(p)?'RIGHT':'LEFT'};
 }
 function marginTwips(o){var n=o.marginValue;if(o.marginUnit==='cm')n*=567;else if(o.marginUnit==='mm')n*=56.7;else n*=1440;return Math.round(n);}
 function parseBlocks(markdown){
@@ -101,8 +101,8 @@ async function createArtifact(prompt,answer){
   var d=window.docx,children=parseBlocks(answer).map(function(b){
    if(b.type==='space')return new d.Paragraph({children:[new d.TextRun(' ')]});
    var po={children:[new d.TextRun({text:b.text,font:opts.font,size:opts.fontSize*2})],spacing:{after:120,line:Math.round(240*opts.lineSpacing)}};
-   if(b.type==='heading'){po.heading=b.level===1?d.HeadingLevel.HEADING_1:b.level===2?d.HeadingLevel.HEADING_2:d.HeadingLevel.HEADING_3;po.spacing.before=180;}
-   if(b.type==='bullet')po.bullet={indent:360};if(b.type==='number')po.numbering={reference:'studio-list',level:0};return new d.Paragraph(po);
+   if(b.type==='heading'){if(/^(translation|translated version|translated text)$/i.test(b.text))po.pageBreakBefore=true;po.alignment=opts.alignment;po.heading=b.level===1?d.HeadingLevel.HEADING_1:b.level===2?d.HeadingLevel.HEADING_2:d.HeadingLevel.HEADING_3;po.spacing.before=180;}
+   if(b.type!=='heading')po.alignment=opts.alignment;if(b.type==='bullet')po.bullet={indent:360};if(b.type==='number')po.numbering={reference:'studio-list',level:0};return new d.Paragraph(po);
   });
   var m=marginTwips(opts),doc=new d.Document({numbering:{config:[{reference:'studio-list',levels:[{level:0,format:'decimal',text:'%1.',alignment:'start',style:{paragraph:{indent:{left:720,hanging:260}}}}]}]},sections:[{properties:{page:{size:opts.paper==='letter'?{width:12240,height:15840}:{width:11906,height:16838},margin:{top:m,right:m,bottom:m,left:m}}},children:children}]});
   blob=await d.Packer.toBlob(doc);
@@ -113,9 +113,9 @@ async function createArtifact(prompt,answer){
   pdf.setFont(fontStyle,'normal');pdf.setFontSize(opts.fontSize);
   parseBlocks(answer).forEach(function(b){
    if(b.type==='space'){yp+=opts.fontSize*.45;return;}
-   var heading=b.type==='heading';pdf.setFont(fontStyle,heading?'bold':'normal');pdf.setFontSize(heading?Math.min(24,opts.fontSize+(4-b.level)*2):opts.fontSize);
+   var heading=b.type==='heading';if(heading&&/^(translation|translated version|translated text)$/i.test(b.text)&&yp>mp) { pdf.addPage(); yp=mp; }pdf.setFont(fontStyle,heading?'bold':'normal');pdf.setFontSize(heading?Math.min(24,opts.fontSize+(4-b.level)*2):opts.fontSize);
    var value=(b.type==='bullet'?'• ':b.type==='number'?'– ':'')+b.text;
-   pdf.splitTextToSize(value,width).forEach(function(part){if(yp>pdf.internal.pageSize.getHeight()-mp){pdf.addPage();yp=mp;}pdf.text(part,mp,yp);yp+=opts.fontSize*opts.lineSpacing;});yp+=heading?7:3;
+   pdf.splitTextToSize(value,width).forEach(function(part){if(yp>pdf.internal.pageSize.getHeight()-mp){pdf.addPage();yp=mp;}var tx=opts.alignment==='CENTER'?mp+width/2:opts.alignment==='RIGHT'?mp+width:mp;pdf.text(part,tx,yp,{align:opts.alignment==='JUSTIFIED'?'left':opts.alignment.toLowerCase()});yp+=opts.fontSize*opts.lineSpacing;});yp+=heading?7:3;
   });
   blob=pdf.output('blob');
  }
