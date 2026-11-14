@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/aqs-pwa.css">
     <link rel="stylesheet" href="css/aqs-style.css">
     <link rel="stylesheet" href="css/aqs-sidebar.css">
-    <link rel="stylesheet" href="css/aqs-studio.css?v=20261111-studio-features-2">
+    <link rel="stylesheet" href="css/aqs-studio.css?v=20261114-studio-phase2">
     <link rel="stylesheet" href="css/aqs-splash.css">
     <style>
         .aqs-full-page-body{background:linear-gradient(135deg,#faf3ea,#ffffff)}
@@ -124,7 +124,6 @@
 /* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
 @media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 
-/* exact text overlay animator, shares the existing + image upload input */
 #dts-flyer-overlay{margin:12px 20px 18px;padding:16px;background:#fff;border:1px solid #eee2d3;border-radius:16px;color:#12304a;box-shadow:0 5px 20px rgba(18,48,74,.07)}
 #dts-flyer-overlay[hidden]{display:none!important}
 #dts-flyer-overlay h2{font-size:1rem;margin:0 0 4px;color:#12304a}#dts-flyer-overlay p{font-size:.82rem;color:#627387;margin:4px 0 10px}
@@ -369,8 +368,7 @@
     </div>
     <main id="dts-main" class="dts-main">
         <div id="dts-messages" class="dts-messages"></div>
-        <section id="dts-flyer-overlay" class="dts-flyer-overlay" hidden aria-label="Animate text over flyer"><div class="dts-flyer-controls"><h2>animate exact text on your flyer</h2><p>your words stay real text, not AI-redrawn. attach the image with + image upload to begin</p><label for="dts-flyer-text">text to animate</label><textarea id="dts-flyer-text" maxlength="500" placeholder="your exact headline
-a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-effect">animation</label><select id="dts-flyer-effect"><option value="fade">fade-in</option><option value="slide">slide</option><option value="bounce">bounce</option><option value="glow">glow</option></select><label for="dts-flyer-color">color</label><input id="dts-flyer-color" type="color" value="#ffffff"><label for="dts-flyer-size">size</label><input id="dts-flyer-size" type="range" min="18" max="72" value="38"><span id="dts-flyer-size-value">38px</span><button id="dts-flyer-play" type="button" disabled>▶ play animation</button><button id="dts-flyer-record" type="button" disabled>record WebM</button></div><p id="dts-flyer-status" aria-live="polite">upload a flyer from the + menu</p></div><div class="dts-flyer-stage"><img id="dts-flyer-preview" alt="your uploaded flyer"><div id="dts-flyer-overlay-text" class="dts-flyer-overlay-text"></div></div></section>
+
         <div id="dts-welcome" class="dts-welcome">
             <div class="dts-welcome-icon">
                 <svg width="64" height="64" viewBox="0 0 36 36" fill="none">
@@ -522,8 +520,8 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
-<script src="js/aqs-studio.js?v=20261111-lucid-auto-routing"></script>
-<script src="js/aqs-studio-flyer-overlay.js"></script>
+<script src="js/aqs-studio.js?v=20261114-studio-phase2"></script>
+
 <script>
 (function(){
     var toggle=document.getElementById('aqs-sidebar-toggle');
