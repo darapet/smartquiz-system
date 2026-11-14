@@ -2856,16 +2856,21 @@ async function actionGetMyStats() {
         attempts.sort(function(a, b) { return b._ms - a._ms; });
     }
 
-    /* Day streak — consecutive days with at least one attempt (counting back from today) */
+    /* Current day streak — count consecutive local calendar days with a completed quiz.
+       If the user has not completed a quiz today, yesterday may still anchor an active streak. */
     var streak = 0;
     if (attempts.length) {
         var days = new Set(attempts.filter(function(a) { return a._ms; }).map(function(a) {
             return new Date(a._ms).toDateString();
         }));
-        var d = new Date();
-        while (days.has(d.toDateString())) {
+        var today = new Date();
+        var cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (!days.has(cursor.toDateString())) {
+            cursor.setDate(cursor.getDate() - 1);
+        }
+        while (days.has(cursor.toDateString())) {
             streak++;
-            d.setDate(d.getDate() - 1);
+            cursor.setDate(cursor.getDate() - 1);
         }
     }
 
