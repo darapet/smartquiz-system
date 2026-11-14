@@ -32,7 +32,7 @@
     .slider{position:absolute;inset:0;border-radius:999px;background:#faf3ea;border:1px solid #3b465d;cursor:pointer;transition:.18s}
     .slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#526579;border-radius:50%;transition:.18s}
     .switch input:checked + .slider{background:#ffffff;border-color:#e8912d}
-    .switch input:checked + .slider:before{transform:translateX(20px);background:#fff}
+    .switch input:checked + .slider:before{transform:translateX(20px);background:#e8912d}
     .switch input:focus-visible + .slider{outline:2px solid #8b4d09;outline-offset:2px}
     .actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:18px}
     button{font:inherit}
@@ -251,7 +251,7 @@
     </section>
   </main>
 
-  <script type="module" src="js/aqs-firebase.js?v=settings-refresh-1"></script>
+  <script type="module" src="js/aqs-firebase.js?v=settings-refresh-2"></script>
   <script type="module">
     import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -425,7 +425,7 @@
       if (code.length !== 6) { setStatus('otp-status', 'Enter the six-digit code.', 'error'); return; }
       $('verify-otp').disabled = true;
       setStatus('otp-status', 'Verifying…');
-      const result = await runAqsAction({ action:'aqs_verify_otp', otp:code });
+      const result = await runAqsAction({ action:'aqs_verify_otp', purpose:'password_change', otp:code });
       if (!result.success) {
         setStatus('otp-status', result.data || 'That code is not valid.', 'error');
         $('verify-otp').disabled = false;
