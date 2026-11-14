@@ -675,6 +675,7 @@
         conversationId = sess.id;
         chatHistory    = sess.messages.slice();
         try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
+        imageDesignSessionActive = chatHistory.some(function (message) { return message.role === 'assistant' && typeof message.content === 'string' && /pro feature and is coming soon/i.test(message.content); });
         attachedFiles = [];
         attachedImages = [];
         lastGeneratedArtifact = null;
@@ -908,7 +909,8 @@
             /\b(create|generate|make|draw|show|give|produce|render|i need|i want)\b/i.test(text)) ||
             /^\s*(image|picture|photo)\s+of\b/i.test(text);
 
-        if (text && !attachedFileText && !attachedImageData && PRO_DESIGN_INTENT) {
+        if (text && !attachedFileText && !attachedImageData && (PRO_DESIGN_INTENT || (imageDesignSessionActive && !ORDINARY_IMAGE_INTENT))) {
+            imageDesignSessionActive = true;
             isSending = true; setSendState(true);
             var designInput = document.getElementById('dts-input');
             if (designInput) { designInput.value = ''; designInput.style.height = 'auto'; }
@@ -923,6 +925,7 @@
         }
 
         if (text && !attachedFileText && !attachedImageData && ORDINARY_IMAGE_INTENT) {
+            imageDesignSessionActive = false;
             isSending = true; setSendState(true);
             var imageInput = document.getElementById('dts-input');
             if (imageInput) { imageInput.value = ''; imageInput.style.height = 'auto'; }
