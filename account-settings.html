@@ -214,13 +214,7 @@
       <div class="card-body">
         <div class="visibility-row"><div class="visibility-label">Display name<span class="visibility-help">The name shown on your profile.</span></div><label class="switch"><input type="checkbox" data-visibility="displayName"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Profile photo<span class="visibility-help">Your avatar and profile image.</span></div><label class="switch"><input type="checkbox" data-visibility="photoURL"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Bio<span class="visibility-help">Your short introduction.</span></div><label class="switch"><input type="checkbox" data-visibility="bio"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Education<span class="visibility-help">School, institution, department, and major.</span></div><label class="switch"><input type="checkbox" data-visibility="education"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Location<span class="visibility-help">Your address and general location.</span></div><label class="switch"><input type="checkbox" data-visibility="location"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Phone number<span class="visibility-help">Your contact phone number.</span></div><label class="switch"><input type="checkbox" data-visibility="phone"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Email address<span class="visibility-help">The email shown in your SmartQuiz profile.</span></div><label class="switch"><input type="checkbox" data-visibility="email"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Date of birth<span class="visibility-help">Your date of birth.</span></div><label class="switch"><input type="checkbox" data-visibility="dateOfBirth"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Relationship details<span class="visibility-help">Marital status and partner name.</span></div><label class="switch"><input type="checkbox" data-visibility="relationship"><span class="slider"></span></label></div>
         <div class="actions"><div id="privacy-status" class="status" role="status"></div><button class="btn btn-primary" id="save-privacy">Save visibility settings</button></div>
       </div>
     </section>
@@ -266,7 +260,7 @@
     const app = getApp();
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const defaults = { displayName:true, photoURL:true, bio:true, education:true, location:false, phone:false, email:false, dateOfBirth:false, relationship:false };
+    const defaults = { displayName:true, photoURL:true, education:true };
     let user = null;
     let profileVisibility = { ...defaults };
     let otpVerified = false;
@@ -286,7 +280,7 @@
       });
     }
     function visibilityFromForm() {
-      const next = {};
+      const next = { ...profileVisibility };
       document.querySelectorAll('[data-visibility]').forEach((input) => { next[input.dataset.visibility] = input.checked; });
       return next;
     }
