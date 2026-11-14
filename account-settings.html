@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#faf3ea">
-  <title>Settings &amp; privacy — StudyCo</title>
+  <title>Settings &amp; privacy — SmartQuiz</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{color-scheme:dark;--bg:#faf3ea;--panel:#ffffff;--panel-2:#ffffff;--line:rgba(148,163,184,.16);--text:#12304a;--muted:#526579;--accent:#e8912d;--success:#34d399;--danger:#fb7185}
@@ -175,27 +175,25 @@
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
 <body class="settings-page" data-aqs-page="account-settings" data-aqs-page-group="settings/account">
-<header class="aqs-phase2-page-header" aria-label="Settings &amp; privacy"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Settings &amp; privacy</span></header>
-
-  <header class="settings-header">
-    <a class="brand" href="dashboard.html"><span class="brand-mark">⚡</span>StudyCo</a>
+<header class="settings-header">
+    <a class="brand" href="index.html"><span class="brand-mark">⚡</span>SmartQuiz</a>
     <a class="back" href="profile.html">← Back to profile</a>
   </header>
 
   <main>
     <h1>Settings &amp; privacy</h1>
-    <p class="intro">Manage your StudyCo profile, privacy, and account preferences.</p>
+    <p class="intro">Manage your SmartQuiz profile, privacy, and account preferences.</p>
     <label class="settings-search" for="settings-search"><span class="settings-search-icon" aria-hidden="true">⌕</span><span class="visually-hidden">Search settings</span><input id="settings-search" type="search" placeholder="Search settings" autocomplete="off"></label>
     <div class="settings-groups">
       <section class="settings-group" data-settings-group>
         <div class="settings-group-heading"><h2>Account</h2><p>Your information and sign-in security.</p></div>
-        <a class="settings-item" href="studyco-meet.html#profile" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Personal information</strong><small>View and edit your StudyCo profile details.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="profile.html" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Personal information</strong><small>View and edit your StudyCo profile details.</small></span><b aria-hidden="true">›</b></a>
         <a class="settings-item" href="#password-security" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><span><strong>Password and security</strong><small>Secure your account and change your password.</small></span><b aria-hidden="true">›</b></a>
       </section>
       <section class="settings-group" data-settings-group>
         <div class="settings-group-heading"><h2>Preferences</h2><p>Choose how StudyCo works for you.</p></div>
-        <a class="settings-item" href="studyco-meet.html#home" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h8M8 17h5"/></svg></span><span><strong>News Feed</strong><small>Return to your study circle and posts.</small></span><b aria-hidden="true">›</b></a>
-        <a class="settings-item" href="studyco-meet.html#notifications" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><span><strong>Notifications</strong><small>See friend requests and recent activity.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="user-dashboard.html" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h8M8 17h5"/></svg></span><span><strong>News Feed</strong><small>Return to your study circle and posts.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="notifications.html" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><span><strong>Notifications</strong><small>See friend requests and recent activity.</small></span><b aria-hidden="true">›</b></a>
       </section>
       <section class="settings-group" data-settings-group>
         <div class="settings-group-heading"><h2>Audience and visibility</h2><p>Control who can see your profile information.</p></div>
@@ -220,7 +218,7 @@
         <div class="visibility-row"><div class="visibility-label">Education<span class="visibility-help">School, institution, department, and major.</span></div><label class="switch"><input type="checkbox" data-visibility="education"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Location<span class="visibility-help">Your address and general location.</span></div><label class="switch"><input type="checkbox" data-visibility="location"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Phone number<span class="visibility-help">Your contact phone number.</span></div><label class="switch"><input type="checkbox" data-visibility="phone"><span class="slider"></span></label></div>
-        <div class="visibility-row"><div class="visibility-label">Email address<span class="visibility-help">The email shown in your StudyCo profile.</span></div><label class="switch"><input type="checkbox" data-visibility="email"><span class="slider"></span></label></div>
+        <div class="visibility-row"><div class="visibility-label">Email address<span class="visibility-help">The email shown in your SmartQuiz profile.</span></div><label class="switch"><input type="checkbox" data-visibility="email"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Date of birth<span class="visibility-help">Your date of birth.</span></div><label class="switch"><input type="checkbox" data-visibility="dateOfBirth"><span class="slider"></span></label></div>
         <div class="visibility-row"><div class="visibility-label">Relationship details<span class="visibility-help">Marital status and partner name.</span></div><label class="switch"><input type="checkbox" data-visibility="relationship"><span class="slider"></span></label></div>
         <div class="actions"><div id="privacy-status" class="status" role="status"></div><button class="btn btn-primary" id="save-privacy">Save visibility settings</button></div>
@@ -259,7 +257,7 @@
     </section>
   </main>
 
-  <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
+  <script type="module" src="js/aqs-firebase.js?v=settings-refresh-1"></script>
   <script type="module">
     import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
