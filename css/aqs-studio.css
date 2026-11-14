@@ -937,3 +937,10 @@ main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom))
 .dts-document-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .dts-document-actions button{border:1px solid #ead9c5;border-radius:9px;background:#fffaf3;color:#1c2b3a;padding:8px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
 .dts-document-actions button:hover{background:#fff1dc;border-color:#e8912d}
+
+
+/* Studio AI Phase 2 — compact file delivery (no inline document preview). */
+.dts-artifact-download-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px}
+.dts-artifact-download-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:0;border-radius:10px;background:#e8912d;color:#17324d!important;text-decoration:none!important;font-size:.88rem;font-weight:700;box-shadow:0 3px 10px rgba(18,48,74,.12);transition:transform .15s,filter .15s}
+.dts-artifact-download-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.dts-artifact-filename{font-size:.75rem;color:var(--dts-muted,#526579);overflow-wrap:anywhere}
