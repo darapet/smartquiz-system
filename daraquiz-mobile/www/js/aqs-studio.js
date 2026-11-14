@@ -808,50 +808,40 @@
         return wrap;
     }
     function wantsDownloadableDocument(prompt) {
-        return /\b(download|export|save|give me|provide|send me|create|make)\b/i.test(prompt || '') &&
-          /\b(file|document|docx|word|pdf)\b/i.test(prompt || '');
-    }
-    function loadStudioLibrary(src, test) {
-        return new Promise(function(resolve,reject) {
-            if (test()) return resolve();
-            var existing = document.querySelector('script[data-studio-library="'+src+'"]');
-            if (existing) { existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
-            var script=document.createElement('script');script.src=src;script.async=true;script.dataset.studioLibrary=src;
-            script.onload=resolve;script.onerror=function(){reject(new Error('Could not load document export library.'));};
-            document.head.appendChild(script);
-        });
-    }
-    async function downloadAIArtifact(prompt, answer) {
-        var isPdf = /\bpdf\b/i.test(prompt || '');
-        var isDocx = /\b(docx|word)\b/i.test(prompt || '');
-        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\s+["“]?([^"”.,!?]+)["”]?/i);
-        var name=(titleMatch?titleMatch[1]:'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'XZILY-AI-Document';
-        var plain=String(answer||'').replace(/\r/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*_`#>]/g,'');
-        if(isPdf){
-            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF);});
-            var pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
-            var margin=48,width=pdf.internal.pageSize.getWidth()-margin*2,y=margin;
-            pdf.setFont('helvetica','normal');pdf.setFontSize(11);
-            plain.split(/\n/).forEach(function(line){
-                var wrapped=pdf.splitTextToSize(line||' ',width);
-                wrapped.forEach(function(part){if(y>pdf.internal.pageSize.getHeight()-margin){pdf.addPage();y=margin;}pdf.text(part,margin,y);y+=16;});
-                y+=5;
-            });
-            pdf.save(name+'.pdf');return true;
-        }
-        if(isDocx){
-            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',function(){return !!window.docx;});
-            var d=window.docx;
-            var paragraphs=plain.split(/\n/).map(function(line){return new d.Paragraph({children:[new d.TextRun(line||' ')]});});
-            var doc=new d.Document({sections:[{children:paragraphs}]});
-            var blob=await d.Packer.toBlob(doc);var url=URL.createObjectURL(blob);
-            var a=document.createElement('a');a.href=url;a.download=name+'.docx';document.body.appendChild(a);a.click();a.remove();
-            setTimeout(function(){URL.revokeObjectURL(url);},5000);return true;
-        }
-        appendMessage('assistant','Please specify PDF or DOCX so I can create the correct downloadable file.');
-        return false;
+        return !!(window.dtsStudioArtifacts && window.dtsStudioArtifacts.detectFormat(prompt));
     }
 
+    function deliverAIArtifact(prompt, answer) {
+        showTyping(true, 'Preparing your downloadable file…');
+        var engine = window.dtsStudioArtifacts;
+        if (!engine || typeof engine.create !== 'function') {
+            showTyping(false);
+            var unavailable = 'File generation is not available right now. Please try again.';
+            chatHistory.push({ role: 'assistant', content: unavailable });
+            appendMessage('assistant', unavailable);
+            saveSession(); renderHistoryList();
+            return Promise.resolve(false);
+        }
+        return engine.create(prompt, answer).then(function (file) {
+            showTyping(false);
+            var completion = 'Your requested file is ready to download.';
+            chatHistory.push({ role: 'assistant', content: completion });
+            appendMessage('assistant', completion);
+            engine.attachDownload(file);
+            saveSession(); renderHistoryList();
+            return true;
+        }).catch(function (error) {
+            showTyping(false);
+            var failure = 'I could not create the requested file. ' + (error && error.message ? error.message : 'Please try again.');
+            chatHistory.push({ role: 'assistant', content: failure });
+            appendMessage('assistant', failure);
+            saveSession(); renderHistoryList();
+            return false;
+        });
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SEND MESSAGE — with web search + Groq
     /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
@@ -993,8 +983,12 @@
                     var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
                         ? data.choices[0].message.content
                         : 'Sorry, I could not analyse the image. Please try again.';
+                    if (wantsDownloadableDocument(text)) {
+                        deliverAIArtifact(text, reply).finally(function () { isSending = false; setSendState(false); });
+                        return;
+                    }
                     chatHistory.push({ role: 'assistant', content: reply });
-                    streamReply(reply, function() { if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply); saveSession(); renderHistoryList(); });
+                    streamReply(reply, function () { saveSession(); renderHistoryList(); });
                 }
                 isSending = false; setSendState(false);
             }).catch(function(err) {
@@ -1124,9 +1118,12 @@
                         reply = reply + '\n\n---\n' + webSourceTag;
                     }
 
+                    if (wantsDownloadableDocument(text)) {
+                        deliverAIArtifact(text, reply).finally(function () { isSending = false; setSendState(false); });
+                        return;
+                    }
                     chatHistory.push({ role: 'assistant', content: reply });
                     streamReply(reply, function () {
-                        if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply);
                         saveSession();
                         renderHistoryList();
                         if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
