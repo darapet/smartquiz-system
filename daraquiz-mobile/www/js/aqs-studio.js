@@ -580,6 +580,7 @@
     ═══════════════════════════════════════════════════════════ */
     function newSession() {
         conversationId   = 'sess_' + Date.now();
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (activeError) {}
         chatHistory      = [];
         attachedFileText = null;
         attachedFileName = null;
