@@ -11,12 +11,16 @@ import {
     getAuth,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    sendEmailVerification,
+    GoogleAuthProvider,
+    signInWithPopup,
+    sendPasswordResetEmail,
+    deleteUser,
     signOut,
     onAuthStateChanged,
     updateProfile,
-    GoogleAuthProvider,
-    signInWithCredential,
+    updatePassword,
+    setPersistence,
+    browserLocalPersistence,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -36,7 +40,8 @@ import {
     orderBy,
     limit,
     serverTimestamp,
-    Timestamp
+    Timestamp,
+    deleteField
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
     getDatabase,
@@ -63,15 +68,17 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-/* Use experimentalForceLongPolling on Capacitor/Android — fixes Firestore
-   hanging on Android WebView's IndexedDB persistence layer. Falls back to
-   the standard getFirestore() on web where long-polling is not needed. */
+/* Keep email/password sessions durable across reloads. */
+const _aqsAuthPersistenceReady = setPersistence(auth, browserLocalPersistence)
+    .catch(function(error) {
+        console.warn('[AQS Firebase] Could not set browser auth persistence:', error);
+    });
+/* Use long-polling for both web and Capacitor. Some browsers, privacy
+   extensions, corporate networks, and mobile ISPs block Firestore's WebChannel
+   transport and surface writes as the unhelpful browser error "Failed to fetch". */
 var _isCapacitorNative = typeof window !== 'undefined'
     && typeof window.Capacitor !== 'undefined'
     && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-/* Some mobile networks and corporate/ISP proxies break the Firestore
-   WebChannel transport. Long-polling is slower, but it works over ordinary
-   HTTPS and avoids the VPN-only failure mode. */
 let db;
 try {
     db = initializeFirestore(app, {
@@ -116,6 +123,7 @@ function tsToStr(ts) {
 window._aqsFirebaseUser = null;
 window._aqsAuthResolved = false;   /* true once auth state is fully determined (after persistence) */
 window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
+window._aqsIsLoggingIn = false;
 
 /* ── Why authStateReady() matters ───────────────────────────────────────────
    Firebase's onAuthStateChanged fires TWICE on page load when a session exists:
@@ -197,26 +205,45 @@ function _brevoEmailEndpoint() {
     if (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL) {
         return window.AQS_BREVO_FUNCTION_URL;
     }
+
+    /*
+     * Use the deployed Cloudflare Worker by default. Deployments may still
+     * override this with window.AQS_BREVO_FUNCTION_URL.
+     */
     return 'https://darapet-technologyimafe.daramolapeter98.workers.dev/api/email';
 }
 
 async function callBrevoEmail(payload) {
     var user = requireAuth();
     var token = await user.getIdToken();
+    var endpoint = _brevoEmailEndpoint();
     var response;
+
     try {
-        response = await fetch(_brevoEmailEndpoint(), {
+        response = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
             body: JSON.stringify(payload || {})
         });
-    } catch (_) {
+    } catch (error) {
+        /*
+         * A missing/un-deployed Cloud Function commonly appears as a
+         * browser-level "Failed to fetch" because the provider's 404 page
+         * does not include the CORS headers returned by our function.
+         */
         throw new Error('The email service could not be reached. Please try again.');
     }
+
     var body = {};
     try { body = await response.json(); } catch (_) {}
     if (!response.ok) {
-        throw new Error(body.error || ('The email service returned HTTP ' + response.status + '.'));
+        throw new Error(
+            body.error
+            || ('The email service returned HTTP ' + response.status + ' from ' + endpoint + '.')
+        );
     }
     return body;
 }
@@ -231,101 +258,14 @@ async function trySendWelcomeEmail() {
     }
 }
 
-/* ── Mobile web-view uploads ───────────────────────────────────────────────
-   The mobile bundle used to expose no aqsUploadFile function at all, while
-   the library profile uploader now delegates here. Keep the same public
-   Cloudinary settings and retry behavior as the web app, but use XHR so
-   Capacitor reports the real HTTP/network failure instead of "Failed to
-   fetch". */
-var _aqsCloudinaryAccounts = null;
-var _aqsCloudinarySettingsPromise = null;
-
-function _aqsCleanCloudinaryAccounts(value) {
-    if (!Array.isArray(value)) return [];
-    return value.map(function(account) {
-        return {
-            name: String(account && account.name || '').trim().slice(0, 60),
-            cloudName: String(account && account.cloudName || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
-            uploadPreset: String(account && account.uploadPreset || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
-            folder: String(account && account.folder || 'smartquiz').trim().replace(/[^a-zA-Z0-9_./-]/g, '').replace(/^\/+|\/+$/g, ''),
-            enabled: account && account.enabled !== false
-        };
-    }).filter(function(account) {
-        return account.enabled && account.cloudName && account.uploadPreset;
-    }).slice(0, 6);
-}
-
-async function _aqsGetCloudinaryAccounts() {
-    if (_aqsCloudinaryAccounts) return _aqsCloudinaryAccounts;
-    if (!_aqsCloudinarySettingsPromise) {
-        _aqsCloudinarySettingsPromise = getDoc(doc(db, 'settings', 'cloudinary')).then(function(snap) {
-            _aqsCloudinaryAccounts = snap.exists()
-                ? _aqsCleanCloudinaryAccounts(snap.data().accounts)
-                : [];
-            return _aqsCloudinaryAccounts;
-        }).catch(function() {
-            _aqsCloudinaryAccounts = [];
-            return _aqsCloudinaryAccounts;
-        });
-    }
-    return _aqsCloudinarySettingsPromise;
-}
-
-function _aqsCloudinaryUpload(url, form) {
-    return new Promise(function(resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        xhr.timeout = 120000;
-        xhr.onload = function() {
-            var body = {};
-            try { body = JSON.parse(xhr.responseText || '{}'); } catch(_) {}
-            resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: body });
-        };
-        xhr.onerror = function() {
-            reject(new Error('Cloudinary network error. Check the mobile connection and try again.'));
-        };
-        xhr.ontimeout = function() {
-            reject(new Error('Cloudinary upload timed out. Try a smaller image.'));
-        };
-        xhr.send(form);
+async function syncBrevoEmailConfiguration(config) {
+    return await callBrevoEmail({
+        kind: 'config',
+        apiKey: String(config && config.apiKey || '').trim(),
+        fromName: String(config && config.fromName || 'SmartQuiz').trim(),
+        fromEmail: String(config && config.fromEmail || '').trim()
     });
 }
-
-window.aqsUploadFile = async function(file, storagePath) {
-    if (!file) throw new Error('Choose a file first.');
-    if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
-    var accounts = await _aqsGetCloudinaryAccounts();
-    if (!accounts.length) {
-        throw new Error('Cloudinary storage is not configured yet. Ask an admin to add a Cloudinary cloud name and unsigned upload preset.');
-    }
-
-    var start = 0;
-    try { start = Number(localStorage.getItem('aqs_cloudinary_rotation') || 0) % accounts.length; } catch(_) {}
-    var errors = [];
-    for (var attempt = 0; attempt < accounts.length; attempt++) {
-        var account = accounts[(start + attempt) % accounts.length];
-        var form = new FormData();
-        form.append('file', file);
-        form.append('upload_preset', account.uploadPreset);
-        var safePath = String(storagePath || 'uploads').replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
-        form.append('folder', [account.folder || 'smartquiz', safePath].filter(Boolean).join('/'));
-        try {
-            var response = await _aqsCloudinaryUpload(
-                'https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload',
-                form
-            );
-            var result = response.body || {};
-            if (!response.ok || !result.secure_url) {
-                throw new Error(result.error && result.error.message || 'Cloudinary rejected the upload (' + response.status + ').');
-            }
-            try { localStorage.setItem('aqs_cloudinary_rotation', String((start + attempt + 1) % accounts.length)); } catch(_) {}
-            return result.secure_url;
-        } catch (error) {
-            errors.push((account.name || account.cloudName) + ': ' + (error.message || 'upload failed'));
-        }
-    }
-    throw new Error('All configured Cloudinary accounts rejected the upload. ' + errors.join(' | '));
-};
 
 /* ── Guest / anonymous session ──────────────────────────────────────────────
    Allows unauthenticated users (no sign-up) to create quizzes and use the app.
@@ -401,12 +341,107 @@ window.aqsAjax = async function(data, successFn, failFn) {
     }
 };
 
-/* ── Legacy Firebase Storage upload ─────────────────────────────────────
-   Mobile profile and StudyCo uploads use the Cloudinary uploader above.
-   Keep this under a separate name for any legacy admin-only callers so it
-   cannot overwrite window.aqsUploadFile and route profile photos through
-   the old fetch-based Firebase Storage path. */
-window.aqsUploadFirebaseFile = async function(file, storagePath) {
+/* ── File upload to Cloudinary (used by StudyCo and admin pages) ────────
+   Only public cloud names and unsigned upload presets are stored in the
+   public settings document. API secrets never belong in this browser app.
+   Up to six configured accounts are tried in round-robin order so one
+   account can be exhausted without taking uploads down. */
+var _aqsCloudinaryAccounts = null;
+var _aqsCloudinarySettingsPromise = null;
+
+function _aqsCleanCloudinaryAccounts(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(function(account) {
+        return {
+            name: String(account && account.name || '').trim().slice(0, 60),
+            cloudName: String(account && account.cloudName || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            uploadPreset: String(account && account.uploadPreset || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            folder: String(account && account.folder || 'smartquiz').trim().replace(/[^a-zA-Z0-9_./-]/g, '').replace(/^\/+|\/+$/g, ''),
+            enabled: account && account.enabled !== false
+        };
+    }).filter(function(account) {
+        return account.enabled && account.cloudName && account.uploadPreset;
+    }).slice(0, 6);
+}
+
+async function _aqsGetCloudinaryAccounts() {
+    if (_aqsCloudinaryAccounts) return _aqsCloudinaryAccounts;
+    if (!_aqsCloudinarySettingsPromise) {
+        _aqsCloudinarySettingsPromise = getDoc(doc(db, 'settings', 'cloudinary')).then(function(snap) {
+            _aqsCloudinaryAccounts = snap.exists()
+                ? _aqsCleanCloudinaryAccounts(snap.data().accounts)
+                : [];
+            return _aqsCloudinaryAccounts;
+        }).catch(function() {
+            _aqsCloudinaryAccounts = [];
+            return _aqsCloudinaryAccounts;
+        });
+    }
+    return _aqsCloudinarySettingsPromise;
+}
+
+/* Use XHR for browser uploads. Some webviews and privacy extensions surface
+   a failed CORS/network fetch only as "Failed to fetch"; XHR lets us expose
+   Cloudinary's actual HTTP response and keeps the retry loop useful. */
+function _aqsCloudinaryUpload(url, form) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.timeout = 120000;
+        xhr.onload = function() {
+            var body = {};
+            try { body = JSON.parse(xhr.responseText || '{}'); } catch(_) {}
+            resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: body });
+        };
+        xhr.onerror = function() {
+            reject(new Error('Cloudinary network error. Check your connection or browser privacy settings.'));
+        };
+        xhr.ontimeout = function() {
+            reject(new Error('Cloudinary upload timed out. Try a smaller image.'));
+        };
+        xhr.send(form);
+    });
+}
+
+window.aqsUploadFile = async function(file, storagePath) {
+    if (!file) throw new Error('Choose a file first.');
+    if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
+    var accounts = await _aqsGetCloudinaryAccounts();
+    if (!accounts.length) {
+        throw new Error('Cloudinary storage is not configured yet. Ask an admin to add a Cloudinary cloud name and unsigned upload preset.');
+    }
+
+    var start = 0;
+    try { start = Number(localStorage.getItem('aqs_cloudinary_rotation') || 0) % accounts.length; } catch(_) {}
+    var errors = [];
+    for (var attempt = 0; attempt < accounts.length; attempt++) {
+        var account = accounts[(start + attempt) % accounts.length];
+        var form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', account.uploadPreset);
+        var safePath = String(storagePath || 'uploads').replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
+        form.append('folder', [account.folder || 'smartquiz', safePath].filter(Boolean).join('/'));
+        try {
+            var response = await _aqsCloudinaryUpload(
+                'https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload',
+                form
+            );
+            var result = response.body || {};
+            if (!response.ok || !result.secure_url) {
+                throw new Error(result.error && result.error.message || 'Cloudinary rejected the upload (' + response.status + ').');
+            }
+            try { localStorage.setItem('aqs_cloudinary_rotation', String((start + attempt + 1) % accounts.length)); } catch(_) {}
+            return result.secure_url;
+        } catch (error) {
+            errors.push((account.name || account.cloudName) + ': ' + (error.message || 'upload failed'));
+        }
+    }
+    throw new Error('All configured Cloudinary accounts rejected the upload. ' + errors.join(' | '));
+};
+
+/* Legacy Firebase Storage uploads are intentionally no longer used. */
+/*
+window.aqsUploadFile = async function(file, storagePath) {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('You must be signed in as admin to upload files.');
     var token     = await user.getIdToken();
@@ -428,6 +463,7 @@ window.aqsUploadFirebaseFile = async function(file, storagePath) {
                       '/o/' + encoded + '?alt=media&token=' + json.downloadTokens;
     return downloadUrl;
 };
+*/
 
 /* Patch jQuery $.post and $.ajax to intercept AQS AJAX calls */
 (function patchJQuery() {
@@ -546,16 +582,17 @@ async function handleAction(data) {
     var action = data.action || '';
     switch(action) {
         /* ── AUTH ── */
-        case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
+        case 'aqs_google_signin':    return await actionGoogleSignIn();
         case 'aqs_register':         return await actionRegister(data);
         case 'aqs_complete_registration': return await actionCompleteRegistration(data);
-        case 'aqs_social_login':     return await actionSocialLogin(data);
+        case 'aqs_reset_password':   return await actionResetPassword(data);
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
         case 'aqs_send_registration_otp': return await actionSendRegistrationOtp(data);
         case 'aqs_verify_registration_otp': return await actionVerifyRegistrationOtp(data);
+        case 'aqs_test_brevo':       return await actionTestBrevo(data);
 
         /* ── QUIZ CRUD ── */
         case 'aqs_save_quiz':        return await actionSaveQuiz(data);
@@ -626,6 +663,58 @@ async function handleAction(data) {
 /* ============================================================
    AUTH ACTIONS
    ============================================================ */
+async function actionGoogleSignIn() {
+    var provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    window._aqsIsLoggingIn = true;
+    try {
+        var credential = await _withAqsStepTimeout(signInWithPopup(auth, provider), 'signing in with Google');
+        var user = credential.user;
+        var profileRef = doc(db, 'users', user.uid);
+        var profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'loading your Google account profile');
+        var profile = profileSnap.exists() ? profileSnap.data() : {
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || '',
+            username: (user.email || '').split('@')[0],
+            role: 'student',
+            status: 'active',
+            registration_status: 'complete',
+            otp_verified: true,
+            email_verified: !!user.emailVerified,
+            created_at: serverTimestamp()
+        };
+        if (!profileSnap.exists()) {
+            await _withAqsStepTimeout(setDoc(profileRef, profile, { merge: true }), 'creating your Google account profile');
+        }
+        if (isConfiguredAdmin(user)) {
+            profile.role = 'admin';
+            setDoc(profileRef, { role: 'admin' }, { merge: true }).catch(function() {});
+        }
+        _updateAqsGlobals(user, profile);
+        try { await _ensureAqsSocialProfile(user, profile); } catch (socialError) {
+            console.warn('[AQS] Google sign-in social profile bootstrap failed:', socialError && socialError.message || socialError);
+        }
+        var registrationIncomplete = _aqsIsRegistrationIncomplete(profile);
+        return {
+            logged_in: true,
+            redirect: registrationIncomplete ? 'register.html?resume=1' : _dashboardUrl(profile.role),
+            registration_incomplete: registrationIncomplete,
+            user_name: profile.name || user.displayName || user.email
+        };
+    } catch (error) {
+        var code = error && error.code || '';
+        if (code === 'auth/operation-not-allowed') {
+            throw new Error('Google sign-in is not enabled for this Firebase project. Enable Google in Firebase Console > Authentication > Sign-in method.');
+        }
+        if (code === 'auth/popup-blocked') throw new Error('Your browser blocked the Google sign-in popup. Allow popups and try again.');
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new Error('Google sign-in was cancelled. You can try again.');
+        throw error;
+    } finally {
+        window._aqsIsLoggingIn = false;
+    }
+}
+
 async function actionLogin(data) {
     var identifier = (data.username || '').trim();
     if (identifier.charAt(0) === '@') identifier = identifier.slice(1);
@@ -634,18 +723,35 @@ async function actionLogin(data) {
     /* identifier may be email or username — try email first, then look up by username */
     var email = identifier;
     if (identifier.indexOf('@') === -1) {
-        /* Look up email by username */
-        var uSnap = await getDocs(query(collection(db, 'users'), where('username', '==', identifier)));
-        if (uSnap.empty) throw new Error('User not found. Please check your username or email.');
-        email = uSnap.docs[0].data().email;
+        /* Username lookup must use the public mapping. Querying the private
+           users collection before authentication is rejected by Firestore. */
+        var usernameSnap = await _withAqsStepTimeout(
+            getDoc(doc(db, 'usernames', identifier)),
+            'checking the username'
+        );
+        if (!usernameSnap.exists()) throw new Error('User not found. Please check your username or email.');
+        email = String(usernameSnap.data().email || '').trim();
+        if (!email) {
+            throw new Error('This username needs an email sign-in. Please use the email address for this account.');
+        }
     }
 
-    var cred = await signInWithEmailAndPassword(auth, email, password);
+    var cred = await _withAqsStepTimeout(
+        signInWithEmailAndPassword(auth, email, password),
+        'signing in with email'
+    );
     var user = cred.user;
 
     /* Get user profile from Firestore */
-    var profileDoc = await getDoc(doc(db, 'users', user.uid));
+    var profileDoc = await _withAqsStepTimeout(
+        getDoc(doc(db, 'users', user.uid)),
+        'loading your profile'
+    );
     var profile = profileDoc.exists() ? profileDoc.data() : {};
+    if (isConfiguredAdmin(user)) {
+        profile.role = 'admin';
+        setDoc(doc(db, 'users', user.uid), { role: 'admin' }, { merge: true }).catch(function() {});
+    }
 
     /* Update AQS globals */
     _updateAqsGlobals(user, profile);
@@ -662,119 +768,15 @@ async function actionLogin(data) {
     };
 }
 
-/* ── Google / Social Sign-In ───────────────────────────────────────────────
-   Firebase's signInWithPopup relies on a browser popup and is unreliable in
-   GitHub Pages subfolders and Capacitor WebViews. Google Identity Services
-   returns an OAuth access token directly; Firebase then exchanges that token
-   with signInWithCredential. This also avoids Firebase Hosting's
-   /__/auth/handler requirement. */
-function _loadGoogleIdentityServices() {
-    if (typeof window !== 'undefined' && window.google &&
-        window.google.accounts && window.google.accounts.oauth2) {
-        return Promise.resolve();
+async function actionResetPassword(data) {
+    var email = String(data.email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') === -1) {
+        throw new Error('Enter your email address first, then select Forgot password.');
     }
-
-    return new Promise(function(resolve, reject) {
-        var existing = document.querySelector('script[data-aqs-google-identity]');
-        var settled = false;
-        var timeoutId;
-        var pollId;
-
-        function finish(error) {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timeoutId);
-            clearInterval(pollId);
-            if (error) reject(error);
-            else resolve();
-        }
-
-        function checkReady() {
-            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-                finish();
-            }
-        }
-
-        if (!existing) {
-            existing = document.createElement('script');
-            existing.src = 'https://accounts.google.com/gsi/client';
-            existing.async = true;
-            existing.defer = true;
-            existing.dataset.aqsGoogleIdentity = 'true';
-            existing.onerror = function() {
-                finish(new Error('Google Sign-In could not load. Check your internet connection and try again.'));
-            };
-            document.head.appendChild(existing);
-        }
-
-        existing.addEventListener('load', checkReady, { once: true });
-        pollId = setInterval(checkReady, 100);
-        timeoutId = setTimeout(function() {
-            finish(new Error('Google Sign-In is taking too long to load. Check your internet connection and try again.'));
-        }, 10000);
-        checkReady();
-    });
+    await sendPasswordResetEmail(auth, email);
+    return { sent: true };
 }
 
-async function actionSocialLogin(data) {
-    var providerName = data.provider || 'google';
-    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
-
-    await _loadGoogleIdentityServices();
-
-    var result = await new Promise(function(resolve, reject) {
-        var tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
-            scope: 'email profile openid',
-            callback: async function(tokenResponse) {
-                if (tokenResponse.error) {
-                    reject(new Error(tokenResponse.error_description || tokenResponse.error));
-                    return;
-                }
-                try {
-                    var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
-                    resolve(await signInWithCredential(auth, credential));
-                } catch (error) {
-                    reject(error);
-                }
-            }
-        });
-        tokenClient.requestAccessToken({ prompt: '' });
-    });
-    var user = result.user;
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
-
-    if (profileDoc.exists()) {
-        profile = profileDoc.data();
-        await updateDoc(profileRef, { last_login: serverTimestamp() });
-    } else {
-        var displayName = user.displayName || '';
-        var emailLocal = (user.email || '').split('@')[0];
-        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-        var finalUsername = baseUsername;
-        var collision = await getDoc(doc(db, 'usernames', finalUsername));
-        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-        profile = {
-            uid: user.uid,
-            name: displayName,
-            username: finalUsername,
-            email: user.email,
-            role: 'student',
-            avatar: user.photoURL || '',
-            provider: 'google',
-            status: 'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        await setDoc(profileRef, profile);
-        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
-    }
-
-    _updateAqsGlobals(user, profile);
-    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
-}
 async function actionRegister(data) {
     var email    = String(data.email || '').trim().toLowerCase();
     var password = (data.password || '').trim();
@@ -786,6 +788,7 @@ async function actionRegister(data) {
         && String(currentUser.email || '').trim().toLowerCase() !== email) {
         throw new Error('Sign out of the other account before registering this email.');
     }
+
     if (currentUser && currentUser.isAnonymous) {
         await signOut(auth);
         window._aqsFirebaseUser = null;
@@ -844,10 +847,7 @@ async function actionRegister(data) {
         };
         if (!profileSnap.exists()) profile.created_at = serverTimestamp();
         try {
-            await _withAqsStepTimeout(
-                setDoc(profileRef, profile, { merge: true }),
-                'saving your profile'
-            );
+            await _withAqsStepTimeout(setDoc(profileRef, profile, { merge: true }), 'saving your profile');
         } catch (profileError) {
             /* Firebase auth has already created and signed in this account. A
                follow-up profile write must not turn that success into a signup
@@ -1019,54 +1019,15 @@ async function actionCompleteRegistration(data) {
     };
 }
 
-async function callRegistrationApi(payload) {
-    var response;
-    try {
-        response = await fetch(_brevoEmailEndpoint(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload || {})
-        });
-    } catch (_) {
-        throw new Error('The registration service could not be reached. Please try again.');
+async function actionLogout() {
+    await signOut(auth);
+    window._aqsFirebaseUser = null;
+    if (typeof AQS !== 'undefined') {
+        AQS.is_logged_in = false;
+        AQS.is_host = false;
+        AQS.is_admin = false;
     }
-    var body = {};
-    try { body = await response.json(); } catch (_) {}
-    if (!response.ok) {
-        throw new Error(body.error || 'The registration service returned an error.');
-    }
-    return body;
-}
-
-async function actionSendRegistrationOtp(data) {
-    var email = String(data && data.email || '').trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Enter a valid email address.');
-
-    var user = auth.currentUser || window._aqsFirebaseUser;
-    if (user && user.isAnonymous) {
-        await signOut(auth);
-        window._aqsFirebaseUser = null;
-        user = null;
-    }
-    if (user && String(user.email || '').trim().toLowerCase() !== email) {
-        throw new Error('Sign out of the other account before registering this email.');
-    }
-    return await callRegistrationApi({ kind: 'registration_otp_send', email: email });
-}
-
-async function actionVerifyRegistrationOtp(data) {
-    var email = String(data && data.email || '').trim().toLowerCase();
-    var challengeId = String(data && data.challenge_id || '').trim();
-    var otp = String(data && data.otp || '').replace(/\D/g, '');
-    if (!email || !challengeId || otp.length !== 6) {
-        throw new Error('Enter the six-digit verification code.');
-    }
-    return await callRegistrationApi({
-        kind: 'registration_otp_verify',
-        email: email,
-        challengeId: challengeId,
-        otp: otp
-    });
+    return { redirect: 'login.html' };
 }
 
 async function actionSendOtp(data) {
@@ -1095,6 +1056,53 @@ async function actionSendOtp(data) {
     };
 }
 
+async function callRegistrationApi(payload) {
+    var response;
+    try {
+        response = await fetch(_brevoEmailEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload || {})
+        });
+    } catch (_) {
+        throw new Error('The registration service could not be reached. Please try again.');
+    }
+    var body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) {
+        throw new Error(body.error || 'The registration service returned an error.');
+    }
+    return body;
+}
+
+async function actionSendRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Enter a valid email address.');
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (user && user.isAnonymous) {
+        await signOut(auth);
+        window._aqsFirebaseUser = null;
+        user = null;
+    }
+    if (user && String(user.email || '').trim().toLowerCase() !== email) {
+        throw new Error('Sign out of the other account before registering this email.');
+    }
+    return await callRegistrationApi({ kind: 'registration_otp_send', email: email });
+}
+
+async function actionVerifyRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    var challengeId = String(data && data.challenge_id || '').trim();
+    var otp = String(data && data.otp || '').replace(/\D/g, '');
+    if (!email || !challengeId || otp.length !== 6) throw new Error('Enter the six-digit verification code.');
+    return await callRegistrationApi({
+        kind: 'registration_otp_verify',
+        email: email,
+        challengeId: challengeId,
+        otp: otp
+    });
+}
+
 async function actionVerifyOtp(data) {
     var user = requireAuth();
     var code = (data.otp || '').trim();
@@ -1103,7 +1111,6 @@ async function actionVerifyOtp(data) {
     var profile = snap.data();
     if (!profile.otp || profile.otp !== code) throw new Error('Incorrect code. Please try again.');
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
-    var isNewRegistration = profile.registration_status === 'otp_pending';
     await updateDoc(doc(db, 'users', user.uid), {
         otp: null,
         otp_exp: null,
@@ -1112,140 +1119,14 @@ async function actionVerifyOtp(data) {
         registration_status: 'profile_pending',
         status: 'pending'
     });
-    var welcomeEmailSent = isNewRegistration ? await trySendWelcomeEmail() : false;
-    return { verified: true, welcome_email_sent: welcomeEmailSent };
+    return { verified: true };
 }
 
-/* ============================================================
-   EMAIL-ONLY (PASSWORDLESS) LOGIN
-   Uses a per-email auto-generated token stored in Firestore
-   email_tokens/{safeKey} → { token, created_at }
-   The user never sees or enters a password.
-   ============================================================ */
-async function actionEmailLogin(data) {
-    var email = (data.email || '').trim().toLowerCase();
-    if (!email || email.indexOf('@') === -1) throw new Error('Please enter a valid email address.');
-
-    /* Safe Firestore document key from email (no slashes, dots, etc.) */
-    var safeKey = btoa(email).replace(/[^A-Za-z0-9]/g, '_');
-    var lsKey   = 'aqs_et_' + safeKey;
-
-    /* 1. Check localStorage first — avoids a Firestore round-trip on repeat visits */
-    var token;
-    try { token = localStorage.getItem(lsKey); } catch(_) {}
-
-    if (!token) {
-        /* 2. Look up existing token in Firestore */
-        var tokenRef  = doc(db, 'email_tokens', safeKey);
-        var tokenSnap = await getDoc(tokenRef);
-
-        if (tokenSnap.exists()) {
-            token = tokenSnap.data().token;
-            try { localStorage.setItem(lsKey, token); } catch(_) {} /* cache it */
-        } else {
-            /* 3. New user — generate a random token and persist to both stores */
-            token = _generateEmailToken();
-            try { await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() }); } catch(_) {}
-            try { localStorage.setItem(lsKey, token); } catch(_) {}
-        }
-    }
-
-    /* 4. Try to sign in — if account doesn't exist yet, create it */
-    var user;
-    try {
-        var cred = await signInWithEmailAndPassword(auth, email, token);
-        user = cred.user;
-    } catch (signInErr) {
-        /* auth/invalid-credential = wrong password OR user not found (Firebase v10) */
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-            try {
-                var newCred = await createUserWithEmailAndPassword(auth, email, token);
-                user = newCred.user;
-            } catch (createErr) {
-                if (createErr.code === 'auth/email-already-in-use') {
-                    /* This email has a password-based account (registered via register.html).
-                       Clear the stale token from both stores so the next email-only attempt
-                       doesn't keep trying the same wrong token.
-                       Prefix "PASSWORD_ACCOUNT:" is read by login.html to show the password field. */
-                    try { localStorage.removeItem(lsKey); } catch(_) {}
-                    try { await deleteDoc(doc(db, 'email_tokens', safeKey)); } catch(_) {}
-                    throw new Error('PASSWORD_ACCOUNT:This email is registered with a password. Please enter your password below.');
-                }
-                throw createErr;
-            }
-        } else {
-            throw signInErr;
-        }
-    }
-
-    /* 4. Token refresh */
-    try { await user.getIdToken(true); } catch(_) {}
-
-    /* 5. Build display name from email local part */
-    var displayName = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-
-    /* 6. Ensure Firestore user profile exists */
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
-
-    if (profileDoc.exists()) {
-        profile = profileDoc.data();
-        /* Update last login */
-        try { await updateDoc(profileRef, { last_login: serverTimestamp() }); } catch(_) {}
-    } else {
-        /* Auto-create profile */
-        var autoUsername = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 20);
-        /* Ensure username uniqueness */
-        var collision = await getDoc(doc(db, 'usernames', autoUsername));
-        if (collision.exists()) autoUsername = autoUsername + Math.floor(1000 + Math.random() * 9000);
-
-        profile = {
-            uid:        user.uid,
-            name:       displayName,
-            username:   autoUsername,
-            email:      email,
-            role:       'student',
-            provider:   'email',
-            status:     'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        try {
-            await setDoc(profileRef, profile);
-            await setDoc(doc(db, 'usernames', autoUsername), { uid: user.uid });
-        } catch(fsErr) {
-            console.warn('[AQS EmailLogin] Firestore profile write failed (will retry):', fsErr && fsErr.message);
-        }
-
-        /* Update Firebase Auth display name */
-        try { await updateProfile(user, { displayName: displayName }); } catch(_) {}
-    }
-
-    /* Save email to localStorage for quick re-entry */
-    try { localStorage.setItem('aqs_last_email', email); } catch(_) {}
-
-    /* Mark "just logged in" so the Capacitor auth guard gives Firebase time
-       to restore the IndexedDB session before redirecting to login. */
-    try { sessionStorage.setItem('aqs_login_ts', String(Date.now())); } catch(_) {}
-
-    _updateAqsGlobals(user, profile);
-
-    return {
-        logged_in:  true,
-        redirect:   _dashboardUrl(profile.role),
-        user_name:  profile.name || displayName
-    };
-}
-
-function _generateEmailToken() {
-    /* Alphanumeric only — avoids any encoding issues in Firebase Auth passwords */
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var token = '';
-    for (var i = 0; i < 40; i++) {
-        token += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return token;
+async function actionTestBrevo(data) {
+    var user = requireAuth();
+    if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
+    var recipient = String((data && data.recipient) || '').trim().toLowerCase();
+    return await callBrevoEmail({ kind: 'test', recipient: recipient || user.email });
 }
 
 /* ============================================================
@@ -2673,17 +2554,57 @@ async function actionGetSettings() {
             if (!window._AQS_ADMIN_SETTINGS_MODE) {
                 settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
+                delete settings.darasocial_post_slot;
             }
+            delete settings.brevo_api_key;
+            var currentUser = auth.currentUser || window._aqsFirebaseUser;
+            if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
+                var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                /* Groq keys live in settings/main again. If an earlier build moved them into
+                   settings/private, put them back so every page can use them. */
+                var mainGroqKeys = Array.isArray(snap.data().groq_keys) ? snap.data().groq_keys : [];
+                var movedGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
+                if (!mainGroqKeys.length && movedGroqKeys.length) {
+                    mainGroqKeys = movedGroqKeys.slice(0, 20);
+                    try { await setDoc(doc(db, 'settings', 'main'), { groq_keys: mainGroqKeys }, { merge: true }); }
+                    catch (restoreError) { console.warn('[aqs] Could not restore Groq keys to settings/main:', restoreError.message); }
+                }
+                settings.groq_keys = mainGroqKeys;
+                if (privateSnap.exists()) {
+                    settings.brevo_api_key = privateData.brevo_api_key || '';
+                    ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
+                        settings[k] = privateSnap.data()[k] || '';
+                    });
+                    settings.darasocial_post_slot = privateSnap.data().darasocial_post_slot || [];
+                    settings.darasocial_course_enabled = privateSnap.data().darasocial_course_enabled !== false;
+                    settings.darasocial_course_interval_minutes = privateSnap.data().darasocial_course_interval_minutes || 30;
+                    settings.darasocial_course_last_post_at = privateSnap.data().darasocial_course_last_post_at || '';
+                    settings.darasocial_news_enabled = privateSnap.data().darasocial_news_enabled !== false;
+                    settings.darasocial_news_interval_hours = privateSnap.data().darasocial_news_interval_hours || 5;
+                    settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
+                    settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
+                    settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
+                }
+            }
+            window._aqsSettingsLoadError = '';
             return { settings: settings };
         }
-    } catch(_) {}
+        window._aqsSettingsLoadError = 'settings/main does not exist';
+    } catch (e) {
+        /* Keep the failure visible: a blocked read (rules not published, not signed in,
+           network blocked) used to look exactly like "no keys saved". */
+        window._aqsSettingsLoadError = (e && (e.code || e.message)) || 'unknown error';
+        console.warn('[aqs] Could not read settings/main:', window._aqsSettingsLoadError);
+    }
     return { settings: {} };
 }
 
 async function actionSaveSettings(data) {
     var user = auth.currentUser || window._aqsFirebaseUser;
-    if (!user) throw new Error('Not authenticated.');
+    if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
     var payload = {};
+    var privatePayload = {};
     var allowed = [
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
@@ -2691,7 +2612,7 @@ async function actionSaveSettings(data) {
         'creator_image_keys','creator_image_model','creator_image_worker_url',
         'bg_music_url',
         'splash_enabled','splash_logo_url',
-        'brevo_api_key','brevo_from_name','brevo_from_email',
+        'brevo_api_key','brevo_from_name','brevo_from_email','otp_enabled',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
         'ticker_text',
         'google_client_id','google_client_secret',
@@ -2705,10 +2626,15 @@ async function actionSaveSettings(data) {
         'studyhub_groq_keys',
         'textdocs_groq_keys',
         'puzzle_groq_keys',
-        'quizstudio_groq_keys',
+        'quizstudio_groq_keys','darasocial_post_slot',
+        'darasocial_course_enabled','darasocial_course_interval_minutes','darasocial_course_last_post_at','darasocial_news_enabled','darasocial_news_interval_hours','darasocial_news_last_post_at','darasocial_course_index','darasocial_news_index',
         'gemini_tts_keys'
     ];
-    allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    allowed.forEach(function(k) {
+        if (!(k in data)) return;
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
+        else payload[k] = data[k];
+    });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
     if (Array.isArray(payload.gemini_tts_keys)) {
         payload.gemini_tts_keys = payload.gemini_tts_keys
@@ -2760,7 +2686,7 @@ async function actionSaveSettings(data) {
     }
     /* Trim and validate feature-specific Groq keys (up to 10 each) */
     ['quiz_groq_keys','challenge_groq_keys','studyhub_groq_keys',
-     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys'].forEach(function(field) {
+     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys','darasocial_post_slot'].forEach(function(field) {
         if (Array.isArray(payload[field])) {
             payload[field] = payload[field]
                 .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
@@ -2769,6 +2695,41 @@ async function actionSaveSettings(data) {
         }
     });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
+    var privateKeys = Object.keys(privatePayload).filter(function (k) { return k !== 'brevo_api_key'; });
+    if (privateKeys.length) {
+        var privateMerge = {};
+        privateKeys.forEach(function (k) {
+            var v = privatePayload[k];
+            if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
+            else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
+            else privateMerge[k] = String(v || '').trim();
+        });
+        await setDoc(doc(db, 'settings', 'private'), privateMerge, { merge: true });
+    }
+    if ('brevo_api_key' in privatePayload) {
+        var privateValue = String(privatePayload.brevo_api_key || '').trim();
+        if (privateValue) {
+            await setDoc(doc(db, 'settings', 'private'), { brevo_api_key: privateValue }, { merge: true });
+        } else {
+            await setDoc(doc(db, 'settings', 'private'), { brevo_api_key: deleteField() }, { merge: true });
+        }
+        /* Remove the legacy public copy if one exists. */
+        await setDoc(doc(db, 'settings', 'main'), { brevo_api_key: deleteField() }, { merge: true });
+
+        /*
+         * The live email path is the Cloudflare Worker. Keep the value entered
+         * in Admin Settings synchronized into its encrypted KV config store;
+         * the browser never sends the key to Brevo directly.
+         */
+        if (payload.brevo_from_email) {
+            await syncBrevoEmailConfiguration({
+                apiKey: privateValue,
+                fromName: payload.brevo_from_name,
+                fromEmail: payload.brevo_from_email
+            });
+        }
+    }
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
         var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
@@ -2807,7 +2768,7 @@ async function actionSaveSettings(data) {
         puzzle_groq_keys: 'puzzle', quizstudio_groq_keys: 'quizstudio'
     };
     Object.keys(_fpMap).forEach(function(field) {
-        if (Array.isArray(payload[field]) && payload[field].length) {
+        if (Array.isArray(payload[field])) {
             if (typeof window.setFeatureGroqKeys === 'function') {
                 window.setFeatureGroqKeys(_fpMap[field], payload[field]);
             }
@@ -2895,16 +2856,21 @@ async function actionGetMyStats() {
         attempts.sort(function(a, b) { return b._ms - a._ms; });
     }
 
-    /* Day streak — consecutive days with at least one attempt (counting back from today) */
+    /* Current day streak — count consecutive local calendar days with a completed quiz.
+       If the user has not completed a quiz today, yesterday may still anchor an active streak. */
     var streak = 0;
     if (attempts.length) {
         var days = new Set(attempts.filter(function(a) { return a._ms; }).map(function(a) {
             return new Date(a._ms).toDateString();
         }));
-        var d = new Date();
-        while (days.has(d.toDateString())) {
+        var today = new Date();
+        var cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (!days.has(cursor.toDateString())) {
+            cursor.setDate(cursor.getDate() - 1);
+        }
+        while (days.has(cursor.toDateString())) {
             streak++;
-            d.setDate(d.getDate() - 1);
+            cursor.setDate(cursor.getDate() - 1);
         }
     }
 
@@ -2984,8 +2950,10 @@ function _dashboardUrl(role) {
 function _updateAqsGlobals(user, profile) {
     if (typeof AQS === 'undefined') return;
     AQS.is_logged_in      = true;
-    AQS.is_host           = profile.role === 'host' || profile.role === 'admin';
-    AQS.is_admin          = profile.role === 'admin';
+    var adminUser         = isConfiguredAdmin(user);
+    AQS.is_host           = profile.role === 'host' || profile.role === 'admin' || adminUser;
+    AQS.is_admin          = profile.role === 'admin' || adminUser;
+    AQS.current_user_role = (profile.role === 'admin' || adminUser) ? 'admin' : (profile.role || 'student');
     AQS.current_user_name = profile.name || user.displayName || '';
     AQS.current_user_id   = user.uid;
 }
