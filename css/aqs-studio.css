@@ -953,3 +953,7 @@ main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom))
 .dts-attachment-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .dts-attachment-remove{flex-shrink:0;border:1px solid rgba(220,38,38,.22);background:rgba(220,38,38,.06);color:#b91c1c;border-radius:7px;padding:4px 9px;font:inherit;font-weight:600;cursor:pointer}
 .dts-attachment-remove:hover{background:rgba(220,38,38,.12)}
+
+
+.dts-drawer-item-rename{flex-shrink:0;border:1px solid rgba(23,50,77,.14);background:rgba(23,50,77,.04);color:#526579;border-radius:6px;padding:4px 7px;font-size:.68rem;cursor:pointer}
+.dts-drawer-item-rename:hover{background:rgba(232,145,45,.16);color:#17324d}
