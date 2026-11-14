@@ -155,6 +155,23 @@
     body[data-aqs-page="profile"] .prf-quiz-activity-time{flex:0 0 auto;color:#8792a5;font-size:.69rem}
     @media(max-width:620px){body[data-aqs-page="profile"] .prf-learning-grid{gap:8px}body[data-aqs-page="profile"] .prf-learning-card{min-height:116px;padding:12px 10px}body[data-aqs-page="profile"] .prf-learning-value{font-size:1.5rem}body[data-aqs-page="profile"] .prf-learning-label{font-size:.68rem}body[data-aqs-page="profile"] .prf-learning-heading{align-items:flex-start}body[data-aqs-page="profile"] .prf-learning-link{font-size:.69rem;padding:8px}
       body[data-aqs-page="profile"] .prf-quiz-activity-item{align-items:flex-start;flex-direction:column;gap:3px}}
+    body[data-aqs-page="profile"] .prf-activity-calendar{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px;margin-top:10px}
+    body[data-aqs-page="profile"] .prf-day-cell{aspect-ratio:1;border-radius:4px;background:#edf0f6;min-width:0}
+    body[data-aqs-page="profile"] .prf-day-cell.active{background:#6258cf}
+    body[data-aqs-page="profile"] .prf-day-cell.today{outline:2px solid #f0a34a;outline-offset:1px}
+    body[data-aqs-page="profile"] .prf-calendar-legend{display:flex;justify-content:space-between;gap:8px;margin-top:12px;color:#7b879b;font-size:.7rem}
+    body[data-aqs-page="profile"] .prf-achievement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    body[data-aqs-page="profile"] .prf-achievement{padding:14px 10px;border:1px solid #e7ebf3;border-radius:14px;text-align:center;background:#fff}
+    body[data-aqs-page="profile"] .prf-achievement.locked{opacity:.48;filter:grayscale(1)}
+    body[data-aqs-page="profile"] .prf-achievement-icon{font-size:1.55rem}
+    body[data-aqs-page="profile"] .prf-achievement-name{margin-top:5px;color:#25334a;font-size:.75rem;font-weight:800}
+    body[data-aqs-page="profile"] .prf-achievement-note{margin-top:3px;color:#7b879b;font-size:.65rem;line-height:1.35}
+    body[data-aqs-page="profile"] .prf-privacy-list{display:grid;gap:10px}
+    body[data-aqs-page="profile"] .prf-privacy-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #edf0f5;color:#344258;font-size:.82rem}
+    body[data-aqs-page="profile"] .prf-privacy-row input{width:18px;height:18px;accent-color:#6258cf}
+    body[data-aqs-page="profile"] .prf-profile-input{width:100%;padding:11px 12px;border:1px solid #dce2ed;border-radius:10px;background:#fff;color:#25334a;font:inherit;font-size:.88rem}
+    body[data-aqs-page="profile"] .prf-edit-status{min-height:18px;margin-top:9px;color:#6258cf;font-size:.75rem}
+    @media(max-width:540px){body[data-aqs-page="profile"] .prf-activity-calendar{gap:3px}body[data-aqs-page="profile"] .prf-achievement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   </style>
 </head>
 <body style="background:#faf3ea;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
@@ -234,6 +251,12 @@
       </article>
     </div>
     <div class="prf-recent-activity"><div class="prf-recent-title">Recent Quiz Activity</div><div id="prf-quiz-activity"><div class="prf-empty">Loading quiz activity…</div></div></div>
+    <div class="prf-recent-activity" style="margin-top:13px"><div class="prf-recent-title">App activity · Last 84 days</div><p style="margin:0;color:#7b879b;font-size:.76rem">Each highlighted square is a day you opened and used SmartQuiz.</p><div id="prf-activity-calendar" class="prf-activity-calendar" aria-label="App activity calendar"></div><div class="prf-calendar-legend"><span id="prf-active-days">0 active days</span><span>Recent 12 weeks</span></div></div>
+  </section>
+
+  <section class="prf-card" aria-labelledby="prf-achievements-title">
+    <div class="prf-card-header"><div class="prf-card-title" id="prf-achievements-title">🏅 Achievements</div></div>
+    <div class="prf-card-body"><div id="prf-achievements" class="prf-achievement-grid"><div class="prf-empty">Loading achievements…</div></div></div>
   </section>
 
   <!-- ACCOUNT INFO -->
@@ -254,20 +277,13 @@
       </div>
       <div class="prf-info-row">
         <div class="prf-info-icon">🎓</div>
-        <div style="flex:1">
-          <div class="prf-info-label">Institution</div>
-          <div class="prf-info-value" id="pi-inst">—</div>
-        </div>
+        <div style="flex:1"><div class="prf-info-label">Institution</div><div class="prf-info-value" id="pi-inst">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('institution')">Edit</button></div>
       </div>
       <div class="prf-info-row">
         <div class="prf-info-icon">📘</div>
-        <div style="flex:1">
-          <div class="prf-info-label">Department</div>
-          <div class="prf-info-value" id="pi-dept">—</div>
-        </div>
-        <div class="prf-info-edit">
-          <a href="library-host-view.html#profile" class="prf-edit-btn">Edit</a>
-        </div>
+        <div style="flex:1"><div class="prf-info-label">Department</div><div class="prf-info-value" id="pi-dept">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('department')">Edit</button></div>
       </div>
     </div>
   </div>
@@ -292,11 +308,20 @@
     </div>
     <div class="prf-card-body">
       <div class="prf-danger-row" style="margin-bottom:14px;">
-        <div>
-          <div class="prf-danger-label">Privacy &amp; Security</div>
-          <div class="prf-danger-sub">Choose what visitors can see and change your password</div>
-        </div>
+        <div><div class="prf-danger-label">Privacy &amp; Security</div><div class="prf-danger-sub">Choose what visitors can see and change your password</div></div>
         <a class="prf-edit-btn" href="account-settings.html">Open Settings</a>
+      </div>
+      <div style="padding:12px 0 16px;border-bottom:1px solid #edf0f5">
+        <div class="prf-danger-label" style="margin-bottom:4px">Profile visibility</div>
+        <div class="prf-danger-sub" style="margin-bottom:10px">Choose which details appear on your public profile.</div>
+        <div class="prf-privacy-list">
+          <label class="prf-privacy-row">Display name <input type="checkbox" data-prf-privacy="displayName" checked></label>
+          <label class="prf-privacy-row">Profile photo <input type="checkbox" data-prf-privacy="photoURL" checked></label>
+          <label class="prf-privacy-row">Education details <input type="checkbox" data-prf-privacy="education" checked></label>
+          <label class="prf-privacy-row">Learning statistics <input type="checkbox" data-prf-privacy="learningStats" checked></label>
+        </div>
+        <button class="prf-edit-btn" id="prf-save-privacy" style="margin-top:12px">Save privacy settings</button>
+        <div class="prf-edit-status" id="prf-privacy-status" role="status"></div>
       </div>
       <div class="prf-danger-row">
         <div>
@@ -359,6 +384,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
     document.getElementById('pi-name').textContent = name;
     document.getElementById('pi-inst').textContent = _profile.institution || '—';
     document.getElementById('pi-dept').textContent = _profile.department || '—';
+    await loadProfilePrivacy();
 
     // Role badge
     const hasBooks = !!_profile.displayName;
@@ -409,6 +435,14 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       streakEl.textContent = streak + (streak === 1 ? ' day' : ' days');
       document.getElementById('prf-streak-caption').textContent = streak ? 'Keep your learning going!' : 'Complete a quiz to start your streak';
       const activities = Array.isArray(stats.recent_activity) ? stats.recent_activity : [];
+      renderAppCalendar(Array.isArray(stats.app_days) ? stats.app_days : [], Number(stats.app_days_count || 0));
+      renderAchievements({
+        days: Number(stats.app_days_count || 0),
+        streak: streak,
+        taken: Number(stats.quizzes_taken || 0),
+        created: Number(stats.quizzes_created || 0)
+      });
+      document.getElementById('prf-streak-caption').textContent = streak ? 'Consecutive days using SmartQuiz' : 'Open SmartQuiz daily to start your streak';
       activityEl.innerHTML = activities.length ? activities.map(item => {
         const row = document.createElement('div');
         row.className = 'prf-quiz-activity-item';
@@ -429,6 +463,70 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       activityEl.innerHTML = '<div class="prf-empty">Quiz statistics are temporarily unavailable.</div>';
     }
   }
+
+  function renderAppCalendar(days, totalDays) {
+    const host = document.getElementById('prf-activity-calendar');
+    if (!host) return;
+    const active = new Set(days || []);
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    start.setDate(start.getDate() - 83);
+    host.replaceChildren();
+    for (let i=0;i<84;i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+      const key = [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      const cell = document.createElement('span');
+      cell.className = 'prf-day-cell' + (active.has(key) ? ' active' : '') + (key === [today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-') ? ' today' : '');
+      cell.title = key + (active.has(key) ? ' · App used' : ' · No activity recorded');
+      cell.setAttribute('aria-label', cell.title);
+      host.appendChild(cell);
+    }
+    document.getElementById('prf-active-days').textContent = totalDays.toLocaleString() + ' recorded active days';
+  }
+
+  function renderAchievements(data) {
+    const items = [
+      {icon:'🌱',name:'First Visit',note:'Use SmartQuiz on 1 day',earned:data.days>=1},
+      {icon:'📅',name:'One Week',note:'Use the app on 7 days',earned:data.days>=7},
+      {icon:'🔥',name:'7-Day Streak',note:'Use it 7 days in a row',earned:data.streak>=7},
+      {icon:'🏆',name:'30-Day Streak',note:'Use it 30 days in a row',earned:data.streak>=30},
+      {icon:'🧠',name:'Quiz Starter',note:'Complete 1 quiz',earned:data.taken>=1},
+      {icon:'✍️',name:'Quiz Creator',note:'Create 1 quiz',earned:data.created>=1}
+    ];
+    const host=document.getElementById('prf-achievements');
+    host.replaceChildren();
+    items.forEach(item=>{
+      const card=document.createElement('div');card.className='prf-achievement'+(item.earned?'':' locked');
+      const icon=document.createElement('div');icon.className='prf-achievement-icon';icon.textContent=item.icon;
+      const name=document.createElement('div');name.className='prf-achievement-name';name.textContent=item.name;
+      const note=document.createElement('div');note.className='prf-achievement-note';note.textContent=item.note;
+      card.append(icon,name,note);host.appendChild(card);
+    });
+  }
+
+  async function loadProfilePrivacy() {
+    const defaults={displayName:true,photoURL:true,education:true,learningStats:true};
+    const visibility=Object.assign({},defaults,_profile.profileVisibility||{});
+    document.querySelectorAll('[data-prf-privacy]').forEach(input=>{input.checked=visibility[input.dataset.prfPrivacy]!==false;});
+  }
+  document.getElementById('prf-save-privacy').addEventListener('click',async function(){
+    const button=this;button.disabled=true;
+    const status=document.getElementById('prf-privacy-status');status.textContent='Saving…';
+    try{
+      const values={displayName:true,photoURL:true,education:true,learningStats:true};
+      document.querySelectorAll('[data-prf-privacy]').forEach(input=>{values[input.dataset.prfPrivacy]=input.checked;});
+      const app=getApp();const db=(await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')).getFirestore(app);
+      const fs=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const payload={profileVisibility:values,updatedAt:fs.serverTimestamp()};
+      await Promise.all([
+        fs.setDoc(fs.doc(db,'users',_user.uid),payload,{merge:true}),
+        fs.setDoc(fs.doc(db,'library_profiles',_user.uid),payload,{merge:true}),
+        fs.setDoc(fs.doc(db,'social_profiles',_user.uid),payload,{merge:true})
+      ]);
+      _profile.profileVisibility=values;status.textContent='Privacy settings saved.';
+    }catch(error){status.textContent=error.message||'Could not save privacy settings.';}
+    finally{button.disabled=false;}
+  });
 
   window.handlePhotoChange = async function(input) {
     const file = input.files[0];
@@ -458,6 +556,11 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
           <label class="lib-label">Last Name</label>
           <input class="lib-input" id="fe-lname" value="${parts.slice(1).join(' ')||''}" placeholder="Last name">
         </div>`;
+    } else if (field==='institution' || field==='department') {
+      const isInstitution = field === 'institution';
+      document.getElementById('fe-title').textContent = isInstitution ? 'Edit Institution' : 'Edit Department';
+      const value = isInstitution ? (_profile.institution || '') : (_profile.department || '');
+      content.innerHTML = `<label class="lib-label" for="fe-value">${isInstitution ? 'Institution / School' : 'Department / Course'}</label><input class="prf-profile-input" id="fe-value" maxlength="120" value="${String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="${isInstitution ? 'Enter your institution' : 'Enter your department'}">`;
     }
     overlay.classList.add('open');
   };
@@ -474,6 +577,14 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       document.getElementById('pi-name').textContent=name;
       document.getElementById('prf-avatar').textContent=window.libInitials(name);
       window.libToast('Name updated!');
+    } else if (_editField==='institution' || _editField==='department') {
+      const value = document.getElementById('fe-value').value.trim();
+      const key = _editField;
+      if (value.length > 120) { window.libToast('Please use 120 characters or fewer.'); return; }
+      await window.libSaveProfile(_user.uid, { [key]: value });
+      _profile[key] = value;
+      document.getElementById(key === 'institution' ? 'pi-inst' : 'pi-dept').textContent = value || '—';
+      window.libToast((key === 'institution' ? 'Institution' : 'Department') + ' updated!');
     }
     closeFieldEdit();
   };
