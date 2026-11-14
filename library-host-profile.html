@@ -303,9 +303,15 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
 
   function bookCardHTML(b) {
     function _h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-    /* Use profile name for ALL books on this page — fixes "anonymous" for old books */
-    const upName = _h((_profile && _profile.displayName) ? _profile.displayName : (b.uploaderName && b.uploaderName !== 'anonymous' ? b.uploaderName : 'Unknown Author'));
-    const upPhoto = (_profile && _profile.photoURL) ? _profile.photoURL : (b.uploaderPhotoURL || '');
+    /* Respect profile visibility on book cards as well as the profile header. */
+    const showName = !_profile || isVisible(_profile, 'displayName');
+    const showPhoto = !_profile || isVisible(_profile, 'photoURL');
+    const upName = _h(showName
+      ? ((_profile && _profile.displayName) ? _profile.displayName : (b.uploaderName && b.uploaderName !== 'anonymous' ? b.uploaderName : 'Unknown Author'))
+      : 'Anonymous');
+    const upPhoto = showPhoto
+      ? ((_profile && _profile.photoURL) ? _profile.photoURL : (b.uploaderPhotoURL || ''))
+      : '';
     const avHtml = upPhoto
       ? `<img src="${upPhoto}" alt="">`
       : `<span style="font-size:.55rem;font-weight:800;">${window.libInitials(upName)}</span>`;
