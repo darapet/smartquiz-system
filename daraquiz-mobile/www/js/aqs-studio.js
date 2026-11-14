@@ -933,6 +933,7 @@
             if (imageInput) { imageInput.value = ''; imageInput.style.height = 'auto'; }
             chatHistory.push({ role: 'user', content: text });
             appendMessage('user', text);
+            saveSession(); renderHistoryList();
             showTyping(true, 'Creating your image…');
             try {
                 if (typeof window.dtsGenerateInline !== 'function') throw new Error('Image generation is not ready. Please try again.');
@@ -986,6 +987,7 @@
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
             chatHistory.push({ role: 'user', content: userContent });
             appendMessage('user', userContent);
+            saveSession(); renderHistoryList();
             var editInput = document.getElementById('dts-input');
             if (editInput) { editInput.value=''; editInput.style.height='auto'; }
             showTyping(true, 'XZILY AI is editing your image…');
@@ -1007,6 +1009,7 @@
             var imgLabel = userContent + (snapImages.length ? '\n\n🖼️ Images: ' + snapImages.map(function (image) { return image.name; }).join(', ') : '\n\n🖼️ Image: ' + (snapImageName || 'image'));
             chatHistory.push({ role: 'user', content: imgLabel });
             appendMessage('user', imgLabel);
+            saveSession(); renderHistoryList();
             var input2 = document.getElementById('dts-input');
             if (input2) { input2.value = ''; input2.style.height = 'auto'; }
 
@@ -1064,6 +1067,7 @@
 
         chatHistory.push({ role: 'user', content: userContent });
         appendMessage('user', userContent);
+        saveSession(); renderHistoryList();
 
         var input = document.getElementById('dts-input');
         if (input) { input.value = ''; input.style.height = 'auto'; }
@@ -1574,6 +1578,7 @@
         stopVoiceListening();
         chatHistory.push({ role: 'user', content: text });
         appendMessage('user', text);
+        saveSession(); renderHistoryList();
         showTyping(true, 'XZILY AI is thinking\u2026');
 
         if (typeof window.groqFetch !== 'function') {
