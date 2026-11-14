@@ -860,58 +860,54 @@
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
-        /* CONVERSATIONAL IMAGE DESIGNER: clarify professional briefs before generation. */
-        var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait|graphic|graphics|design|designs|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead|product design)\b/i.test(text) &&
-            /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want|help me|build me|prepare|craft|develop|designing)\b/i.test(text) ||
-            /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration|graphic|banner|flyer|poster|design)\b/i.test(text) ||
-            /^\s*(can you|could you|please)\s+(create|make|design|generate)\b/i.test(text);
-        if (text && !attachedFileText && !attachedImageData && (IMG_INTENT || imageDesignSessionActive)) {
+        /* Phase 2 image routing: ordinary image generation stays available; professional design is Pro-only. */
+        var PRO_DESIGN_INTENT = /\b(logo|poster|flyer|banner|thumbnail|graphic|graphics|branding|brand identity|business card|brochure|catalogue|catalog|menu design|packaging|label design|social media post|instagram post|facebook post|youtube thumbnail|cover art|book cover|album cover|infographic|mockup|ui design|app design|web design|ad creative|advert|invitation|certificate|letterhead)\b/i.test(text) &&
+            /\b(create|generate|make|draw|design|produce|render|prepare|craft|develop|i need|i want|help me|build me)\b/i.test(text);
+        var ORDINARY_IMAGE_INTENT = /\b(image|picture|photo|illustration|artwork)\b/i.test(text) &&
+            /\b(create|generate|make|draw|show|give|produce|render|i need|i want)\b/i.test(text);
+
+        if (text && !attachedFileText && !attachedImageData && PRO_DESIGN_INTENT) {
             isSending = true; setSendState(true);
-            var inp0 = document.getElementById('dts-input');
-            if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
+            var designInput = document.getElementById('dts-input');
+            if (designInput) { designInput.value = ''; designInput.style.height = 'auto'; }
             chatHistory.push({ role: 'user', content: text });
             appendMessage('user', text);
-            showTyping(true, 'XZILY is planning your design…');
+            var proNotice = 'This is a Pro feature and is coming soon. Studio AI currently supports ordinary image generation, while professional graphic design and design creation are not available yet.';
+            chatHistory.push({ role: 'assistant', content: proNotice });
+            appendMessage('assistant', proNotice);
+            saveSession(); renderHistoryList();
+            isSending = false; setSendState(false);
+            return;
+        }
+
+        if (text && !attachedFileText && !attachedImageData && ORDINARY_IMAGE_INTENT) {
+            isSending = true; setSendState(true);
+            var imageInput = document.getElementById('dts-input');
+            if (imageInput) { imageInput.value = ''; imageInput.style.height = 'auto'; }
+            chatHistory.push({ role: 'user', content: text });
+            appendMessage('user', text);
+            showTyping(true, 'Creating your image…');
             try {
-                if (typeof window.groqFetch !== 'function') throw new Error('Design assistant is not ready. Please try again.');
-                var recentDesignHistory = chatHistory.slice(-12).map(function(m) {
-                    return { role: m.role === 'assistant' ? 'assistant' : 'user',
-                        content: typeof m.content === 'string' ? m.content : (m.content && m.content.prompt ? '[Previously generated image: '+m.content.prompt+']' : '[image attachment]') };
-                });
-                var plannerSystem = "You are XZILY, a senior professional graphic designer and visual-communication specialist. Handle the full range of graphic design: logos and brand identity, flyers, event posters, website and advertising banners, social posts, Fiverr gig covers, YouTube thumbnails, product adverts, business cards, menus, brochures, packaging, labels, invitations, certificates, infographics, mockups, 2D and 3D graphics, and UI concepts. Understand purpose, audience, platform, dimensions, visual style and required copy. For any birthday flyer or birthday poster, the birthday person's name is essential: if it is missing from the conversation, ask one concise question asking for their name, and optionally their age, relationship to the requester, and a short personal message. Do not generate a birthday design until the name is known. Once known, make the main greeting read HAPPY BIRTHDAY [PERSON NAME], with the name visually prominent; use optional details supplied and never invent personal facts. Ordinary picture requests should generate immediately. For professional designs, ask one concise question only when an essential detail is missing; do not repeat questions or ask for information already in conversation. Never invent brand names, phone numbers, addresses, prices, offers, claims or copy. When ready, return ONLY valid JSON matching one of these shapes:\n{\"action\":\"ask\",\"message\":\"one concise question\"}\n{\"action\":\"generate\",\"prompt\":\"production-ready visual-artwork prompt\",\"category\":\"general|birthday|fiverr|youtube-thumbnail|flyer|event-poster|product-ad|social|banner|logo|business-card|menu|infographic|packaging|certificate|invitation|mockup|3d-design|2d-design\",\"aspectRatio\":\"square|landscape|portrait\",\"copy\":{\"headline\":\"exact supplied headline or empty string\",\"recipientName\":\"exact birthday person name or empty string\",\"subline\":\"exact supplied supporting text or empty string\",\"cta\":\"exact supplied call to action or empty string\",\"brandName\":\"exact supplied brand name or empty string\",\"details\":\"other short exact supplied details or empty string\"}}\nThe copy object must contain only exact wording explicitly supplied by the user or conversation. Do not rewrite, correct, embellish or invent it. Keep each field empty when not supplied. Extract exact wording even when it appears naturally in the brief, not only when labeled. Do not put text into the artwork prompt unless the image needs a visual placeholder; the backend will typeset exact copy separately. For logos, prioritize a clean symbol/mark; use brandName only if supplied. Fiverr gig covers must be compact marketplace thumbnails, not website hero sections. Choose the right category automatically. Use landscape for banners, Fiverr covers and YouTube thumbnails; portrait for flyers, posters, menus and invitations; square for logos and social posts unless the user specifies dimensions/platform. Do not include markdown."
-                var plannerRes = await window.groqFetch({model:'openai/gpt-oss-20b',messages:[{role:'system',content:plannerSystem}].concat(recentDesignHistory),max_tokens:1100,temperature:0.25});
-                var plannerData = await plannerRes.json();
-                var plannerText = plannerData.choices && plannerData.choices[0] && plannerData.choices[0].message && plannerData.choices[0].message.content || '';
-                plannerText = plannerText.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-                var plan = JSON.parse(plannerText);
+                if (typeof window.dtsGenerateInline !== 'function') throw new Error('Image generation is not ready. Please try again.');
+                var generatedImage = await window.dtsGenerateInline(text, { category: 'general', aspectRatio: 'square' });
                 showTyping(false);
-                if (plan.action === 'ask' && plan.message) {
-                    imageDesignSessionActive = true;
-                    chatHistory.push({role:'assistant',content:plan.message});
-                    appendMessage('assistant',plan.message);
-                    saveSession(); renderHistoryList();
-                } else if (plan.action === 'generate' && plan.prompt) {
-                    imageDesignSessionActive = false;
-                    var imageData = await window.dtsGenerateInline(plan.prompt,{category:plan.category,aspectRatio:plan.aspectRatio,copy:plan.copy||{}});
-                    if (imageData && imageData.type === 'generated-image') {
-                        chatHistory.push({role:'assistant',content:imageData});
-                    } else {
-                        var failedMessage = 'I could not generate that image. Please check the message above for the service error, then try again.';
-                        chatHistory.push({role:'assistant',content:failedMessage});
-                        appendMessage('assistant',failedMessage);
-                    }
-                    saveSession(); renderHistoryList();
+                if (generatedImage && generatedImage.type === 'generated-image') {
+                    chatHistory.push({ role: 'assistant', content: generatedImage });
                 } else {
-                    throw new Error('The design plan was incomplete. Please describe the design again.');
+                    var imageFailure = 'I could not generate that image. Please try again.';
+                    chatHistory.push({ role: 'assistant', content: imageFailure });
+                    appendMessage('assistant', imageFailure);
                 }
-            } catch (designError) {
-                showTyping(false);
-                imageDesignSessionActive = false;
-                var designMessage = 'I could not prepare that design yet. ' + (designError && designError.message || 'Please try again.');
-                chatHistory.push({role:'assistant',content:designMessage});
-                appendMessage('assistant',designMessage);
                 saveSession(); renderHistoryList();
-            } finally { isSending = false; setSendState(false); }
+            } catch (imageError) {
+                showTyping(false);
+                var imageErrorMessage = 'Image generation failed: ' + (imageError && imageError.message || 'Please try again.');
+                chatHistory.push({ role: 'assistant', content: imageErrorMessage });
+                appendMessage('assistant', imageErrorMessage);
+                saveSession(); renderHistoryList();
+            } finally {
+                isSending = false; setSendState(false);
+            }
             return;
         }
 
@@ -1803,7 +1799,15 @@
 
     document.addEventListener('DOMContentLoaded', function () {
 
-        newSession();
+        /* Restore the last active conversation instead of silently starting a blank chat. */
+        var savedActiveId = null;
+        try { savedActiveId = localStorage.getItem(ACTIVE_KEY); } catch (restoreError) {}
+        var savedSessions = loadSessions();
+        if (savedActiveId && savedSessions.some(function (session) { return session.id === savedActiveId; })) {
+            loadSessionById(savedActiveId);
+        } else {
+            newSession();
+        }
         renderHistoryList();
 
         /* ── Auto-resize textarea ── */
