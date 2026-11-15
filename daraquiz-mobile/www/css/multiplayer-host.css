@@ -536,3 +536,15 @@ tr.mine td{background:#fff5e4}
 .mp-rules-dialog ul{display:grid;gap:12px;padding-left:22px;margin:0 0 24px;color:var(--ink-2);line-height:1.5}
 .mp-rules-dialog li::marker{color:var(--teal);font-weight:900}
 .mp-rules-dialog .btn{width:100%}
+
+
+/* Phase 3 final touch — clearer saved-batch feedback and accessible controls. */
+.gen-head{gap:16px}
+#gen-count{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#gen-state{line-height:1.45}
+#gen-continue:not([hidden]){box-shadow:0 0 0 3px rgba(15,143,120,.12)}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(15,143,120,.55);outline-offset:3px}
+.opt:focus-visible{outline:4px solid #10243a;outline-offset:3px}
+#mic-toggle:focus-visible{outline-offset:4px}
+@media(max-width:520px){.gen-head .row{width:100%}.gen-head .row .btn{flex:1}.gen-head strong{font-size:1.08rem}#gen-count{font-size:1rem}}
+@media(prefers-reduced-motion:reduce){.view{animation:none}.btn,.bar i,.opt{transition:none}}
