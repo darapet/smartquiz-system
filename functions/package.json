@@ -4,7 +4,7 @@
   "scripts": {
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "node --test"
+    "test": "node --check index.js && node --check challenge-functions.js && node --test"
   },
   "engines": {
     "node": "20"
