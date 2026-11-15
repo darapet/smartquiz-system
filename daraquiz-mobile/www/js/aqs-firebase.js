@@ -304,7 +304,7 @@ async function getOrCreateGuestSession() {
 var AQS_ACTION_TIMEOUT_MS = 15000;
 
 function _aqsActionTimeoutFor(action) {
-    return /^(aqs_register)$/.test(String(action || ''))
+    return /^(aqs_register|aqs_ch_.*)$/.test(String(action || ''))
         ? 30000
         : AQS_ACTION_TIMEOUT_MS;
 }
