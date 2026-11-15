@@ -369,6 +369,7 @@ async function runAction(action, data, uid) {
       };
       const effect = skillByCharacter[player.character_id];
       if (!effect) return;
+      if (effect === 'doublesteal' && !ch.steal_mode) return;
       const state = { ...(ch.skill_effects || {}) };
       const skill = {};
       if (effect === 'double') skill.boost = true;
