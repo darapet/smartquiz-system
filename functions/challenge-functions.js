@@ -174,7 +174,7 @@ function progressRoom(ch, now) {
 function stripAnswerMetadata(value) {
   if (Array.isArray(value)) return value.map(stripAnswerMetadata);
   if (!value || typeof value !== 'object') return value;
-  const blocked = new Set(['correct_answer_index', 'correct_idx', 'correctIndex', 'correct_answer', 'correctAnswer', 'answer', 'answer_index', 'is_correct', 'isCorrect', 'explanation']);
+  const blocked = new Set(['correct_answer_index', 'correct_idx', 'correctIndex', 'correct_answer', 'correctAnswer', 'correct', 'answer', 'answer_index', 'is_correct', 'isCorrect', 'explanation']);
   return Object.keys(value).reduce((safe, key) => {
     if (!blocked.has(key)) safe[key] = stripAnswerMetadata(value[key]);
     return safe;
@@ -224,6 +224,37 @@ function publicState(ch, code, now, viewerToken) {
     league_eliminated_char: ch.league_eliminated_char || null,
   };
 }
+function validateQuestions(questions) {
+  return questions.map((question, index) => {
+    if (!question || typeof question !== 'object' || Array.isArray(question)) {
+      fail('Question ' + (index + 1) + ' is invalid.');
+    }
+    const text = String(question.question || '').trim();
+    const options = question.options;
+    const correct = Number(question.correct_answer_index);
+    const explanation = question.explanation == null ? '' : question.explanation;
+    if (!text || text.length > 4000) fail('Question ' + (index + 1) + ' must contain 1 to 4,000 characters.');
+    if (!Array.isArray(options) || options.length < 2 || options.length > 6) {
+      fail('Question ' + (index + 1) + ' must have between 2 and 6 answer options.');
+    }
+    if (options.some((option) => typeof option !== 'string' || !option.trim() || option.length > 1000)) {
+      fail('Question ' + (index + 1) + ' has an invalid answer option.');
+    }
+    if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) {
+      fail('Mark one valid correct answer for question ' + (index + 1) + '.');
+    }
+    if (typeof explanation !== 'string' || explanation.length > 3000) {
+      fail('Question ' + (index + 1) + ' has an invalid explanation.');
+    }
+    return {
+      ...question,
+      question: text,
+      options: options.map((option) => option.trim()),
+      correct_answer_index: correct,
+      explanation: explanation.trim(),
+    };
+  });
+}
 function getPlayer(ch, token) {
   return list(ch.players).find((p) => p && p.player_token === token);
 }
@@ -246,6 +277,7 @@ async function runAction(action, data, uid) {
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch (_) {}
     if (!Array.isArray(questions) || !questions.length) fail('Add questions before creating the challenge.');
     if (questions.length > 1000) fail('A challenge can contain at most 1,000 questions.');
+    questions = validateQuestions(questions);
     const roomCode = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
     const playerToken = require('crypto').randomBytes(18).toString('hex');
     const playerName = String(data.host_name || 'Host').trim().slice(0, 40) || 'Host';
@@ -417,6 +449,7 @@ async function runAction(action, data, uid) {
       const owner = stealing ? Number(ch.steal_of_pos) : pos;
       const q = questionFor(ch, owner);
       if (!q) return;
+      if (answerIdx >= (Array.isArray(q.options) ? q.options.length : 0)) return;
       const correct = Number(q.correct_answer_index);
       const isCorrect = answerIdx >= 0 && answerIdx === correct;
       const effectiveTime = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
