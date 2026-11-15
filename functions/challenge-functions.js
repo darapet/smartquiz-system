@@ -303,7 +303,6 @@ async function runAction(action, data, uid) {
         }
         ch.player_questions[p] = pool;
       }
-      delete ch.questions;
       ch.status = 'active'; ch.phase = 'active'; ch.round = 1; ch.attempt_idx = 0;
       ch.q_in_round = 1; ch.answers_this_q = {}; ch.started_at = now;
       ch.question_started_at = now; ch.server_time = now / 1000;
@@ -351,7 +350,28 @@ async function runAction(action, data, uid) {
       const correct = Number(q.correct_answer_index);
       const isCorrect = answerIdx >= 0 && answerIdx === correct;
       const bonus = Math.max(0, Math.round((1 - elapsed / (Number(ch.time_per_question) || 30)) * 100));
-      const points = isCorrect ? (stealing ? 3 : 10 + Math.round(bonus / 10)) : 0;
+      const skillByCharacter = {
+        blaze: 'double', reaper: 'double', samurai: 'double', koda: 'double',
+        cyber: 'shield', luna: 'shield', viper: 'doubleSteal',
+      };
+      const skillUsed = ch.skills_used || {};
+      const skillEffects = { ...(ch.skill_effects || {}) };
+      const requestedBoost = Number(data.skill_boost) > 1 && skillByCharacter[player.character_id] === 'double' && !skillUsed[pos];
+      const requestedShield = !!Number(data.skill_shield) && skillByCharacter[player.character_id] === 'shield' && !skillUsed[pos];
+      const requestedDoubleSteal = !!Number(data.skill_d2steal) && skillByCharacter[player.character_id] === 'doubleSteal' && !skillUsed[pos];
+      if (requestedBoost || requestedShield || requestedDoubleSteal) {
+        skillUsed[pos] = true;
+        ch.skills_used = skillUsed;
+      }
+      if (requestedDoubleSteal) skillEffects[pos] = { ...(skillEffects[pos] || {}), doubleSteal: true };
+      const useDoubleSteal = stealing && !!(skillEffects[pos] && skillEffects[pos].doubleSteal);
+      const boost = requestedBoost ? 2 : 1;
+      const shield = requestedShield;
+      const basePoints = stealing ? (useDoubleSteal ? 6 : 3) : (10 + Math.round(bonus / 10));
+      const points = isCorrect ? basePoints * (stealing ? 1 : boost) : (shield ? 3 : 0);
+      if (requestedBoost || requestedShield) delete skillEffects[pos];
+      if (useDoubleSteal) delete skillEffects[pos];
+      ch.skill_effects = skillEffects;
       const scores = { ...(ch.scores || {}) };
       scores[pos] = (Number(scores[pos]) || 0) + points;
       ch.scores = scores;
@@ -379,7 +399,7 @@ async function runAction(action, data, uid) {
           }
         }
       }
-      response = { is_correct: isCorrect, score: scores[pos], time_bonus: isCorrect ? bonus : 0, correct_idx: correct };
+      response = { is_correct: isCorrect, score: scores[pos], time_bonus: isCorrect ? bonus : 0, correct_idx: correct, explanation: q.explanation || '', skill_boost_applied: requestedBoost, skill_shield_applied: shield };
       return ch;
     });
     if (!result.committed) fail('Your answer was not accepted. Check whose turn it is, or whether time has expired.');
@@ -393,6 +413,7 @@ async function runAction(action, data, uid) {
       ch.attempt_idx = 0; ch.active_pos = 0; ch.primary_pos = 0;
       ch.steal_mode = false; ch.steal_of_pos = null; ch.answers_this_q = {};
       ch.scores = {}; list(ch.players).forEach((p) => { ch.scores[p.position] = 0; });
+      ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = [];
       ch.last_result = null; ch.question_started_at = null;
       delete ch.player_questions; delete ch.finished_at;
       return ch;
