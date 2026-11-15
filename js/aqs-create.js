@@ -621,11 +621,11 @@
         if(!cache){cache={results:[],rejected:0};window.__AQS_QUIZ_BATCH_CACHE[cacheKey]=cache;}
         var batches=[];
         for(var startAt=0,index=0;startAt<requested;startAt+=QUIZ_BATCH_SIZE,index++)batches.push({index:index,start:startAt,count:Math.min(QUIZ_BATCH_SIZE,requested-startAt)});
-        var pending=batches.filter(function(batch){return !Array.isArray(cache.results[batch.index]);});
+        var pending=batches.filter(function(batch){return !(cache.results[batch.index] && Array.isArray(cache.results[batch.index].questions));});
         var jobs=pending.map(function(batch){return withQuizAIConcurrency(async function(){
             var result=await generateQuestionsWithAIChunk(textContent,batch.count,subject,{index:batch.index,start:batch.start,total:batches.length});
             cache.results[batch.index]=result;cache.rejected+=result.rejected||0;
-            var done=cache.results.reduce(function(n,part){return n+(Array.isArray(part)?part.questions.length:0);},0);
+            var done=cache.results.reduce(function(n,part){return n+((part&&Array.isArray(part.questions))?part.questions.length:0);},0);
             setStatus('Generated '+done+' of '+requested+' questions…');return result;
         });});
         var settled=await Promise.allSettled(jobs);
