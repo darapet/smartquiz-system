@@ -449,6 +449,10 @@ async function runAction(action, data, uid) {
         rejectionMessage = 'Viper Strike can only be activated during a steal turn.';
         return;
       }
+      if (effect === 'double' && ch.steal_mode) {
+        rejectionMessage = 'This points boost can only be activated on your primary turn.';
+        return;
+      }
       const state = { ...(ch.skill_effects || {}) };
       const skill = {};
       if (effect === 'double') skill.boost = true;
