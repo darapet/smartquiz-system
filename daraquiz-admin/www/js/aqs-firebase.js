@@ -770,6 +770,7 @@ async function actionGetQuizzes(data) {
             id:            d.id,
             title:         q.title,
             subject:       q.subject,
+            quiz_note: q.quiz_note || '',
             num_questions: q.num_questions || (q.questions || []).length,
             time_limit:    q.time_limit,
             mode:          q.mode,
@@ -2149,6 +2150,21 @@ async function actionGetMyStats() {
         }
     }
 
+    /* Quiz streak counts days with completed quiz attempts, not app visits. */
+    var quizDaySet = {};
+    attempts.forEach(function(a) { if (a._ms) quizDaySet[new Date(a._ms).toISOString().slice(0, 10)] = true; });
+    var quizCursor = new Date();
+    quizCursor.setUTCHours(0, 0, 0, 0);
+    var todayKey = quizCursor.toISOString().slice(0, 10);
+    if (!quizDaySet[todayKey]) {
+        quizCursor.setUTCDate(quizCursor.getUTCDate() - 1);
+    }
+    var quizStreak = 0;
+    while (quizDaySet[quizCursor.toISOString().slice(0, 10)]) {
+        quizStreak++;
+        quizCursor.setUTCDate(quizCursor.getUTCDate() - 1);
+    }
+
     var recent = attempts.slice(0, 5).map(function(a) {
         var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
         return { text: 'Took a quiz — scored <b>' + a.score + '/' + a.total + ' (' + pct + '%)</b>', time: (a.time || '').substring(0, 16) };
@@ -2158,6 +2174,7 @@ async function actionGetMyStats() {
         quizzes_taken:   attempts.length,
         quizzes_created: quizzesCreated,
         streak:          streak,
+        quiz_streak:     quizStreak,
         recent_activity: recent
     };
 }
@@ -2173,6 +2190,7 @@ async function actionGetMyQuizzes(data) {
             id:            d.id,
             title:         q.title,
             subject:       q.subject,
+            quiz_note:     q.quiz_note || '',
             num_questions: q.num_questions || (q.questions || []).length,
             time_limit:    q.time_limit,
             mode:          q.mode,

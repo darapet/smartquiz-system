@@ -1,113 +1,86 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Create a Quiz — XZILY AI</title>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz Dashboard — AI Quiz System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/aqs-style.css">
-  <link rel="stylesheet" href="css/aqs-quiz-setup.css">
+  <link rel="stylesheet" href="css/aqs-quiz-dashboard.css">
+  <script>window.AQS={ajax_url:'firebase',nonce:'',public_nonce:'',auth_nonce:'',home_url:'index.html',create_page_url:'quiz-setup.html',is_logged_in:true,is_host:true,is_admin:false,current_user_name:'Learner'};</script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
   <script src="js/aqs-nav-loader.js"></script>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="aqs-full-page-body quiz-setup-page" data-aqs-page="quiz-setup" data-aqs-page-group="quiz flows">
-<header class="aqs-phase2-page-header" aria-label="Create a Quiz"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Create a Quiz</span></header>
-
-  <header class="aqs-site-header">
-    <div class="aqs-site-header-inner">
-      <a href="index.html" class="aqs-site-logo" aria-label="XZILY AI home">
-        <svg width="32" height="32" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#e8912d" opacity=".9"/>
-          <polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity=".15"/>
-          <circle cx="18" cy="18" r="5" fill="white"/>
-        </svg>
-        <div class="aqs-site-logo-text">
-          <span class="aqs-site-logo-name">AI Quiz</span>
-          <span class="aqs-site-logo-sub">System</span>
-        </div>
-      </a>
-      <nav class="aqs-site-nav" aria-label="Main navigation">
-        <a href="index.html" class="aqs-site-nav-link">Home</a>
-        <a href="quiz-setup.html" class="aqs-site-nav-link aqs-site-nav-highlight">Create Quiz</a>
-        <a href="studyhub.html" class="aqs-site-nav-link">AI Study</a>
-        <a href="user-dashboard.html" class="aqs-site-nav-link">Dashboard</a>
-      </nav>
-      <div class="aqs-site-header-auth">
-        <a href="index.html" class="aqs-site-header-btn aqs-site-header-btn-ghost">← Home</a>
-      </div>
-      <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
+<body class="aqs-full-page-body quiz-dashboard-page" data-aqs-page="quiz-dashboard" data-aqs-page-group="quiz flows">
+<header class="aqs-phase2-page-header" aria-label="Quiz Dashboard"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Quiz Dashboard</span></header>
+<header class="aqs-site-header"><div class="aqs-site-header-inner">
+  <a href="index.html" class="aqs-site-logo" aria-label="SmartQuiz home">
+    <svg width="32" height="32" viewBox="0 0 36 36" fill="none" aria-hidden="true"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#e8912d" opacity=".9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity=".15"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+    <span class="aqs-site-logo-text"><span class="aqs-site-logo-name">AI Quiz</span><span class="aqs-site-logo-sub">System</span></span>
+  </a>
+  <nav class="aqs-site-nav" id="aqs-site-nav"><a href="index.html" class="aqs-site-nav-link">Home</a><a href="quiz-setup.html" class="aqs-site-nav-link aqs-site-nav-highlight">Quizzes</a><a href="studyhub.html" class="aqs-site-nav-link">StudyHub</a><a href="studio.html" class="aqs-site-nav-link">Studio AI</a><a href="user-dashboard.html" class="aqs-site-nav-link">My Dashboard</a></nav>
+  <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+</div></header>
+<main class="qdb-shell">
+  <section class="qdb-welcome">
+    <div><span class="qdb-eyebrow">YOUR LEARNING SPACE</span><h1 id="qdb-greeting">Your quiz dashboard</h1><p>Practice, create, host and track every quiz from one place.</p></div>
+    <button class="qdb-primary" id="qdb-open-create"><span>＋</span> Create Quiz</button>
+  </section>
+  <section class="qdb-stats" aria-label="Quiz statistics">
+    <article class="qdb-stat"><span class="qdb-stat-icon orange">✦</span><div><strong id="qdb-generated">—</strong><span>Quizzes generated</span></div></article>
+    <article class="qdb-stat"><span class="qdb-stat-icon purple">🔥</span><div><strong id="qdb-streak">—</strong><span>Learning streak</span></div></article>
+    <article class="qdb-stat"><span class="qdb-stat-icon blue">♧</span><div><strong id="qdb-hosted">—</strong><span>Hosted quizzes</span></div></article>
+    <article class="qdb-stat"><span class="qdb-stat-icon green">✓</span><div><strong id="qdb-taken">—</strong><span>Quizzes completed</span></div></article>
+    <article class="qdb-stat"><span class="qdb-stat-icon teal">▤</span><div><strong id="qdb-questions">—</strong><span>Questions created</span></div></article>
+  </section>
+  <section class="qdb-shortcuts">
+    <div><span class="qdb-section-kicker">GET STARTED</span><h2>What would you like to do?</h2><p>Choose a quiz activity to jump straight in.</p></div>
+    <div class="qdb-activity-grid">
+      <a href="self-quiz.html" class="qdb-activity"><span class="qdb-activity-icon self">🧠</span><strong>Practice by yourself</strong><small>Generate a personal quiz and learn at your own pace.</small><span class="qdb-arrow">Start practising →</span></a>
+      <a href="create-quiz.html" class="qdb-activity"><span class="qdb-activity-icon host">👥</span><strong>Host a quiz</strong><small>Create a quiz, publish it and invite participants.</small><span class="qdb-arrow">Create hosted quiz →</span></a>
+      <a href="multiplayer-host.html" class="qdb-activity"><span class="qdb-activity-icon live">⚡</span><strong>Live multiplayer</strong><small>Open a live room for a real-time quiz session.</small><span class="qdb-arrow">Host a live game →</span></a>
+      <a href="challenge.html" class="qdb-activity"><span class="qdb-activity-icon challenge">🏆</span><strong>Quiz challenges</strong><small>Challenge yourself or take part in a quiz battle.</small><span class="qdb-arrow">Explore challenges →</span></a>
     </div>
-  </header>
-
-  <main class="quiz-setup-main">
-    <section class="quiz-setup-intro">
-      <span class="quiz-setup-eyebrow">QUIZ CREATOR</span>
-      <h1>What kind of quiz do you want to create?</h1>
-      <p>Choose the experience that fits what you want to do. You can change your mind later.</p>
-    </section>
-
-    <section class="quiz-setup-options" aria-label="Quiz creation options">
-      <a class="quiz-setup-option quiz-setup-option-self" href="self-quiz.html">
-        <span class="quiz-setup-option-icon" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
-            <path d="m15 5 3 3"/>
-          </svg>
-        </span>
-        <span class="quiz-setup-option-content">
-          <span class="quiz-setup-option-label">Create a quiz for yourself</span>
-          <span class="quiz-setup-option-title">Self Quiz</span>
-          <span class="quiz-setup-option-description">Generate a focused practice or exam quiz from a topic or your own study document. It is private and ready for you to take immediately.</span>
-          <span class="quiz-setup-option-action">Start a self quiz <span aria-hidden="true">→</span></span>
-        </span>
-      </a>
-
-      <a class="quiz-setup-option quiz-setup-option-host" href="create-quiz.html">
-        <span class="quiz-setup-option-icon" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </span>
-        <span class="quiz-setup-option-content">
-          <span class="quiz-setup-option-label">Host a quiz for others</span>
-          <span class="quiz-setup-option-title">Host Quiz</span>
-          <span class="quiz-setup-option-description">Build a quiz for a class, team, or group. Publish it and get a shareable link that participants can use to join.</span>
-          <span class="quiz-setup-option-action">Create a hosted quiz <span aria-hidden="true">→</span></span>
-        </span>
-      </a>
-      <a class="quiz-setup-option quiz-setup-option-host" href="multiplayer-host.html">
-        <span class="quiz-setup-option-icon" aria-hidden="true">⚡</span>
-        <span class="quiz-setup-option-content">
-          <span class="quiz-setup-option-label">Live multiplayer</span>
-          <span class="quiz-setup-option-title">Host Multiplayer Quiz</span>
-          <span class="quiz-setup-option-description">Open a live room with a PIN, lobby, ready checks, timed questions and a competitive leaderboard.</span>
-          <span class="quiz-setup-option-action">Start a multiplayer room <span aria-hidden="true">→</span></span>
-        </span>
-      </a>
-    </section>
-
-    <p class="quiz-setup-note">Not sure yet? Self Quiz is best for personal revision. Host Quiz is best when other people need to participate.</p>
-  </main>
-
-  <script>
-    (function () {
-      var btn = document.getElementById('aqs-site-nav-toggle');
-      var nav = document.querySelector('.aqs-site-nav');
-      if (btn && nav) {
-        btn.addEventListener('click', function () {
-          var open = nav.classList.toggle('aqs-site-nav-open');
-          btn.classList.toggle('aqs-site-nav-toggle-open', open);
-          btn.setAttribute('aria-expanded', String(open));
-        });
-      }
-    }());
-  </script>
-</body>
-</html>
+  </section>
+  <section class="qdb-recent">
+    <div class="qdb-section-head"><div><span class="qdb-section-kicker">YOUR LIBRARY</span><h2>Recent quizzes</h2><p>Your recently created and hosted quizzes.</p></div><a href="dashboard.html">Manage quizzes →</a></div>
+    <div id="qdb-recent-list" class="qdb-recent-list"><div class="qdb-loading"><span class="qdb-loader"></span> Loading your quizzes…</div></div>
+  </section>
+  <div class="qdb-tip"><span>💡</span><p><strong>Keep your momentum going.</strong> A short practice session every day helps you build a stronger learning habit.</p></div>
+</main>
+<div class="qdb-modal" id="qdb-create-modal" aria-hidden="true">
+ <div class="qdb-modal-backdrop" data-close-modal></div>
+ <section class="qdb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="qdb-modal-title">
+  <button class="qdb-modal-close" type="button" aria-label="Close" data-close-modal>×</button>
+  <span class="qdb-eyebrow">CREATE SOMETHING NEW</span><h2 id="qdb-modal-title">Which quiz would you like to create?</h2><p>Choose the type of quiz experience you want to start.</p>
+  <div class="qdb-modal-options">
+   <a href="self-quiz.html" class="qdb-modal-option"><span>🧠</span><div><strong>Self Quiz</strong><small>Generate a private practice or exam quiz for yourself.</small></div><b>→</b></a>
+   <a href="create-quiz.html" class="qdb-modal-option"><span>👥</span><div><strong>Host a Quiz</strong><small>Create and publish a quiz for a class, group or audience.</small></div><b>→</b></a>
+   <a href="multiplayer-host.html" class="qdb-modal-option"><span>⚡</span><div><strong>Host Multiplayer</strong><small>Start a live room with a PIN and real-time competition.</small></div><b>→</b></a>
+  </div>
+ </section>
+</div>
+<div class="qdb-toast" id="qdb-toast" role="status"></div>
+<script>
+(function(){
+ var $=function(s){return document.querySelector(s);};
+ var modal=$('#qdb-create-modal');
+ function openModal(){modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');document.body.classList.add('qdb-modal-open');}
+ function closeModal(){modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');document.body.classList.remove('qdb-modal-open');}
+ $('#qdb-open-create').addEventListener('click',openModal);
+ modal.addEventListener('click',function(e){if(e.target.hasAttribute('data-close-modal'))closeModal();});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+ var navBtn=$('#aqs-site-nav-toggle'),nav=$('#aqs-site-nav');
+ if(navBtn&&nav)navBtn.addEventListener('click',function(){var on=nav.classList.toggle('aqs-site-nav-open');navBtn.classList.toggle('aqs-site-nav-toggle-open',on);navBtn.setAttribute('aria-expanded',String(on));});
+ function unwrap(r){return r&&r.data!==undefined?r.data:r;}
+ function post(action,extra){return new Promise(function(resolve,reject){var payload=Object.assign({action:action},extra||{});function send(){if(typeof window.aqsAjax==='function')return window.aqsAjax(payload,function(r){var d=unwrap(r);if(r&&r.success===false)reject(new Error(d||'Could not load quiz data.'));else resolve(d);},reject);reject(new Error('Quiz service is still loading.'));}if(typeof window.aqsAjax==='function'||window._aqsFirebaseReady)send();else document.addEventListener('aqs:firebase:ready',send,{once:true});});}
+ function safe(s){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
+ function renderRecent(items){var root=$('#qdb-recent-list');if(!items.length){root.innerHTML='<div class="qdb-empty"><span>📚</span><strong>No quizzes yet</strong><p>Your generated and hosted quizzes will appear here.</p><button type="button" class="qdb-empty-btn" id="qdb-empty-create">Create your first quiz</button></div>';$('#qdb-empty-create').addEventListener('click',openModal);return;}root.innerHTML=items.slice(0,6).map(function(q){var url=q.quiz_url||('quiz-manage.html?id='+encodeURIComponent(q.id));return '<article class="qdb-quiz-row"><span class="qdb-quiz-icon">📋</span><div class="qdb-quiz-info"><strong>'+safe(q.title||'Untitled quiz')+'</strong><small>'+safe(q.subject||'General')+' · '+Number(q.num_questions||0)+' questions</small></div><span class="qdb-quiz-status">'+safe(q.status||'Created')+'</span><a href="'+safe(url)+'" aria-label="Open '+safe(q.title)+'">Open →</a></article>';}).join('');}
+ function load(){post('aqs_get_my_stats').then(function(stats){stats=stats||{};var name=(window.AQS&&AQS.current_user_name)||'Learner';$('#qdb-greeting').textContent='Welcome back'+(name&&name!=='Learner'?', '+name:'')+'!';$('#qdb-generated').textContent=Number(stats.quizzes_created||0).toLocaleString();$('#qdb-streak').textContent=Number(stats.quiz_streak||0).toLocaleString()+' days';$('#qdb-hosted').textContent=Number(stats.quizzes_created||0).toLocaleString();$('#qdb-taken').textContent=Number(stats.quizzes_taken||0).toLocaleString();post('aqs_get_my_quizzes',{limit:1000}).then(function(items){items=Array.isArray(items)?items:[];var total=items.reduce(function(n,q){return n+Number(q.num_questions||0);},0);var hosted=items.filter(function(q){return !String(q.quiz_note||'').toLowerCase().includes('self quiz');}).length;$('#qdb-questions').textContent=total.toLocaleString();$('#qdb-hosted').textContent=hosted.toLocaleString();renderRecent(items);}).catch(function(){renderRecent([]);});}).catch(function(e){$('#qdb-recent-list').innerHTML='<div class="qdb-empty">Could not load quiz activity. Please refresh the page.</div>';$('#qdb-toast').textContent=e.message||'Could not load dashboard data.';});}
+ if(typeof window.onAqsAuthChange==='function')window.onAqsAuthChange(function(user){if(user)load();else $('#qdb-recent-list').textContent='Sign in to view your quiz dashboard.';});
+ else document.addEventListener('aqs:firebase:ready',function(){if(typeof window.onAqsAuthChange==='function')window.onAqsAuthChange(function(user){if(user)load();});},{once:true});
+})();
+</script>
+</body></html>
