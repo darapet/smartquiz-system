@@ -322,8 +322,9 @@ async function runAction(action, data, uid) {
   if (action === 'aqs_ch_poll') {
     const result = await roomRef.transaction((ch) => {
       if (!ch) return;
+      const before = JSON.stringify(ch);
       progressRoom(ch, now);
-      return ch;
+      return JSON.stringify(ch) === before ? undefined : ch;
     });
     if (!result.snapshot.exists()) fail('Challenge not found.', 404);
     return publicState(result.snapshot.val(), code, now);
@@ -371,7 +372,7 @@ async function runAction(action, data, uid) {
         for (let step = 1; step < active.length; step += 1) {
           const candidate = active[(Math.max(idx, 0) + step) % active.length];
           const entry = ch.answers_this_q[candidate] || ch.answers_this_q[String(candidate)];
-          if (!entry || entry.is_steal) {
+          if (!entry) {
             ch.last_result.steal_offered = true;
             ch.pending_stealer = candidate;
             break;
@@ -441,8 +442,8 @@ async function runAction(action, data, uid) {
     const since = Number(data.since) || 0;
     const voice = ch.voice || {};
     const chunks = Object.keys(voice).filter((p) => Number(p) !== Number(player.position))
-      .map((p) => voice[p]).filter((v) => v && v.data && Number(v.ts) > since)
-      .map((v, i) => ({ pos: i, data: v.data, mime: v.mime || 'audio/webm', ts: v.ts }));
+      .filter((p) => voice[p] && voice[p].data && Number(voice[p].ts) > since)
+      .map((p) => ({ pos: Number(p), data: voice[p].data, mime: voice[p].mime || 'audio/webm', ts: voice[p].ts }));
     return { chunks, server_time: now };
   }
   fail('Unsupported Challenge action.');
