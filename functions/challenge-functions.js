@@ -6,7 +6,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const db = admin.database();
 const ALLOWED_ACTIONS = new Set([
   'aqs_ch_create', 'aqs_ch_join', 'aqs_ch_start', 'aqs_ch_poll',
-  'aqs_ch_answer', 'aqs_ch_play_again', 'aqs_ch_chat',
+  'aqs_ch_answer', 'aqs_ch_skill_activate', 'aqs_ch_play_again', 'aqs_ch_chat',
   'aqs_ch_update_settings', 'aqs_ch_voice_push', 'aqs_ch_voice_poll',
 ]);
 
@@ -97,7 +97,8 @@ function progressRoom(ch, now) {
   if (ch.phase === 'active') {
     const started = Number(ch.question_started_at) || now;
     const elapsed = (now - started) / 1000;
-    if (elapsed >= (Number(ch.time_per_question) || 30)) {
+    const activeSkill = (ch.skill_effects || {})[pos] || {};
+    if (elapsed >= (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0)) {
       const pos = Number(ch.active_pos) || 0;
       const answers = ch.answers_this_q || {};
       if (!answers[pos]) {
@@ -330,6 +331,49 @@ async function runAction(action, data, uid) {
     return publicState(result.snapshot.val(), code, now);
   }
 
+  if (action === 'aqs_ch_skill_activate') {
+    let activated = null;
+    const result = await roomRef.transaction((ch) => {
+      if (!ch || ch.status !== 'active' || ch.phase !== 'active') return;
+      const player = getPlayer(ch, token);
+      if (!player || Number(player.position) !== Number(ch.active_pos)) return;
+      const pos = Number(player.position);
+      if ((ch.skills_used || {})[pos]) return;
+      const skillByCharacter = {
+        blaze: 'double', reaper: 'double', samurai: 'double', koda: 'double',
+        cyber: 'shield', luna: 'shield',
+        inferno: 'timeboost', ember: 'timeboost', aang: 'timeboost',
+        nova: 'fiftyfifty', phantom: 'fiftyfifty', viper: 'doubleSteal',
+      };
+      const effect = skillByCharacter[player.character_id];
+      if (!effect) return;
+      const state = { ...(ch.skill_effects || {}) };
+      const skill = {};
+      if (effect === 'double') skill.boost = true;
+      if (effect === 'shield') skill.shield = true;
+      if (effect === 'timeboost') skill.extraTime = 10;
+      if (effect === 'doubleSteal') skill.doubleSteal = true;
+      if (effect === 'fiftyfifty') {
+        const q = questionFor(ch, pos);
+        const options = q && Array.isArray(q.options) ? q.options : [];
+        const correct = Number(q && q.correct_answer_index);
+        const wrong = options.map((_, index) => index).filter((index) => index !== correct);
+        for (let i = wrong.length - 1; i > 0; i -= 1) {
+          const j = require('crypto').randomInt(i + 1);
+          [wrong[i], wrong[j]] = [wrong[j], wrong[i]];
+        }
+        skill.eliminatedOptionIndices = wrong.slice(0, 2);
+      }
+      state[pos] = skill;
+      ch.skill_effects = state;
+      ch.skills_used = { ...(ch.skills_used || {}), [pos]: true };
+      activated = { effect, eliminated_indices: skill.eliminatedOptionIndices || [], extra_time: skill.extraTime || 0 };
+      return ch;
+    });
+    if (!result.committed || !activated) fail('This skill cannot be used now, or it has already been used.');
+    return activated;
+  }
+
   if (action === 'aqs_ch_answer') {
     const answerIdx = Number.parseInt(data.answer_idx ?? data.answer_index, 10);
     if (!Number.isInteger(answerIdx) || answerIdx < -1 || answerIdx > 100) fail('Choose a valid answer.');
@@ -343,35 +387,28 @@ async function runAction(action, data, uid) {
       const answers = ch.answers_this_q || {};
       if (answers[pos] || answers[String(pos)]) return;
       const elapsed = (now - (Number(ch.question_started_at) || now)) / 1000;
-      if (elapsed > (Number(ch.time_per_question) || 30)) return;
+      const activeSkill = (ch.skill_effects || {})[pos] || {};
+      if (elapsed > (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0)) return;
       const stealing = !!ch.steal_mode;
       const owner = stealing ? Number(ch.steal_of_pos) : pos;
       const q = questionFor(ch, owner);
       if (!q) return;
       const correct = Number(q.correct_answer_index);
       const isCorrect = answerIdx >= 0 && answerIdx === correct;
-      const bonus = Math.max(0, Math.round((1 - elapsed / (Number(ch.time_per_question) || 30)) * 100));
-      const skillByCharacter = {
-        blaze: 'double', reaper: 'double', samurai: 'double', koda: 'double',
-        cyber: 'shield', luna: 'shield', viper: 'doubleSteal',
-      };
-      const skillUsed = ch.skills_used || {};
+      const effectiveTime = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
+      const bonus = Math.max(0, Math.round((1 - elapsed / effectiveTime) * 100));
       const skillEffects = { ...(ch.skill_effects || {}) };
-      const requestedBoost = Number(data.skill_boost) > 1 && skillByCharacter[player.character_id] === 'double' && !skillUsed[pos];
-      const requestedShield = !!Number(data.skill_shield) && skillByCharacter[player.character_id] === 'shield' && !skillUsed[pos];
-      const requestedDoubleSteal = !!Number(data.skill_d2steal) && skillByCharacter[player.character_id] === 'doubleSteal' && !skillUsed[pos];
-      if (requestedBoost || requestedShield || requestedDoubleSteal) {
-        skillUsed[pos] = true;
-        ch.skills_used = skillUsed;
-      }
-      if (requestedDoubleSteal) skillEffects[pos] = { ...(skillEffects[pos] || {}), doubleSteal: true };
-      const useDoubleSteal = stealing && !!(skillEffects[pos] && skillEffects[pos].doubleSteal);
-      const boost = requestedBoost ? 2 : 1;
-      const shield = requestedShield;
+      const skillEffect = skillEffects[pos] || {};
+      const useDoubleSteal = stealing && !!skillEffect.doubleSteal;
+      const boost = skillEffect.boost ? 2 : 1;
+      const shield = !!skillEffect.shield;
       const basePoints = stealing ? (useDoubleSteal ? 6 : 3) : (10 + Math.round(bonus / 10));
       const points = isCorrect ? basePoints * (stealing ? 1 : boost) : (shield ? 3 : 0);
-      if (requestedBoost || requestedShield) delete skillEffects[pos];
-      if (useDoubleSteal) delete skillEffects[pos];
+      if (skillEffect.doubleSteal && !stealing) {
+        skillEffects[pos] = { doubleSteal: true };
+      } else {
+        delete skillEffects[pos];
+      }
       ch.skill_effects = skillEffects;
       const scores = { ...(ch.scores || {}) };
       scores[pos] = (Number(scores[pos]) || 0) + points;
@@ -400,7 +437,7 @@ async function runAction(action, data, uid) {
           }
         }
       }
-      response = { is_correct: isCorrect, score: scores[pos], time_bonus: isCorrect ? bonus : 0, correct_idx: correct, explanation: q.explanation || '', skill_boost_applied: requestedBoost, skill_shield_applied: shield };
+      response = { is_correct: isCorrect, score: scores[pos], time_bonus: isCorrect ? bonus : 0, correct_idx: correct, explanation: q.explanation || '', skill_boost_applied: !!skillEffect.boost, skill_shield_applied: shield };
       return ch;
     });
     if (!result.committed) fail('Your answer was not accepted. Check whose turn it is, or whether time has expired.');
