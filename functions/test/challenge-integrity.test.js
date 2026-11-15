@@ -108,3 +108,7 @@ test('Challenge chat uses the browser payload shape and preserves sliding-window
   assert.match(challengeJs, /Number\(m\.ts\)>lastSeen/);
   assert.equal(challengeJs, mobileJs);
 });
+
+test('Viper receives a clear explanation when used outside a steal turn', () => {
+  assert.match(backend, /Viper Strike can only be activated during a steal turn/);
+});
