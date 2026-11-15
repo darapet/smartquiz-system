@@ -112,3 +112,17 @@ test('Challenge chat uses the browser payload shape and preserves sliding-window
 test('Viper receives a clear explanation when used outside a steal turn', () => {
   assert.match(backend, /Viper Strike can only be activated during a steal turn/);
 });
+
+test('League ties use primary-turn accuracy and average response time before seeded fallback', () => {
+  assert.match(backend, /const tiedLowest = active\.filter/);
+  assert.match(backend, /const leastCorrect = Math\.min/);
+  assert.match(backend, /const slowestAverage = Math\.max/);
+  assert.match(backend, /tie_break_seed/);
+  assert.match(backend, /if \(!stealing\) \{/);
+  assert.match(backend, /if \(!ch\.steal_mode\) \{/);
+});
+
+test('League statistics and tie-break seed reset for a replay', () => {
+  assert.match(backend, /ch\.player_stats\[p\.position\] = \{ correct: 0, answered: 0, total_time_ms: 0 \}/);
+  assert.match(backend, /ch\.tie_break_seed = require\('crypto'\)\.randomBytes\(16\)/);
+});
