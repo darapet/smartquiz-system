@@ -38,6 +38,7 @@ test('skill activation advances expired turns before granting a time boost', () 
 test('Viper effect identifier matches the browser skill identifier', () => {
   assert.match(backend, /viper: 'doublesteal'/);
   assert.match(backend, /effect === 'doublesteal'/);
+  assert.match(backend, /effect === 'doublesteal' && !ch\.steal_mode/);
 });
 
 test('50/50 resolves the question owner during a steal turn', () => {
