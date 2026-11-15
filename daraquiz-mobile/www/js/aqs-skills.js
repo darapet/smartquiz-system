@@ -49,25 +49,42 @@
 
   function _activate(){
     if(_S.used) return;
-    _S.used=true;
+    var game=window.CH;
+    if(!game||!game.code||!game.playerToken||!window.AQS||!AQS.ajax_url) return;
     var sk=_sk(_S.charId);
-    var ch=window.AQS_AVATARS?AQS_AVATARS.getChar(_S.charId):null;
-    $('#aqs-skill-btn').removeClass('sk-ready').addClass('sk-activating sk-used').find('.sk-use-label').replaceWith('<div class="sk-used-label">✓ USED</div>');
-    /* Flash overlay */
-    var $fl=$('<div id="aqs-skill-flash"></div>');
-    $fl[0].style.setProperty('--skc',sk.color); $fl[0].style.setProperty('--skr',sk.rgb);
-    var cImg=(ch&&ch.img)?'<img src="'+ch.img+'" class="sk-flash-char" alt="">'
-      :'<div class="sk-flash-char" style="display:flex;align-items:center;justify-content:center;font-size:5rem">'+sk.icon+'</div>';
-    $fl.html('<div class="sk-flash-bg"></div>'+cImg
-      +'<div class="sk-flash-badge">'+sk.icon+' '+sk.name+' ACTIVATED!</div>'
-      +'<div class="sk-flash-desc">'+sk.desc+'</div>');
-    $('body').append($fl);
-    if(window.AQS_AVATARS) AQS_AVATARS.speakLine(sk.name+' activated! '+sk.desc,_S.charId);
-    setTimeout(function(){$fl.css({opacity:0,transition:'opacity .4s'});setTimeout(function(){$fl.remove();},430);},1700);
-    _applyEffect(sk);
+    var $btn=$('#aqs-skill-btn');
+    $btn.removeClass('sk-ready').addClass('sk-activating').find('.sk-use-label').text('ACTIVATING…');
+    $.post(AQS.ajax_url,{
+      action:'aqs_ch_skill_activate',nonce:AQS.public_nonce,
+      code:game.code,player_token:game.playerToken
+    },function(res){
+      if(!res||!res.success||!res.data||res.data.effect!==sk.effect){
+        $btn.removeClass('sk-activating').addClass('sk-ready').find('.sk-use-label').text('TAP TO USE');
+        var message=(res&&res.data)||'The skill could not be activated. Try again.';
+        $('#aqs-ch-question-area').append('<div class="aqs-ch-feedback wrong">'+String(message)+'</div>');
+        return;
+      }
+      _S.used=true;
+      $btn.removeClass('sk-activating').addClass('sk-used').find('.sk-use-label').replaceWith('<div class="sk-used-label">✓ USED</div>');
+      var ch=window.AQS_AVATARS?AQS_AVATARS.getChar(_S.charId):null;
+      var $fl=$('<div id="aqs-skill-flash"></div>');
+      $fl[0].style.setProperty('--skc',sk.color); $fl[0].style.setProperty('--skr',sk.rgb);
+      var cImg=(ch&&ch.img)?'<img src="'+ch.img+'" class="sk-flash-char" alt="">'
+        :'<div class="sk-flash-char" style="display:flex;align-items:center;justify-content:center;font-size:5rem">'+sk.icon+'</div>';
+      $fl.html('<div class="sk-flash-bg"></div>'+cImg
+        +'<div class="sk-flash-badge">'+sk.icon+' '+sk.name+' ACTIVATED!</div>'
+        +'<div class="sk-flash-desc">'+sk.desc+'</div>');
+      $('body').append($fl);
+      if(window.AQS_AVATARS) AQS_AVATARS.speakLine(sk.name+' activated! '+sk.desc,_S.charId);
+      setTimeout(function(){$fl.css({opacity:0,transition:'opacity .4s'});setTimeout(function(){$fl.remove();},430);},1700);
+      _applyEffect(sk,res.data);
+    }).fail(function(){
+      $btn.removeClass('sk-activating').addClass('sk-ready').find('.sk-use-label').text('TAP TO USE');
+      $('#aqs-ch-question-area').append('<div class="aqs-ch-feedback wrong">Skill activation failed. Check your connection and try again.</div>');
+    });
   }
 
-  function _applyEffect(sk){
+  function _applyEffect(sk,serverEffect){
     if(sk.effect==='double'){
       _S.boostNext=true; _banner(sk.icon+' 2× POINTS ARMED!',sk);
     } else if(sk.effect==='shield'){
@@ -79,11 +96,8 @@
       _banner(sk.icon+' +10 SECONDS ADDED!',sk,2500);
     } else if(sk.effect==='fiftyfifty'){
       var $opts=$('.aqs-ch-option:not(.sk-eliminated):not([disabled])');
-      if($opts.length>2){
-        var pool=[];$opts.each(function(i){pool.push(i);});
-        pool.sort(function(){return Math.random()-.5;});
-        pool.slice(0,2).forEach(function(i){$($opts[i]).addClass('sk-eliminated').prop('disabled',true);});
-      }
+      var eliminated=(serverEffect&&Array.isArray(serverEffect.eliminated_indices))?serverEffect.eliminated_indices:[];
+      eliminated.forEach(function(i){$('.aqs-ch-option[data-idx="'+i+'"]').addClass('sk-eliminated').prop('disabled',true);});
       _banner(sk.icon+' 2 WRONG OPTIONS ELIMINATED!',sk,2500);
     } else if(sk.effect==='doublesteal'){
       _S.doubleSteal=true; _banner(sk.icon+' NEXT STEAL = 2× POINTS!',sk);
