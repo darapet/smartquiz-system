@@ -12,6 +12,31 @@ main{max-width:900px;margin:0 auto;padding:30px 16px 70px}h1{font-size:clamp(1.8
 .empty,.room{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.empty{color:var(--muted)}
 .room{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:10px 0}.room h3{margin:0 0 4px;font-size:1rem}.meta{color:var(--muted);font-size:.85rem}.room-actions{display:flex;gap:8px;align-items:center}.delete{background:#fff;border:1px solid #e4b8b4;color:#b42318;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer}.continue{background:var(--teal);color:#fff;text-decoration:none;border-radius:10px;padding:10px 15px;font-weight:800;white-space:nowrap}
 @media(max-width:540px){main{padding-top:22px}.create{align-items:flex-start;flex-wrap:wrap}.create .go{width:100%;text-align:center}.room{align-items:flex-start;flex-direction:column}.room-actions{width:100%}.room-actions>*{flex:1;text-align:center}.continue{width:100%;text-align:center}}
+
+/* Phase 3 — Multiplayer dashboard polish */
+:root{--line:#e1e7ed;--paper:#f5f7f9;--teal:#0f8f78}
+body{background:radial-gradient(circle at 10% 0%,rgba(224,138,30,.09),transparent 26rem),var(--paper)}
+header{box-shadow:0 5px 22px rgba(16,36,58,.045);z-index:5}
+main{max-width:980px;padding-top:38px}
+h1{font-weight:850}
+.create{position:relative;overflow:hidden;min-height:180px;padding:30px;border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 40px rgba(16,36,58,.16);transition:transform .18s,box-shadow .18s}
+.create:after{content:"";position:absolute;width:220px;height:220px;border:1px solid rgba(255,255,255,.13);border-radius:50%;right:10%;top:-105px;box-shadow:0 0 0 28px rgba(255,255,255,.035),0 0 0 58px rgba(255,255,255,.025);pointer-events:none}
+.create:hover{transform:translateY(-2px);box-shadow:0 22px 46px rgba(16,36,58,.2)}
+.create>div,.create .go{position:relative;z-index:1}
+.create .symbol{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.13);font-size:2rem;margin-bottom:10px}
+.create h2{font-size:1.45rem}
+.create .go{background:#e08a1e;box-shadow:0 6px 18px rgba(0,0,0,.13)}
+.section{margin-top:34px}
+.section h2{font-weight:800}
+.empty,.room{border-color:#e1e7ed;box-shadow:0 10px 28px rgba(16,36,58,.045);border-radius:16px}
+.empty{padding:22px;line-height:1.6}
+.room{padding:18px 20px;transition:transform .15s,box-shadow .15s}
+.room:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(16,36,58,.08)}
+.room h3{font-size:1.04rem}
+.continue,.delete{min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+.continue{background:linear-gradient(135deg,#0f8f78,#08775f)}
+@media(max-width:540px){main{padding:24px 13px 60px}.create{padding:22px;min-height:0}.create .go{min-height:46px;display:grid;place-items:center}.room{padding:16px}.room-actions{gap:8px}}
+
 </style>  <link rel="stylesheet" href="css/aqs-quiz-unified.css?v=1">
 </head>
 <body><header><a class="brand" href="index.html">◈ SmartQuiz</a><a href="index.html">← Home</a></header>
