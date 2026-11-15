@@ -263,6 +263,15 @@ function fail(message, status = 400) {
   error.status = status;
   throw error;
 }
+async function enforceRateLimit(ref, limit, windowMs, now) {
+  const result = await ref.transaction((current) => {
+    const start = Number(current && current.start_at) || now;
+    const count = now - start >= windowMs ? 0 : (Number(current && current.count) || 0);
+    if (count >= limit) return;
+    return { start_at: now - start >= windowMs ? now : start, count: count + 1 };
+  });
+  if (!result.committed) fail('Too many requests. Please wait a moment and try again.', 429);
+}
 
 async function runAction(action, data, uid) {
   const code = String(data.code || '').toUpperCase();
@@ -508,7 +517,7 @@ async function runAction(action, data, uid) {
       ch.attempt_idx = 0; ch.active_pos = 0; ch.primary_pos = 0;
       ch.steal_mode = false; ch.steal_of_pos = null; ch.answers_this_q = {};
       ch.scores = {}; list(ch.players).forEach((p) => { ch.scores[p.position] = 0; });
-      ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = [];
+      ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = []; ch.rate_limits = {};
       ch.last_result = null; ch.question_started_at = null; ch.reveal_started_at = null;
       ch.pending_stealer = null; ch.finish_after_league_transition = false;
       ch.league_eliminated_pos = null; ch.league_eliminated_name = null;
@@ -542,7 +551,9 @@ async function runAction(action, data, uid) {
     if (!snap.exists()) fail('Challenge not found.', 404);
     const player = getPlayer(snap.val(), token);
     if (!player) fail('Player not found.', 403);
-    await roomRef.child('chat').push({ player_name: player.player_name, message, ts: now });
+    await enforceRateLimit(roomRef.child('rate_limits/' + player.position + '/chat'), 8, 10000, now);
+    const entry = { player_name: player.player_name, message, ts: now };
+    await roomRef.child('chat').transaction((current) => [...list(current), entry].slice(-100));
     return { ok: true };
   }
 
@@ -550,10 +561,21 @@ async function runAction(action, data, uid) {
     const chunk = String(data.chunk || '');
     if (!chunk || chunk.length > 180000) fail('Audio chunk is empty or too large.');
     const snap = await roomRef.get();
-    if (!snap.exists() || !getPlayer(snap.val(), token)) fail('Player not found.', 403);
-    const pos = String(getPlayer(snap.val(), token).position);
-    await roomRef.child('voice/' + pos).set({ data: chunk, ts: now, mime: String(data.mime || 'audio/webm').slice(0, 80) });
-    return { ok: true };
+    if (!snap.exists()) fail('Challenge not found.', 404);
+    const player = getPlayer(snap.val(), token);
+    if (!player) fail('Player not found.', 403);
+    const pos = String(player.position);
+    await enforceRateLimit(roomRef.child('rate_limits/' + pos + '/voice_push'), 20, 10000, now);
+    let chunkTs = now;
+    await roomRef.child('voice/' + pos).transaction((current) => {
+      const queue = Array.isArray(current) ? current.slice()
+        : (current && current.data ? [current] : list(current));
+      const previousTs = queue.length ? Number(queue[queue.length - 1].ts) || 0 : 0;
+      chunkTs = Math.max(now, previousTs + 1);
+      queue.push({ data: chunk, ts: chunkTs, mime: String(data.mime || 'audio/webm').slice(0, 80) });
+      return queue.slice(-30);
+    });
+    return { ok: true, ts: chunkTs };
   }
 
   if (action === 'aqs_ch_voice_poll') {
@@ -562,12 +584,22 @@ async function runAction(action, data, uid) {
     const ch = snap.val();
     const player = getPlayer(ch, token);
     if (!player) fail('Player not found.', 403);
+    await enforceRateLimit(roomRef.child('rate_limits/' + player.position + '/voice_poll'), 24, 10000, now);
     const since = Number(data.since) || 0;
     const voice = ch.voice || {};
-    const chunks = Object.keys(voice).filter((p) => Number(p) !== Number(player.position))
-      .filter((p) => voice[p] && voice[p].data && Number(voice[p].ts) > since)
-      .map((p) => ({ pos: Number(p), data: voice[p].data, mime: voice[p].mime || 'audio/webm', ts: voice[p].ts }));
-    return { chunks, server_time: now };
+    const chunks = [];
+    Object.keys(voice).forEach((pos) => {
+      if (Number(pos) === Number(player.position)) return;
+      const stored = voice[pos];
+      const queue = Array.isArray(stored) ? stored : (stored && stored.data ? [stored] : list(stored));
+      queue.forEach((chunk) => {
+        if (chunk && chunk.data && Number(chunk.ts) > since) {
+          chunks.push({ pos: Number(pos), data: chunk.data, mime: chunk.mime || 'audio/webm', ts: Number(chunk.ts) });
+        }
+      });
+    });
+    chunks.sort((a, b) => a.ts - b.ts);
+    return { chunks: chunks.slice(-60), server_time: now };
   }
   fail('Unsupported Challenge action.');
 }
