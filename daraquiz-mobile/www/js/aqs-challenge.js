@@ -875,7 +875,7 @@
           var elapsed=Math.max(0,(now - serverStart*1000)/1000);
           var _extra=(window.CH&&CH._extraTimeSecs)||0;
           var left=Math.max(0, Math.round(totalSecs+_extra-elapsed));
-          var pct=left/totalSecs;
+          var pct=Math.min(1,left/totalSecs);
           var offset=circumference*(1-pct);
           $('#aqs-ch-timer-circle').attr('stroke-dashoffset',offset);
           $('#aqs-ch-timer-val').text(left);
