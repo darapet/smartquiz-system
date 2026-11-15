@@ -786,7 +786,7 @@
 
       /* Start server-synced timer */
       var qStart=(d.question_started_at||d.question_start||0);
-      startSyncedCountdown(CH.timePerQ+(Number(CH._extraTimeSecs)||0), qStart);
+      startSyncedCountdown(CH.timePerQ, qStart);
 
       /* Click = instant submit — no confirm step */
       $('#aqs-ch-question-area').off('click','.aqs-ch-option').on('click','.aqs-ch-option',function(){
