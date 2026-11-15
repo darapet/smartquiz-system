@@ -52,8 +52,18 @@
     ],
     "rewrites": [
       {
+        "source": "/api/challenge",
+        "function": {
+          "functionId": "challenge",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/api/multiplayer",
-        "function": {"functionId": "multiplayer", "region": "us-central1"}
+        "function": {
+          "functionId": "multiplayer",
+          "region": "us-central1"
+        }
       },
       {
         "source": "/api/email",
