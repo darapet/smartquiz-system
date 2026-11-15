@@ -17,6 +17,7 @@ test('public Challenge questions recursively remove answer metadata', () => {
   assert.match(backend, /function stripAnswerMetadata\(value\)/);
   assert.match(backend, /correct_answer_index/);
   assert.match(backend, /correct_idx/);
+  assert.match(backend, /'correct',/);
   assert.match(backend, /safeQuestion = stripAnswerMetadata\(q\)/);
 });
 
@@ -71,4 +72,16 @@ test('browser and Android Challenge scripts stay identical and do not trust ques
   assert.equal(challengeJs, mobileJs);
   assert.match(challengeJs, /trust:false/);
   assert.doesNotMatch(challengeJs, /trust:true/);
+});
+
+test('Challenge creation validates question shape and requires a valid correct option', () => {
+  assert.match(backend, /function validateQuestions\(questions\)/);
+  assert.match(backend, /questions = validateQuestions\(questions\)/);
+  assert.match(backend, /correct >= options\.length/);
+  assert.match(backend, /answerIdx >= \(Array\.isArray\(q\.options\)/);
+});
+
+test('manual Challenge questions cannot be added without marking the correct answer', () => {
+  assert.match(challengeJs, /if\(correctIdx<0\).*Mark the correct answer/s);
+  assert.match(mobileJs, /if\(correctIdx<0\).*Mark the correct answer/s);
 });
