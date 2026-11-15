@@ -1159,3 +1159,26 @@
   text-shadow:none !important;
 }
 .aqs-ch-option.sk-eliminated::after { color:#991b1b !important; }
+
+/* Player-turn status pills: distinct states without washed-out text or opacity. */
+.aqs-ch-page .aqs-ch-status-bar {
+  background:#fffaf3 !important;
+  border-color:#eee2d3 !important;
+}
+.aqs-ch-page .aqs-ch-status-pill {
+  background:#ffffff !important;
+  border-color:#e3d6c5 !important;
+  color:#12304a !important;
+}
+.aqs-ch-page .aqs-ch-status-pill .st-name,
+.aqs-ch-page .aqs-ch-status-pill .st-label { color:#12304a !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-waiting,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-miss { opacity:1 !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-waiting { background:#f1f5f9 !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-answering { background:#eff6ff !important; border-color:#93c5fd !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-stealing,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-hit { background:#fff1dc !important; border-color:#e8912d !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-correct { background:#ecfdf5 !important; border-color:#86efac !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-wrong,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-miss { background:#fef2f2 !important; border-color:#fecaca !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-missed { background:#f1f5f9 !important; border-color:#cbd5e1 !important; }
