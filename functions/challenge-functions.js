@@ -396,6 +396,7 @@ async function runAction(action, data, uid) {
 
   if (action === 'aqs_ch_skill_activate') {
     let activated = null;
+    let rejectionMessage = null;
     const result = await roomRef.transaction((ch) => {
       if (!ch || ch.status !== 'active') return;
       progressRoom(ch, now);
@@ -414,7 +415,10 @@ async function runAction(action, data, uid) {
       };
       const effect = skillByCharacter[player.character_id];
       if (!effect) return;
-      if (effect === 'doublesteal' && !ch.steal_mode) return;
+      if (effect === 'doublesteal' && !ch.steal_mode) {
+        rejectionMessage = 'Viper Strike can only be activated during a steal turn.';
+        return;
+      }
       const state = { ...(ch.skill_effects || {}) };
       const skill = {};
       if (effect === 'double') skill.boost = true;
@@ -439,7 +443,7 @@ async function runAction(action, data, uid) {
       activated = { effect, eliminated_indices: skill.eliminatedOptionIndices || [], extra_time: skill.extraTime || 0 };
       return ch;
     });
-    if (!result.committed || !activated) fail('This skill cannot be used now, or it has already been used.');
+    if (!result.committed || !activated) fail(rejectionMessage || 'This skill cannot be used now, or it has already been used.');
     return activated;
   }
 
