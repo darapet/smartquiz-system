@@ -766,8 +766,10 @@
       html+='<p class="aqs-ch-question-text">'+chRenderMath(q.question)+'</p>';
       var letters=['A','B','C','D'];
       html+='<div class="aqs-ch-options">';
+      var eliminatedOptions=(CH.mySkillEffect&&Array.isArray(CH.mySkillEffect.eliminatedOptionIndices))?CH.mySkillEffect.eliminatedOptionIndices:[];
       (q.options||[]).forEach(function(opt,i){
-          html+='<button class="aqs-ch-option" data-idx="'+i+'"'+(myTurn&&!CH.answered?'':' disabled')+'>';
+          var eliminated=eliminatedOptions.indexOf(i)!==-1;
+          html+='<button class="aqs-ch-option'+(eliminated?' sk-eliminated':'')+'" data-idx="'+i+'"'+(myTurn&&!CH.answered&&!eliminated?'':' disabled')+'>';
           html+='<span class="aqs-ch-option-letter">'+letters[i]+'</span>';
           html+='<span class="aqs-ch-option-ripple"></span>';
           html+=chRenderMath(opt)+'</button>';
@@ -784,7 +786,7 @@
 
       /* Start server-synced timer */
       var qStart=(d.question_started_at||d.question_start||0);
-      startSyncedCountdown(CH.timePerQ, qStart);
+      startSyncedCountdown(CH.timePerQ+(Number(CH._extraTimeSecs)||0), qStart);
 
       /* Click = instant submit — no confirm step */
       $('#aqs-ch-question-area').off('click','.aqs-ch-option').on('click','.aqs-ch-option',function(){
@@ -797,6 +799,7 @@
       /* ── Skill bar: show for active player ── */
       if(window.AQS_SKILLS){
           AQS_SKILLS.resetPerQuestion();
+          CH._extraTimeSecs=Number(CH.mySkillEffect&&CH.mySkillEffect.extraTime)||0;
           if(myTurn) AQS_SKILLS.initSkillBar(CH.myCharId||'blaze');
           else AQS_SKILLS.hideBar();
       }
