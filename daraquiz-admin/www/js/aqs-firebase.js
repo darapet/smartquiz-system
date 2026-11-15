@@ -769,7 +769,8 @@ async function actionGetQuizzes(data) {
         return {
             id:            d.id,
             title:         q.title,
-            subject:       q.subject,\n            quiz_note:     q.quiz_note || '',
+            subject:       q.subject,
+            quiz_note: q.quiz_note || '',
             num_questions: q.num_questions || (q.questions || []).length,
             time_limit:    q.time_limit,
             mode:          q.mode,
@@ -2172,7 +2173,8 @@ async function actionGetMyStats() {
     return {
         quizzes_taken:   attempts.length,
         quizzes_created: quizzesCreated,
-        streak:          streak,\n        quiz_streak:     quizStreak,
+        streak:          streak,
+        quiz_streak:     quizStreak,
         recent_activity: recent
     };
 }
