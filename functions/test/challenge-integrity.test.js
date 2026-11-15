@@ -10,6 +10,8 @@ const challengeCss = fs.readFileSync(path.join(root, 'css/aqs-challenge.css'), '
 const mobileCss = fs.readFileSync(path.join(root, 'daraquiz-mobile/www/css/aqs-challenge.css'), 'utf8');
 const challengeHtml = fs.readFileSync(path.join(root, 'challenge.html'), 'utf8');
 const mobileHtml = fs.readFileSync(path.join(root, 'daraquiz-mobile/www/challenge.html'), 'utf8');
+const challengeJs = fs.readFileSync(path.join(root, 'js/aqs-challenge.js'), 'utf8');
+const mobileJs = fs.readFileSync(path.join(root, 'daraquiz-mobile/www/js/aqs-challenge.js'), 'utf8');
 
 test('public Challenge questions recursively remove answer metadata', () => {
   assert.match(backend, /function stripAnswerMetadata\(value\)/);
@@ -63,4 +65,10 @@ test('browser and Android Challenge pages preserve user zoom and safe areas', ()
   assert.equal(challengeHtml, mobileHtml);
   assert.match(challengeHtml, /viewport-fit=cover/);
   assert.doesNotMatch(challengeHtml, /maximum-scale=1/);
+});
+
+test('browser and Android Challenge scripts stay identical and do not trust question HTML', () => {
+  assert.equal(challengeJs, mobileJs);
+  assert.match(challengeJs, /trust:false/);
+  assert.doesNotMatch(challengeJs, /trust:true/);
 });
