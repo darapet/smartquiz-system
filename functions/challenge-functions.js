@@ -121,15 +121,17 @@ function progressRoom(ch, now) {
           answer_idx: -1, is_correct: false, time_ms: elapsed * 1000,
           is_steal: !!ch.steal_mode, pts: 0,
         } };
-        const stats = { ...(ch.player_stats || {}) };
-        const previousStats = stats[pos] || {};
-        const allowedSeconds = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
-        stats[pos] = {
-          correct: Number(previousStats.correct) || 0,
-          answered: (Number(previousStats.answered) || 0) + 1,
-          total_time_ms: (Number(previousStats.total_time_ms) || 0) + (allowedSeconds * 1000),
-        };
-        ch.player_stats = stats;
+        if (!ch.steal_mode) {
+          const stats = { ...(ch.player_stats || {}) };
+          const previousStats = stats[pos] || {};
+          const allowedSeconds = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
+          stats[pos] = {
+            correct: Number(previousStats.correct) || 0,
+            answered: (Number(previousStats.answered) || 0) + 1,
+            total_time_ms: (Number(previousStats.total_time_ms) || 0) + (allowedSeconds * 1000),
+          };
+          ch.player_stats = stats;
+        }
         const effects = { ...(ch.skill_effects || {}) };
         if (effects[pos] && !effects[pos].doubleSteal) delete effects[pos];
         ch.skill_effects = effects;
@@ -515,14 +517,16 @@ async function runAction(action, data, uid) {
       const scores = { ...(ch.scores || {}) };
       scores[pos] = (Number(scores[pos]) || 0) + points;
       ch.scores = scores;
-      const playerStats = { ...(ch.player_stats || {}) };
-      const previousStats = playerStats[pos] || {};
-      playerStats[pos] = {
-        correct: (Number(previousStats.correct) || 0) + (isCorrect ? 1 : 0),
-        answered: (Number(previousStats.answered) || 0) + 1,
-        total_time_ms: (Number(previousStats.total_time_ms) || 0) + Math.max(0, elapsed * 1000),
-      };
-      ch.player_stats = playerStats;
+      if (!stealing) {
+        const playerStats = { ...(ch.player_stats || {}) };
+        const previousStats = playerStats[pos] || {};
+        playerStats[pos] = {
+          correct: (Number(previousStats.correct) || 0) + (isCorrect ? 1 : 0),
+          answered: (Number(previousStats.answered) || 0) + 1,
+          total_time_ms: (Number(previousStats.total_time_ms) || 0) + Math.max(0, elapsed * 1000),
+        };
+        ch.player_stats = playerStats;
+      }
       ch.answers_this_q = { ...answers, [pos]: {
         answer_idx: answerIdx, is_correct: isCorrect, time_ms: elapsed * 1000,
         is_steal: stealing, pts: points,
