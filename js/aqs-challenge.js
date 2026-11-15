@@ -238,7 +238,7 @@
               out+=esc(full);
           } else {
               try{
-                  var rendered=katex.renderToString(math,{displayMode:isDisplay,throwOnError:false,trust:true});
+                  var rendered=katex.renderToString(math,{displayMode:isDisplay,throwOnError:false,trust:false});
                   out+=isDisplay?'<span class="aqs-ch-katex-block">'+rendered+'</span>':rendered;
               } catch(e){
                   out+='<code>'+esc(math)+'</code>';
