@@ -631,7 +631,7 @@
         var settled=await Promise.allSettled(jobs);
         var questions=[],rejected=cache.rejected||0;
         cache.results.forEach(function(result){if(result&&Array.isArray(result.questions))questions=questions.concat(result.questions);});
-        var failedBatches=batches.filter(function(batch){return !Array.isArray(cache.results[batch.index]);}).length;
+        var failedBatches=batches.filter(function(batch){return !(cache.results[batch.index] && Array.isArray(cache.results[batch.index].questions));}).length;
         var summary={questions:questions,requested:requested,rejected:rejected,failedBatches:failedBatches};
         window.__AQS_LAST_GENERATION_SUMMARY={requested:requested,generated:questions.length,rejected:rejected,failedBatches:failedBatches,questions:questions};
         if(failedBatches===0)delete window.__AQS_QUIZ_BATCH_CACHE[cacheKey];
