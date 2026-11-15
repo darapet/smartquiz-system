@@ -13,6 +13,10 @@ on:
   pull_request:
     paths:
       - 'functions/**'
+      - 'js/aqs-challenge.js'
+      - 'js/aqs-skills.js'
+      - 'daraquiz-mobile/www/js/aqs-challenge.js'
+      - 'daraquiz-mobile/www/js/aqs-skills.js'
       - '.github/workflows/challenge-backend-check.yml'
 
 jobs:
