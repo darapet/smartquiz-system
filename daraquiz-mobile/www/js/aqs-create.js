@@ -993,7 +993,7 @@
             var genBtn = '<button class="aqs-btn aqs-btn-primary aqs-sec-generate-btn" data-idx="' + i + '">' +
                 (sec.generating
                     ? '<span class="aqs-spinner" style="display:inline-block;width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px;"></span>Generating...'
-                    : '&#9889; Generate Questions') +
+                    : (sec.failedBatches ? '&#8635; Continue generation' : '&#9889; Generate Questions')) +
                 '</button>';
             var qPreview = (sec.questions.length
                 ? '<div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 12px;font-size:.83rem;color:#166534;"><strong>' + sec.questions.length + ' question(s) ready</strong> &mdash; ' +
