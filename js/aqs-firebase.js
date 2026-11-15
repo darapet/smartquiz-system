@@ -2950,6 +2950,7 @@ async function actionGetMyQuizzes(data) {
             id:            d.id,
             title:         q.title,
             subject:       q.subject,
+            quiz_note:     q.quiz_note || '',
             num_questions: q.num_questions || (q.questions || []).length,
             time_limit:    q.time_limit,
             mode:          q.mode,
