@@ -212,7 +212,11 @@ function publicState(ch, code, now, viewerToken) {
       correct_idx: Number(q.correct_answer_index),
       explanation: q.explanation || '',
     } : null,
-    chat: list(ch.chat).slice(-100),
+    chat: list(ch.chat).slice(-100).map((message) => ({
+      name: String(message.name || message.player_name || 'Player'),
+      msg: String(message.msg || message.message || ''),
+      ts: Number(message.ts) || 0,
+    })),
     server_time: now / 1000,
     question_started_at: (Number(ch.question_started_at) || now) / 1000,
     skills_used: ch.skills_used || {},
@@ -552,9 +556,15 @@ async function runAction(action, data, uid) {
     const player = getPlayer(snap.val(), token);
     if (!player) fail('Player not found.', 403);
     await enforceRateLimit(roomRef.child('rate_limits/' + player.position + '/chat'), 8, 10000, now);
-    const entry = { player_name: player.player_name, message, ts: now };
-    await roomRef.child('chat').transaction((current) => [...list(current), entry].slice(-100));
-    return { ok: true };
+    let entryTs = now;
+    await roomRef.child('chat').transaction((current) => {
+      const entries = list(current);
+      const lastTs = entries.length ? Number(entries[entries.length - 1].ts) || 0 : 0;
+      entryTs = Math.max(now, lastTs + 1);
+      entries.push({ name: player.player_name, msg: message, ts: entryTs });
+      return entries.slice(-100);
+    });
+    return { ok: true, ts: entryTs };
   }
 
   if (action === 'aqs_ch_voice_push') {
