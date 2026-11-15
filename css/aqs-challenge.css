@@ -1144,3 +1144,18 @@
 #aqs-skill-btn .sk-use-label,
 #aqs-skill-btn .sk-used-label { font-size:.68rem !important; line-height:1.25 !important; }
 .aqs-ch-page .aqs-ch-reveal-lb-title { font-size:.75rem !important; }
+
+/* Character skill controls: keep every label readable over the orange system accent. */
+#aqs-skill-btn {
+  background:#e8912d !important;
+  color:#081b2d !important;
+}
+#aqs-skill-btn .sk-name,
+#aqs-skill-btn .sk-use-label,
+#aqs-skill-btn .sk-used-label { color:#081b2d !important; }
+#aqs-skill-flash .sk-flash-badge {
+  background:#12304a !important;
+  color:#ffffff !important;
+  text-shadow:none !important;
+}
+.aqs-ch-option.sk-eliminated::after { color:#991b1b !important; }
