@@ -611,45 +611,34 @@
     }
 
     async function generateQuestionsWithAI(textContent, numQ, subject) {
-        var requested = parseInt(numQ, 10);
-        if (!Number.isFinite(requested) || requested < 1 || requested > QUIZ_MAX_QUESTIONS)
-            throw new Error('Choose between 1 and 1,000 questions.');
-        var batches = [];
-        for (var start = 0, index = 0; start < requested; start += QUIZ_BATCH_SIZE, index++) {
-            batches.push({ index: index, start: start, count: Math.min(QUIZ_BATCH_SIZE, requested - start) });
-        }
-        var results = new Array(batches.length), completed = 0;
-        var jobs = batches.map(function(batch) {
-            return withQuizAIConcurrency(async function() {
-                var result = await generateQuestionsWithAIChunk(textContent, batch.count, subject, {
-                    index: batch.index, start: batch.start, total: batches.length
-                });
-                results[batch.index] = result;
-                completed += result.questions.length;
-                setStatus('Generated ' + completed + ' of ' + requested + ' questions…');
-                return result;
-            });
-        });
-        var settled = await Promise.allSettled(jobs);
-        var failedBatches = settled.filter(function(result) { return result.status === 'rejected'; }).length;
-        var questions = [], rejected = 0;
-        results.forEach(function(result) {
-            if (!result) return;
-            questions = questions.concat(result.questions);
-            rejected += result.rejected || 0;
-        });
-        var summary = { questions: questions, requested: requested, rejected: rejected, failedBatches: failedBatches };
-        window.__AQS_LAST_GENERATION_SUMMARY = {
-            requested: requested, generated: questions.length, rejected: rejected, failedBatches: failedBatches
-        };
-        if (!questions.length) {
-            var firstFailure = settled.find(function(result) { return result.status === 'rejected'; });
-            var message = rejected
-                ? 'The AI marked all generated questions as outside the selected subject/topic, so none were added.'
-                : (firstFailure && firstFailure.reason && firstFailure.reason.message) || 'The AI could not generate any questions. Please try again.';
-            var error = new Error(message);
-            error.generationStats = window.__AQS_LAST_GENERATION_SUMMARY;
-            throw error;
+        var requested=parseInt(numQ,10);
+        if(!Number.isFinite(requested)||requested<1||requested>QUIZ_MAX_QUESTIONS)throw new Error('Choose between 1 and 1,000 questions.');
+        var keyText=String(subject)+'|'+requested+'|'+String(textContent),hash=2166136261;
+        for(var hi=0;hi<keyText.length;hi++){hash^=keyText.charCodeAt(hi);hash=Math.imul(hash,16777619);}
+        var cacheKey='qg_'+(hash>>>0).toString(16);
+        window.__AQS_QUIZ_BATCH_CACHE=window.__AQS_QUIZ_BATCH_CACHE||{};
+        var cache=window.__AQS_QUIZ_BATCH_CACHE[cacheKey];
+        if(!cache){cache={results:[],rejected:0};window.__AQS_QUIZ_BATCH_CACHE[cacheKey]=cache;}
+        var batches=[];
+        for(var startAt=0,index=0;startAt<requested;startAt+=QUIZ_BATCH_SIZE,index++)batches.push({index:index,start:startAt,count:Math.min(QUIZ_BATCH_SIZE,requested-startAt)});
+        var pending=batches.filter(function(batch){return !Array.isArray(cache.results[batch.index]);});
+        var jobs=pending.map(function(batch){return withQuizAIConcurrency(async function(){
+            var result=await generateQuestionsWithAIChunk(textContent,batch.count,subject,{index:batch.index,start:batch.start,total:batches.length});
+            cache.results[batch.index]=result;cache.rejected+=result.rejected||0;
+            var done=cache.results.reduce(function(n,part){return n+(Array.isArray(part)?part.questions.length:0);},0);
+            setStatus('Generated '+done+' of '+requested+' questions…');return result;
+        });});
+        var settled=await Promise.allSettled(jobs);
+        var questions=[],rejected=cache.rejected||0;
+        cache.results.forEach(function(result){if(result&&Array.isArray(result.questions))questions=questions.concat(result.questions);});
+        var failedBatches=batches.filter(function(batch){return !Array.isArray(cache.results[batch.index]);}).length;
+        var summary={questions:questions,requested:requested,rejected:rejected,failedBatches:failedBatches};
+        window.__AQS_LAST_GENERATION_SUMMARY={requested:requested,generated:questions.length,rejected:rejected,failedBatches:failedBatches,questions:questions};
+        if(failedBatches===0)delete window.__AQS_QUIZ_BATCH_CACHE[cacheKey];
+        if(!questions.length&&failedBatches){
+            var firstFailure=settled.find(function(result){return result.status==='rejected';});
+            var error=new Error((firstFailure&&firstFailure.reason&&firstFailure.reason.message)||'Some question batches could not be generated. Tap Continue generation to retry.');
+            error.generationStats=window.__AQS_LAST_GENERATION_SUMMARY;throw error;
         }
         return summary;
     }
@@ -993,7 +982,7 @@
             var genBtn = '<button class="aqs-btn aqs-btn-primary aqs-sec-generate-btn" data-idx="' + i + '">' +
                 (sec.generating
                     ? '<span class="aqs-spinner" style="display:inline-block;width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px;"></span>Generating...'
-                    : '&#9889; Generate Questions') +
+                    : (sec.failedBatches ? '&#8635; Continue generation' : '&#9889; Generate Questions')) +
                 '</button>';
             var qPreview = (sec.questions.length
                 ? '<div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 12px;font-size:.83rem;color:#166534;"><strong>' + sec.questions.length + ' question(s) ready</strong> &mdash; ' +
@@ -1111,9 +1100,9 @@
             var rawQs = await generateQuestionsWithAI(textContent, sec.numQ, subj);
             sections[i].questions = normalizeQuestionsMath(rawQs.questions);
             sections[i].offTopicRejected = rawQs.rejected || 0;
-            sections[i].failedBatches = rawQs.failedBatches || 0;
+            sections[i].failedBatches = rawQs.failedBatches || 0;\n            if (sections[i].failedBatches) { var partialError = new Error('Some question batches failed. Tap Continue generation to finish this section.'); partialError.generationStats = { rejected: rawQs.rejected || 0, failedBatches: rawQs.failedBatches || 0, questions: sections[i].questions }; throw partialError; }
         } catch(e) {
-            if (e.generationStats) { sections[i].offTopicRejected = e.generationStats.rejected || 0; sections[i].failedBatches = e.generationStats.failedBatches || 0; }
+            if (e.generationStats) { sections[i].offTopicRejected = e.generationStats.rejected || 0; sections[i].failedBatches = e.generationStats.failedBatches || 0; if (Array.isArray(e.generationStats.questions)) sections[i].questions = normalizeQuestionsMath(e.generationStats.questions); }
             throw e;
         }
     }
@@ -1124,7 +1113,7 @@
     }
 
     function checkAllSectionsReady(force) {
-        var allReady = force || sections.every(function(s) { return s.questions.length > 0; });
+        var allReady = force || sections.every(function(s) { return s.questions.length > 0 && !(s.failedBatches > 0); });
         if (allReady) {
             renderMultiSectionQuestions();
             $('#step-questions, #step-custom-form, #step-publish').show();
@@ -1184,7 +1173,7 @@
     $(document).on('click', '#aqs-generate-all-btn', async function() {
         if (!$('#aqs-title').val().trim()) { alert('Please fill in the Quiz Title first.'); return; }
         if (multiQuestionTotal() > QUIZ_MAX_QUESTIONS) { alert('A hosted quiz can contain at most 1,000 questions across all topics. Reduce the section amounts and try again.'); return; }
-        var eligible = sections.map(function(s, i) { return { s: s, i: i }; }).filter(function(x) { return !x.s.questions.length; });
+        var eligible = sections.map(function(s, i) { return { s: s, i: i }; }).filter(function(x) { return !x.s.questions.length || x.s.failedBatches > 0; });
         if (!eligible.length) { checkAllSectionsReady(true); return; }
 
         var $btn = $(this).prop('disabled', true).text('\u23f3 Generating all\u2026');
