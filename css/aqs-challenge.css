@@ -1015,14 +1015,14 @@
   border-color:#e3d6c5 !important;
   background:#ffffff !important;
 }
-.aqs-ch-page .aqs-ch-btn-primary {
+ .aqs-ch-page .aqs-ch-btn-primary {
   background:linear-gradient(135deg,#e8912d,#d97706) !important;
   border-color:#c96f16 !important;
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
+  color:#081b2d !important;
+  -webkit-text-fill-color:#081b2d !important;
 }
 .aqs-ch-page .aqs-ch-btn-primary:hover:not(:disabled) {
-  background:linear-gradient(135deg,#d97706,#b45309) !important;
+  background:linear-gradient(135deg,#d97706,#e8912d) !important;
 }
 .aqs-ch-page .aqs-ch-btn-ghost {
   background:#ffffff !important;
