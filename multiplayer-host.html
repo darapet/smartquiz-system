@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Live Multiplayer Quiz — SmartQuiz</title>
-<link rel="stylesheet" href="css/multiplayer-host.css?v=20261112-avatarspeech1">
+<link rel="stylesheet" href="css/multiplayer-host.css?v=phase3-ui1">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <link rel="stylesheet" href="css/aqs-quiz-unified.css?v=1">
 </head>
@@ -240,7 +240,7 @@
       </div>
     </div>
 
-    <div class="card mp-rules" aria-labelledby="mp-rules-title">
+    <div class="card mp-rules" hidden aria-labelledby="mp-rules-title">
       <p class="eyebrow">Quick guide</p>
       <h2 id="mp-rules-title">Multiplayer rules</h2>
       <ul>
@@ -319,6 +319,24 @@
   <div class="dialog-body">
     <div class="dialog-head"><h2>Avatar selection disabled</h2><button class="icon-btn" id="picker-close" type="button" aria-label="Close">✕</button></div>
     <div id="dialog-picker"></div>
+  </div>
+</dialog>
+
+
+<dialog id="mp-rules-dialog" class="mp-rules-dialog" aria-labelledby="mp-rules-dialog-title">
+  <div class="mp-rules-dialog-body">
+    <p class="eyebrow">Before you play</p>
+    <h2 id="mp-rules-dialog-title">Multiplayer rules</h2>
+    <p class="mp-rules-intro">A quick guide so everyone knows how the live quiz works.</p>
+    <ul>
+      <li>Answer each question before its timer reaches zero.</li>
+      <li>The first player to answer correctly earns 5 points.</li>
+      <li>You get one answer per question. Once submitted, your answer is locked.</li>
+      <li>The correct answer is revealed when the timer ends.</li>
+      <li>The host controls when the next question starts.</li>
+      <li>If you join after the game starts, you can answer the current question if time remains.</li>
+    </ul>
+    <button class="btn primary big" id="mp-rules-ack" type="button">I understand — continue</button>
   </div>
 </dialog>
 
