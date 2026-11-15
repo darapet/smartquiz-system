@@ -8,6 +8,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 admin.initializeApp();
 
 exports.multiplayer = require('./multiplayer-functions').multiplayer;
+exports.challenge = require('./challenge-functions').challenge;
 
 const db = admin.firestore();
 const CREATOR_IMAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
