@@ -55,7 +55,7 @@ const S = {
   joinPhase: 'lobby', playerIds: null, joinNoticeTimer: 0,
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
-  voice: null, speaking: new Set(), voiceSyncTimer: 0, lastSpokenWinner: '',
+  voice: null, speaking: new Set(), voiceSyncTimer: 0, lastSpokenWinner: '', rulesSeenRoom: '',
   musicDraft: null, musicAudio: null, musicTrackKey: '', musicEnabledLocally: true, musicPlayBlocked: false,
   q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0, autoAdvanceScheduled: false }, tick: 0
 };
@@ -998,6 +998,10 @@ function updateTile(el, p) {
 
 function renderLobby() {
   if (!S.room) return;
+  if (S.rulesSeenRoom !== S.roomId) {
+    const rules = $('mp-rules-dialog');
+    if (rules && !rules.open && typeof rules.showModal === 'function') rules.showModal();
+  }
   const stage = $('stage');
   stage.classList.toggle('lobby-lite', S.players.length > 60);
   const seen = new Set();
@@ -1419,6 +1423,8 @@ function bindEvents() {
   $('start-btn').addEventListener('click', startGame);
   $('change-avatar').addEventListener('click', openAvatarDialog);
   $('picker-close').addEventListener('click', () => $('picker-dialog').close());
+  $('mp-rules-ack').addEventListener('click', () => { S.rulesSeenRoom = S.roomId; $('mp-rules-dialog').close(); });
+  $('mp-rules-dialog').addEventListener('cancel', e => { e.preventDefault(); });
   $('stage').addEventListener('click', e => {
     const k = e.target.closest('.kick');
     if (k) kickPlayer(k.closest('.pl').dataset.uid);
