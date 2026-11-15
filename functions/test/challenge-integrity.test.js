@@ -99,3 +99,12 @@ test('Challenge chat history and voice chunks are stored in bounded queues', () 
   assert.match(backend, /queue\.slice\(-30\)/);
   assert.match(backend, /chunks\.sort\(\(a, b\) => a\.ts - b\.ts\)/);
 });
+
+test('Challenge chat uses the browser payload shape and preserves sliding-window updates', () => {
+  assert.match(backend, /name: player\.player_name, msg: message, ts: entryTs/);
+  assert.match(backend, /name: String\(message\.name \|\| message\.player_name/);
+  assert.match(backend, /msg: String\(message\.msg \|\| message\.message/);
+  assert.match(challengeJs, /chatSeenTs/);
+  assert.match(challengeJs, /Number\(m\.ts\)>lastSeen/);
+  assert.equal(challengeJs, mobileJs);
+});
