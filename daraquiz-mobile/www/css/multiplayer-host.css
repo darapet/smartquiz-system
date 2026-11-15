@@ -513,3 +513,16 @@ tr.mine td{background:#fff5e4}
  .pod.first .av{width:86px;height:103px}
 }
 @media(prefers-reduced-motion:reduce){.view{animation:none}.btn{transition:none}.pl.speaking .voice{animation:none}}
+
+
+/* Refined answer cards: high contrast, calmer surfaces and clear states */
+.opt:nth-child(1){background:#eaf1ff;color:#173d79}
+.opt:nth-child(2){background:#e7f6f1;color:#12644f}
+.opt:nth-child(3){background:#fff2df;color:#80500c}
+.opt:nth-child(4){background:#f2ebff;color:#59358c}
+.opt .shape{background:rgba(255,255,255,.72);border:1px solid rgba(16,36,58,.08)}
+.opt:disabled{color:inherit}
+.opt.picked{outline-color:#10243a;box-shadow:0 0 0 5px rgba(16,36,58,.08)}
+.opt.right{background:#dff5e9!important;color:#105c36!important;outline-color:#16804c}
+.opt.wrong{background:#ffebe8!important;color:#9e2f25!important;outline-color:#b33c31}
+.opt.dim{opacity:.58}
