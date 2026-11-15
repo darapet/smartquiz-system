@@ -85,3 +85,17 @@ test('manual Challenge questions cannot be added without marking the correct ans
   assert.match(challengeJs, /if\(correctIdx<0\).*Mark the correct answer/s);
   assert.match(mobileJs, /if\(correctIdx<0\).*Mark the correct answer/s);
 });
+
+test('Challenge chat and voice endpoints enforce per-player rate limits', () => {
+  assert.match(backend, /async function enforceRateLimit\(ref, limit, windowMs, now\)/);
+  assert.match(backend, /Too many requests\. Please wait a moment and try again\.', 429/);
+  assert.match(backend, /rate_limits\/' \+ player\.position \+ '\/chat/);
+  assert.match(backend, /rate_limits\/' \+ pos \+ '\/voice_push/);
+  assert.match(backend, /rate_limits\/' \+ player\.position \+ '\/voice_poll/);
+});
+
+test('Challenge chat history and voice chunks are stored in bounded queues', () => {
+  assert.match(backend, /\.slice\(-100\)/);
+  assert.match(backend, /queue\.slice\(-30\)/);
+  assert.match(backend, /chunks\.sort\(\(a, b\) => a\.ts - b\.ts\)/);
+});
