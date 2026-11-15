@@ -125,7 +125,7 @@
                   if(!b64) return;
                   $.post(AQS.ajax_url,{
                       action:'aqs_ch_voice_push', nonce:AQS.nonce,
-                      code:CH.code, position:CH.position, chunk:b64, mime:mime
+                      code:CH.code, player_token:CH.playerToken, position:CH.position, chunk:b64, mime:mime
                   }, function(){});
               };
               reader.readAsDataURL(e.data);
@@ -144,7 +144,7 @@
       if(!CH.code||!_voiceInitDone) return;
       $.get(AQS.ajax_url,{
           action:'aqs_ch_voice_poll', nonce:AQS.public_nonce,
-          code:CH.code, my_pos:CH.position, since:_voiceSince
+          code:CH.code, player_token:CH.playerToken, my_pos:CH.position, since:_voiceSince
       },function(res){
           if(!res||!res.success||!res.data) return;
           var chunks=res.data.chunks||[];
@@ -544,7 +544,7 @@
     }
 
   function doPoll(){
-      $.get(AQS.ajax_url,{action:'aqs_ch_poll',nonce:AQS.public_nonce,code:CH.code},function(res){
+      $.get(AQS.ajax_url,{action:'aqs_ch_poll',nonce:AQS.public_nonce,code:CH.code,player_token:CH.playerToken},function(res){
           if(!res.success) return;
           var d=res.data;
           /* Sync server clock offset */
@@ -1274,7 +1274,7 @@
       $('body').prepend($banner);
 
       /* Poll the server to check current challenge status */
-      $.get(AQS.ajax_url, {action:'aqs_ch_poll', nonce:AQS.public_nonce, code:s.code}, function(res){
+      $.get(AQS.ajax_url, {action:'aqs_ch_poll', nonce:AQS.public_nonce, code:s.code, player_token:s.playerToken}, function(res){
           $banner.remove();
 
           /* Challenge is finished or gone — clear stale session and go home */
