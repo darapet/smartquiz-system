@@ -2327,7 +2327,10 @@ async function actionChAnswer(data) {
     var activePos  = ch.active_pos !== undefined ? parseInt(ch.active_pos) : 0;
     var numPlayers = ch.num_players || 2;
 
-    /* Only the active player's answer is accepted, once per turn. */
+    /* Only the active player may answer, and only once within the time limit. */
+    if (pos !== activePos) {
+        return { is_correct: false, score: ((ch.scores || {})[pos] || 0), time_bonus: 0 };
+    }
     var priorAnswers = ch.answers_this_q || {};
     if (priorAnswers[pos] || priorAnswers[String(pos)]) {
         throw new Error('Your answer has already been recorded.');
@@ -2335,9 +2338,6 @@ async function actionChAnswer(data) {
     var answerElapsed = (Date.now() - (ch.question_started_at || Date.now())) / 1000;
     if (answerElapsed > (ch.time_per_question || 30) + 1) {
         throw new Error('Time is up. Your answer was not accepted.');
-    }
-    if (pos !== activePos) {
-        return { is_correct: false, score: ((ch.scores || {})[pos] || 0), time_bonus: 0 };
     }
 
     var isStealMode = !!(ch.steal_mode);
