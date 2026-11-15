@@ -547,6 +547,9 @@
       $.get(AQS.ajax_url,{action:'aqs_ch_poll',nonce:AQS.public_nonce,code:CH.code,player_token:CH.playerToken},function(res){
           if(!res.success) return;
           var d=res.data;
+          CH.skillsUsed=d.skills_used||{};
+          CH.mySkillEffect=d.my_skill_effect||{};
+          CH._extraTimeSecs=Number(CH.mySkillEffect.extraTime)||0;
           /* Sync server clock offset */
           if(d.server_time) CH.serverOffset=(d.server_time*1000)-Date.now();
           CH.numPlayers=parseInt(d.num_players)||CH.numPlayers;
