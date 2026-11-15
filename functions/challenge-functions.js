@@ -171,12 +171,21 @@ function progressRoom(ch, now) {
     }
   }
 }
+function stripAnswerMetadata(value) {
+  if (Array.isArray(value)) return value.map(stripAnswerMetadata);
+  if (!value || typeof value !== 'object') return value;
+  const blocked = new Set(['correct_answer_index', 'correct_idx', 'correctIndex', 'correct_answer', 'correctAnswer', 'answer', 'answer_index', 'is_correct', 'isCorrect', 'explanation']);
+  return Object.keys(value).reduce((safe, key) => {
+    if (!blocked.has(key)) safe[key] = stripAnswerMetadata(value[key]);
+    return safe;
+  }, {});
+}
 function publicState(ch, code, now, viewerToken) {
   const owner = Number(ch.steal_mode ? ch.steal_of_pos : ch.primary_pos) || 0;
   const q = questionFor(ch, owner);
   let safeQuestion = null;
   if (q) {
-    safeQuestion = { ...q };
+    safeQuestion = stripAnswerMetadata(q);
     delete safeQuestion.correct_answer_index;
     delete safeQuestion.explanation;
     delete safeQuestion.answer;
@@ -197,7 +206,7 @@ function publicState(ch, code, now, viewerToken) {
     active_pos: ch.active_pos === undefined ? 0 : ch.active_pos,
     primary_pos: ch.primary_pos === undefined ? 0 : ch.primary_pos,
     steal_mode: !!ch.steal_mode, steal_of_pos: ch.steal_of_pos ?? null,
-    answers_this_q: ch.answers_this_q || {}, last_result: ch.last_result || null,
+    answers_this_q: ch.answers_this_q || {}, last_result: ch.phase === 'reveal' ? (ch.last_result || null) : null,
     current_question: safeQuestion,
     reveal_answer: ch.phase === 'reveal' && q ? {
       correct_idx: Number(q.correct_answer_index),
@@ -335,13 +344,19 @@ async function runAction(action, data, uid) {
       return JSON.stringify(ch) === before ? undefined : ch;
     });
     if (!result.snapshot.exists()) fail('Challenge not found.', 404);
-    return publicState(result.snapshot.val(), code, now, String(data.player_token || ''));
+    const polledRoom = result.snapshot.val();
+    if (!getPlayer(polledRoom, token)) fail('Join this challenge before viewing its live state.', 403);
+    return publicState(polledRoom, code, now, token);
   }
 
   if (action === 'aqs_ch_skill_activate') {
     let activated = null;
     const result = await roomRef.transaction((ch) => {
-      if (!ch || ch.status !== 'active' || ch.phase !== 'active') return;
+      if (!ch || ch.status !== 'active') return;
+      progressRoom(ch, now);
+      if (ch.phase !== 'active') return ch;
+      const elapsedBeforeSkill = (now - (Number(ch.question_started_at) || now)) / 1000;
+      if (elapsedBeforeSkill >= (Number(ch.time_per_question) || 30) + (Number(((ch.skill_effects || {})[Number(ch.active_pos)] || {}).extraTime) || 0)) return;
       const player = getPlayer(ch, token);
       if (!player || Number(player.position) !== Number(ch.active_pos)) return;
       const pos = Number(player.position);
@@ -350,7 +365,7 @@ async function runAction(action, data, uid) {
         blaze: 'double', reaper: 'double', samurai: 'double', koda: 'double',
         cyber: 'shield', luna: 'shield',
         inferno: 'timeboost', ember: 'timeboost', aang: 'timeboost',
-        nova: 'fiftyfifty', phantom: 'fiftyfifty', viper: 'doubleSteal',
+        nova: 'fiftyfifty', phantom: 'fiftyfifty', viper: 'doublesteal',
       };
       const effect = skillByCharacter[player.character_id];
       if (!effect) return;
@@ -359,9 +374,10 @@ async function runAction(action, data, uid) {
       if (effect === 'double') skill.boost = true;
       if (effect === 'shield') skill.shield = true;
       if (effect === 'timeboost') skill.extraTime = 10;
-      if (effect === 'doubleSteal') skill.doubleSteal = true;
+      if (effect === 'doublesteal') skill.doubleSteal = true;
       if (effect === 'fiftyfifty') {
-        const q = questionFor(ch, pos);
+        const questionOwner = ch.steal_mode ? Number(ch.steal_of_pos) : pos;
+        const q = questionFor(ch, questionOwner);
         const options = q && Array.isArray(q.options) ? q.options : [];
         const correct = Number(q && q.correct_answer_index);
         const wrong = options.map((_, index) => index).filter((index) => index !== correct);
@@ -459,7 +475,14 @@ async function runAction(action, data, uid) {
       ch.steal_mode = false; ch.steal_of_pos = null; ch.answers_this_q = {};
       ch.scores = {}; list(ch.players).forEach((p) => { ch.scores[p.position] = 0; });
       ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = [];
-      ch.last_result = null; ch.question_started_at = null;
+      ch.last_result = null; ch.question_started_at = null; ch.reveal_started_at = null;
+      ch.pending_stealer = null; ch.finish_after_league_transition = false;
+      ch.league_eliminated_pos = null; ch.league_eliminated_name = null;
+      ch.league_eliminated_char = null; ch.league_transition_at = null;
+      ch.next_league_round = null; ch.league_round = 1;
+      ch.league_active_players = ch.league_mode
+        ? Array.from({ length: Number(ch.num_players) || 2 }, (_, i) => i)
+        : null;
       delete ch.player_questions; delete ch.finished_at;
       return ch;
     });
