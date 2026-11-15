@@ -526,3 +526,13 @@ tr.mine td{background:#fff5e4}
 .opt.right{background:#dff5e9!important;color:#105c36!important;outline-color:#16804c}
 .opt.wrong{background:#ffebe8!important;color:#9e2f25!important;outline-color:#b33c31}
 .opt.dim{opacity:.58}
+
+
+.mp-rules-dialog{width:min(560px,calc(100vw - 28px));max-height:min(86vh,760px);padding:0;border:1px solid #dfe7ed;border-radius:22px;box-shadow:0 28px 90px rgba(8,24,40,.32);color:var(--ink)}
+.mp-rules-dialog::backdrop{background:rgba(9,25,42,.62);backdrop-filter:blur(4px)}
+.mp-rules-dialog-body{padding:clamp(22px,5vw,32px);overflow:auto}
+.mp-rules-dialog h2{font-size:1.65rem;margin:8px 0}
+.mp-rules-intro{color:var(--muted);margin:0 0 18px}
+.mp-rules-dialog ul{display:grid;gap:12px;padding-left:22px;margin:0 0 24px;color:var(--ink-2);line-height:1.5}
+.mp-rules-dialog li::marker{color:var(--teal);font-weight:900}
+.mp-rules-dialog .btn{width:100%}
