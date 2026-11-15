@@ -313,8 +313,25 @@ function _interceptJqueryCall(settings, data) {
 /* ============================================================
    ACTION HANDLERS
    ============================================================ */
+async function _aqsCallChallengeBackend(data) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) user = await getOrCreateGuestSession();
+    if (!user) throw new Error('Could not establish a secure Challenge session. Please reload and try again.');
+    var idToken = await user.getIdToken();
+    var response = await fetch('https://us-central1-smartquiz-darapet.cloudfunctions.net/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+        body: JSON.stringify({ action: data.action, data: data })
+    });
+    var payload = {};
+    try { payload = await response.json(); } catch (_) {}
+    if (!response.ok || !payload.success) throw new Error(payload.error || 'Challenge service is temporarily unavailable.');
+    return payload.data || {};
+}
+
 async function handleAction(data) {
     var action = data.action || '';
+    if (/^aqs_ch_/.test(action)) return await _aqsCallChallengeBackend(data);
     switch(action) {
         /* ── AUTH ── */
         case 'aqs_email_login':      return await actionEmailLogin(data);
