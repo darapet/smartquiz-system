@@ -228,6 +228,7 @@ async function runAction(action, data, uid) {
     let questions = [];
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch (_) {}
     if (!Array.isArray(questions) || !questions.length) fail('Add questions before creating the challenge.');
+    if (questions.length > 1000) fail('A challenge can contain at most 1,000 questions.');
     const roomCode = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
     const playerToken = require('crypto').randomBytes(18).toString('hex');
     const playerName = String(data.host_name || 'Host').trim().slice(0, 40) || 'Host';
@@ -248,7 +249,7 @@ async function runAction(action, data, uid) {
       num_players: numPlayers, num_rounds: rounds, questions_per_round: qpr,
       time_per_question: time, num_questions: ch.num_questions, title: ch.title, host_name: playerName };
   }
-  if (!code) fail('Challenge code is required.');
+  if (!/^[A-Z0-9]{6}$/.test(code)) fail('Challenge code is invalid.');
   const roomRef = db.ref('challenges/' + code);
   const token = String(data.player_token || '');
 
