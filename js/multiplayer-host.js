@@ -284,10 +284,17 @@ async function askAI(cfg, need, G) {
   G.ctrl = new AbortController();
   const timer = setTimeout(() => G.ctrl.abort(), 110000);
   const unit = G.units[G.ui];
+  const batch = {
+    id: ++G.batch, unitIndex: G.ui, requested: need,
+    completed: 0, status: 'running', startedAt: Date.now()
+  };
+  G.batchLog = G.batchLog || [];
+  G.batchLog.push(batch);
+  G.activeBatch = batch;
   try {
     const r = await api('generate', {
       topic: cfg.prompt, difficulty: cfg.level, count: need,
-      avoid: G.unitQs.slice(-30), batch: ++G.batch,
+      avoid: G.unitQs.slice(-30), batch: batch.id,
       ...(unit.text ? { source: unit.text, part: G.ui + 1, parts: G.units.length } : {})
     }, G.ctrl.signal);
     const text = String(r.text || '');
@@ -303,7 +310,8 @@ async function askAI(cfg, need, G) {
 
 function paintGen() {
   const G = S.gen, n = G.questions.length, total = G.cfg.count;
-  $('gen-count').textContent = `${n} of ${total} question${total === 1 ? '' : 's'}`;
+  const savedBatches = (G.batchLog || []).filter(batch => batch.status === 'saved').length;
+  $('gen-count').textContent = `${n} of ${total} question${total === 1 ? '' : 's'} · ${savedBatches} batch${savedBatches === 1 ? '' : 'es'} saved`;
   const pct = Math.round((n / total) * 100);
   $('gen-fill').style.width = `${pct}%`;
   $('gen-bar').setAttribute('aria-valuenow', String(pct));
@@ -351,6 +359,10 @@ async function runGeneration() {
       const raw = await askAI(cfg, need, G);
       const fresh = normalizeQuestions(extractJsonArray(raw), G.questions).slice(0, need);
       if (!fresh.length) {
+        if (G.activeBatch) {
+          G.activeBatch.status = 'no-new-questions';
+          G.activeBatch.completedAt = Date.now();
+        }
         if (++stalls >= 3) {
           if (unit.text) {
             /* This part of the material has no more new points. Give its remaining questions to the next part. */
@@ -367,12 +379,22 @@ async function runGeneration() {
       }
       stalls = 0;
       failures = 0;
+      if (G.activeBatch) {
+        G.activeBatch.status = 'saved';
+        G.activeBatch.completed = fresh.length;
+        G.activeBatch.completedAt = Date.now();
+      }
       G.questions.push(...fresh);
       G.unitQs.push(...fresh.map(q => q.text));
       G.uDone += fresh.length;
       appendQuestions(fresh, have);
       paintGen();
     } catch (e) {
+      if (G.activeBatch && G.activeBatch.status === 'running') {
+        G.activeBatch.status = 'failed';
+        G.activeBatch.error = aiErrorText(G.status, e);
+        G.activeBatch.completedAt = Date.now();
+      }
       if (G.stop) break;
       const final = G.status === 429 || /AI is not set up/.test(e.message || '');
       if (final || ++failures >= 2) {
@@ -407,7 +429,7 @@ function startGeneration() {
   if (S.gen && S.gen.questions.length && !confirm('Start over? The questions you have now will be replaced.')) return;
   /* With files, every part of the material gets its share of the questions. */
   const units = cfg.hasSource ? planUnits(cfg.source, cfg.count) : [{ text: '', count: cfg.count }];
-  S.gen = { cfg, units, ui: 0, uDone: 0, unitQs: [], questions: [], running: false, stop: false, ctrl: null, batch: 0, error: '', status: 0 };
+  S.gen = { cfg, units, ui: 0, uDone: 0, unitQs: [], questions: [], running: false, stop: false, ctrl: null, batch: 0, batchLog: [], activeBatch: null, error: '', status: 0 };
   $('qlist').innerHTML = '';
   $('gen').hidden = false;
   runGeneration();
