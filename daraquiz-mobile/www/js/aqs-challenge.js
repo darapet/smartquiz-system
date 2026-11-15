@@ -823,7 +823,7 @@
           var correctIdx = aiCorrectIdx >= 0 ? aiCorrectIdx : serverCorrectIdx;
           /* Determine correctness from the highlighted answer (AI source of truth) */
           var correct = (idx >= 0 && correctIdx >= 0 && idx === correctIdx) || !!(res.data.is_correct);
-          var explanation=q.explanation||'';
+          var explanation=q.explanation||res.data.explanation||'';
           var correctText=(q.options&&correctIdx>=0)?chRenderMath(q.options[correctIdx]):'';
 
           /* Highlight correct option in green */
