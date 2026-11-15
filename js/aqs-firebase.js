@@ -1921,7 +1921,11 @@ async function actionChJoin(data) {
     if (!snap.exists()) throw new Error('Challenge not found. Check the code and try again.');
     var ch = snap.val();
 
-    if (ch.status === 'finished') throw new Error('This challenge has already ended.');
+    if (ch.status !== 'waiting') {
+        throw new Error(ch.status === 'finished'
+            ? 'This challenge has already ended.'
+            : 'This challenge has already started. New players cannot join now.');
+    }
 
     var players = ch.players ? Object.values(ch.players) : [];
     if (players.length >= ch.num_players && ch.status === 'waiting') throw new Error('This challenge is full.');
@@ -1969,9 +1973,15 @@ async function actionChJoin(data) {
 
 async function actionChStart(data) {
     var code = (data.code || '').toUpperCase();
+    var playerToken = data.player_token || '';
     var snap = await get(ref(rtdb, 'challenges/' + code));
     if (!snap.exists()) throw new Error('Challenge not found.');
     var ch = snap.val();
+    var host = (ch.players ? Object.values(ch.players) : []).find(function(p) {
+        return p.player_token === playerToken && !!p.is_host;
+    });
+    if (!host) throw new Error('Only the host can start this challenge.');
+    if (ch.status !== 'waiting') throw new Error('This challenge has already started.');
 
     /* Distribute questions among players — handle Firebase object-arrays */
     var rawQ = ch.questions || [];
@@ -2063,6 +2073,22 @@ async function actionChPoll(data) {
 
     var players = ch.players ? Object.values(ch.players) : [];
 
+    /* Resolve only the current question for clients. Never send the complete
+       per-player question pools: they contain correct answers for future turns. */
+    var questionOwner = ch.primary_pos !== undefined ? parseInt(ch.primary_pos) : 0;
+    var rawPlayerQuestions = (ch.player_questions || {})[questionOwner]
+        || (ch.player_questions || {})[String(questionOwner)] || [];
+    var playerQuestionList = Array.isArray(rawPlayerQuestions)
+        ? rawPlayerQuestions : Object.values(rawPlayerQuestions);
+    var questionIndex = ((ch.q_in_round || 1) - 1)
+        + ((ch.round || 1) - 1) * (ch.questions_per_round || 5);
+    var questionForClient = ch.current_question || playerQuestionList[questionIndex] || null;
+    if (questionForClient) {
+        questionForClient = Object.assign({}, questionForClient);
+        delete questionForClient.correct_answer_index;
+        delete questionForClient.explanation;
+    }
+
     /* Time-based auto-advance: if active player's timer expired, record a no-answer and move on */
     if (ch.status === 'active' && ch.phase === 'active') {
         var elapsed    = (Date.now() - (ch.question_started_at || Date.now())) / 1000;
@@ -2130,14 +2156,14 @@ async function actionChPoll(data) {
         host_name:              (players.find(function(p) { return p.is_host; }) || {}).player_name || 'Host',
         players:                players,
         scores:                 ch.scores || {},
-        player_questions:       ch.player_questions || {},
+        question:               questionForClient,
         active_pos:             ch.active_pos !== undefined ? ch.active_pos : 0,
         primary_pos:            ch.primary_pos !== undefined ? ch.primary_pos : 0,
         steal_mode:             ch.steal_mode || false,
         steal_of_pos:           ch.steal_of_pos !== undefined ? ch.steal_of_pos : null,
         answers_this_q:         ch.answers_this_q || {},
         last_result:            ch.last_result || null,
-        current_question:       ch.current_question || null,
+        current_question:       questionForClient,
         reveal_answer:          ch.reveal_answer || null,
         chat:                   ch.chat ? (Array.isArray(ch.chat) ? ch.chat : Object.values(ch.chat)) : [],
         server_time:            Date.now() / 1000,
@@ -2293,14 +2319,25 @@ async function actionChAnswer(data) {
     var players    = ch.players ? Object.values(ch.players) : [];
     var player     = players.find(function(p) { return p.player_token === playerToken; });
     if (!player) throw new Error('Player not found.');
+    if (ch.status !== 'active' || ch.phase !== 'active') {
+        throw new Error('This question is no longer accepting answers.');
+    }
 
     var pos        = player.position;
     var activePos  = ch.active_pos !== undefined ? parseInt(ch.active_pos) : 0;
     var numPlayers = ch.num_players || 2;
 
-    /* Only the active player's answer is accepted */
+    /* Only the active player may answer, and only once within the time limit. */
     if (pos !== activePos) {
         return { is_correct: false, score: ((ch.scores || {})[pos] || 0), time_bonus: 0 };
+    }
+    var priorAnswers = ch.answers_this_q || {};
+    if (priorAnswers[pos] || priorAnswers[String(pos)]) {
+        throw new Error('Your answer has already been recorded.');
+    }
+    var answerElapsed = (Date.now() - (ch.question_started_at || Date.now())) / 1000;
+    if (answerElapsed > (ch.time_per_question || 30) + 1) {
+        throw new Error('Time is up. Your answer was not accepted.');
     }
 
     var isStealMode = !!(ch.steal_mode);
@@ -2542,9 +2579,20 @@ async function actionChChat(data) {
 }
 
 async function actionChUpdateSettings(data) {
-    var code    = (data.code || '').toUpperCase();
-    var title   = (data.title || '').trim();
-    var timePerQ = parseInt(data.time_per_question) || 30;
+    var code        = (data.code || '').toUpperCase();
+    var playerToken = data.player_token || '';
+    var title       = (data.title || '').trim().slice(0, 100);
+    var timePerQ    = parseInt(data.time_per_question) || 30;
+    timePerQ = Math.max(5, Math.min(180, timePerQ));
+
+    var snap = await get(ref(rtdb, 'challenges/' + code));
+    if (!snap.exists()) throw new Error('Challenge not found.');
+    var ch = snap.val();
+    var host = (ch.players ? Object.values(ch.players) : []).find(function(p) {
+        return p.player_token === playerToken && !!p.is_host;
+    });
+    if (!host) throw new Error('Only the host can change challenge settings.');
+    if (ch.status !== 'waiting') throw new Error('Settings can only be changed before the challenge starts.');
 
     await update(ref(rtdb, 'challenges/' + code), {
         title:             title,

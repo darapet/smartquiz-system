@@ -365,13 +365,7 @@
               CH.numQuestions=CH.qpr*CH.numRounds;CH.timePerQ=parseInt(d.time_per_question)||30;
               CH.myCharId=localStorage.getItem('aqs_ch_char_'+CH.code)||localStorage.getItem('aqs_ch_char')||'koda';
               setUrlCode(code);saveSession();
-              if(d.joined_mid_game){
-                  flash('Game already in progress — jumping you in!','success');
-                  CH.lastPhase='waiting'; /* poll will transition to game screen */
-                  startPolling();
-              } else {
-                  initWaitingRoom();
-              }
+              initWaitingRoom();
           }).fail(function(){btnRestore($b,'Join Challenge ⚡');flash('Network error.');});
       });
 
@@ -411,7 +405,7 @@
       if(CH.isHost){
           $('#aqs-ch-start-btn').show().off('click').on('click',function(){
               var $b=$(this);btnLoading($b,'Starting…');
-              $.post(AQS.ajax_url,{action:'aqs_ch_start',nonce:AQS.nonce,code:CH.code},function(res){
+              $.post(AQS.ajax_url,{action:'aqs_ch_start',nonce:AQS.nonce,code:CH.code,player_token:CH.playerToken},function(res){
                   if(!res.success){btnRestore($b,'▶ Start Challenge');flash(res.data||'Error');}
                   /* Show the hype countdown immediately for the host.
                      The poll loop will detect phase='active' and load the game screen
