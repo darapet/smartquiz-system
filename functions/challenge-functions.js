@@ -97,9 +97,9 @@ function progressRoom(ch, now) {
   if (ch.phase === 'active') {
     const started = Number(ch.question_started_at) || now;
     const elapsed = (now - started) / 1000;
+    const pos = Number(ch.active_pos) || 0;
     const activeSkill = (ch.skill_effects || {})[pos] || {};
     if (elapsed >= (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0)) {
-      const pos = Number(ch.active_pos) || 0;
       const answers = ch.answers_this_q || {};
       if (!answers[pos]) {
         ch.answers_this_q = { ...answers, [pos]: {
