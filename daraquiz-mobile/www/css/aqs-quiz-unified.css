@@ -36,3 +36,130 @@ img,svg,video,canvas{max-width:100%}
  .aqs-site-nav{max-width:100%}
  .aqs-card-body{padding:16px}
 }
+
+
+/* Dedicated quiz-taking screen polish: consistent AI Quiz System identity. */
+body[data-aqs-page="take-quiz"]{
+ background:#f7f8fc!important;background-image:none!important;animation:none!important;
+ color:#172033!important;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+body[data-aqs-page="take-quiz"]::before,
+body[data-aqs-page="take-quiz"]::after,
+body[data-aqs-page="take-quiz"] #aqs-ambient-bg,
+body[data-aqs-page="take-quiz"] .aqs-particle{display:none!important;content:none!important}
+body[data-aqs-page="take-quiz"] .aqs-page-main{background:transparent!important;padding-top:24px!important}
+body[data-aqs-page="take-quiz"] .aqs-wrap.aqs-quiz-wrap{max-width:1040px!important;margin:0 auto!important}
+body[data-aqs-page="take-quiz"] .aqs-quiz-cover,
+body[data-aqs-page="take-quiz"] #aqs-question-card,
+body[data-aqs-page="take-quiz"] .aqs-section-overlay-card,
+body[data-aqs-page="take-quiz"] .aqs-review-item,
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section{
+ background:#fff!important;color:#172033!important;border:1px solid #e7ebf2!important;
+ box-shadow:0 12px 36px rgba(23,32,51,.08)!important;backdrop-filter:none!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-quiz-cover{border-radius:22px!important;padding:clamp(22px,4vw,40px)!important}
+body[data-aqs-page="take-quiz"] .aqs-quiz-cover h1,
+body[data-aqs-page="take-quiz"] .aqs-quiz-cover h2,
+body[data-aqs-page="take-quiz"] .aqs-quiz-cover p,
+body[data-aqs-page="take-quiz"] .aqs-quiz-subject,
+body[data-aqs-page="take-quiz"] .aqs-quiz-meta span,
+body[data-aqs-page="take-quiz"] .aqs-quiz-meta strong,
+body[data-aqs-page="take-quiz"] .aqs-question-text,
+body[data-aqs-page="take-quiz"] .aqs-section-overlay-card *,
+body[data-aqs-page="take-quiz"] .aqs-review-item,
+body[data-aqs-page="take-quiz"] .aqs-review-item strong,
+body[data-aqs-page="take-quiz"] .aqs-review-item b,
+body[data-aqs-page="take-quiz"] .aqs-results-header h2,
+body[data-aqs-page="take-quiz"] .aqs-score-text,
+body[data-aqs-page="take-quiz"] .aqs-review-section h3,
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section h3,
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section table,
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section td{color:#172033!important;text-shadow:none!important}
+body[data-aqs-page="take-quiz"] .aqs-quiz-meta{display:flex;flex-wrap:wrap;gap:10px 18px!important}
+body[data-aqs-page="take-quiz"] .aqs-mode-badge{background:#fff2df!important;color:#96530d!important}
+body[data-aqs-page="take-quiz"] .aqs-field label,
+body[data-aqs-page="take-quiz"] .aqs-hint{color:#526579!important}
+body[data-aqs-page="take-quiz"] .aqs-field input,
+body[data-aqs-page="take-quiz"] .aqs-field select,
+body[data-aqs-page="take-quiz"] .aqs-field textarea,
+body[data-aqs-page="take-quiz"] .aqs-written-answer{
+ background:#fff!important;color:#172033!important;border:1px solid #dce2eb!important;
+ border-radius:11px!important;min-height:44px;box-shadow:none!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-field input::placeholder,
+body[data-aqs-page="take-quiz"] .aqs-written-answer::placeholder{color:#8792a3!important}
+body[data-aqs-page="take-quiz"] .aqs-quiz-topbar{
+ background:#fff!important;border:1px solid #e7ebf2!important;
+ box-shadow:0 6px 18px rgba(23,32,51,.06)!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-q-counter,
+body[data-aqs-page="take-quiz"] #aqs-section-progress{color:#526579!important}
+body[data-aqs-page="take-quiz"] .aqs-timer,
+body[data-aqs-page="take-quiz"] .aqs-timer-circle{
+ color:#12304a!important;background:#fff5e8!important;border:1px solid #f0d6b5!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-progress-bar-wrap{background:#e9edf3!important}
+body[data-aqs-page="take-quiz"] #aqs-progress-bar{background:linear-gradient(90deg,#12304a,#e8912d)!important;box-shadow:none!important}
+body[data-aqs-page="take-quiz"] .aqs-option,
+body[data-aqs-page="take-quiz"] .aqs-options-list .aqs-option{
+ background:#fff!important;color:#263449!important;border:1px solid #e0e6ef!important;
+ border-radius:13px!important;box-shadow:none!important;transform:none!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-option:hover,
+body[data-aqs-page="take-quiz"] .aqs-option-selected,
+body[data-aqs-page="take-quiz"] .aqs-option.aqs-selected{
+ background:#fff7ec!important;border-color:#e8912d!important;color:#172033!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-option-letter{color:#526579!important;border-color:#d8dee8!important}
+body[data-aqs-page="take-quiz"] .aqs-option.aqs-correct{background:#eaf8ef!important;border-color:#48a66a!important;color:#176b38!important}
+body[data-aqs-page="take-quiz"] .aqs-option.aqs-wrong,
+body[data-aqs-page="take-quiz"] .aqs-option.aqs-selected-wrong{background:#fff0ef!important;border-color:#dc7770!important;color:#9d302b!important}
+body[data-aqs-page="take-quiz"] .aqs-practice-feedback,
+body[data-aqs-page="take-quiz"] .aqs-quiz-note-box,
+body[data-aqs-page="take-quiz"] .aqs-already-taken-notice{
+ background:#f8f9fc!important;color:#344258!important;border:1px solid #e2e7ef!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-practice-feedback *,
+body[data-aqs-page="take-quiz"] .aqs-quiz-note-box *,
+body[data-aqs-page="take-quiz"] .aqs-already-taken-notice *{color:inherit!important}
+body[data-aqs-page="take-quiz"] .aqs-nav-btns .aqs-btn,
+body[data-aqs-page="take-quiz"] #aqs-prev-btn,
+body[data-aqs-page="take-quiz"] #aqs-next-btn{
+ border-radius:11px!important;min-height:46px!important;padding:10px 18px!important;
+}
+body[data-aqs-page="take-quiz"] #aqs-prev-btn,
+body[data-aqs-page="take-quiz"] #aqs-sound-toggle{
+ background:#fff!important;color:#12304a!important;border:1px solid #dce2eb!important;
+}
+body[data-aqs-page="take-quiz"] #aqs-next-btn,
+body[data-aqs-page="take-quiz"] #aqs-submit-quiz-btn,
+body[data-aqs-page="take-quiz"] #aqs-start-quiz-btn,
+body[data-aqs-page="take-quiz"] .aqs-section-overlay-card .aqs-btn-primary,
+body[data-aqs-page="take-quiz"] .aqs-results-actions .aqs-btn-primary{
+ background:#12304a!important;color:#fff!important;border:1px solid #12304a!important;
+ box-shadow:0 6px 16px rgba(18,48,74,.15)!important;
+}
+body[data-aqs-page="take-quiz"] .aqs-section-overlay{background:rgba(247,248,252,.96)!important;backdrop-filter:blur(8px)!important}
+body[data-aqs-page="take-quiz"] .aqs-sec-overlay-sub,
+body[data-aqs-page="take-quiz"] .aqs-score-message,
+body[data-aqs-page="take-quiz"] .aqs-review-item .aqs-explanation,
+body[data-aqs-page="take-quiz"] .aqs-review-item em,
+body[data-aqs-page="take-quiz"] .aqs-review-item i{color:#64748b!important}
+body[data-aqs-page="take-quiz"] .aqs-review-section h3{border-bottom-color:#e7ebf2!important}
+body[data-aqs-page="take-quiz"] .aqs-results-actions .aqs-btn{background:#fff!important;color:#12304a!important;border:1px solid #dce2eb!important}
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section th{color:#64748b!important;border-bottom-color:#e7ebf2!important}
+body[data-aqs-page="take-quiz"] .aqs-leaderboard-section td{border-bottom-color:#eef1f5!important}
+@media(max-width:700px){
+ body[data-aqs-page="take-quiz"] .aqs-page-main{padding:12px 10px!important}
+ body[data-aqs-page="take-quiz"] .aqs-wrap.aqs-quiz-wrap{padding-left:4px!important;padding-right:4px!important}
+ body[data-aqs-page="take-quiz"] .aqs-quiz-cover{padding:20px 15px!important;border-radius:16px!important}
+ body[data-aqs-page="take-quiz"] #aqs-question-card{padding:20px 14px!important;border-radius:16px!important}
+ body[data-aqs-page="take-quiz"] .aqs-quiz-topbar{gap:8px!important;padding:10px!important}
+ body[data-aqs-page="take-quiz"] .aqs-nav-btns{gap:8px!important;flex-wrap:wrap}
+ body[data-aqs-page="take-quiz"] .aqs-nav-btns .aqs-btn{flex:1 1 110px!important}
+ body[data-aqs-page="take-quiz"] .aqs-submit-wrap{width:100%}
+ body[data-aqs-page="take-quiz"] #aqs-submit-quiz-btn{width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body[data-aqs-page="take-quiz"],body[data-aqs-page="take-quiz"] *{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
