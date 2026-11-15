@@ -1,0 +1,38 @@
+/* Shared visual system for SmartQuiz learner and host flows. */
+:root{
+ --aqs-primary:#e8912d;--aqs-primary-dark:#c96f16;--aqs-bg:#f7f8fc;--aqs-card:#ffffff;
+ --aqs-border:#e7ebf2;--aqs-text:#172033;--aqs-muted:#68758b;
+ --aqs-radius:14px;--aqs-shadow:0 5px 18px rgba(23,32,51,.07);
+}
+body[data-aqs-page-group~="quiz flows"],body.aqs-full-page-body{
+ color:var(--aqs-text);background-color:var(--aqs-bg);
+ font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ overflow-x:hidden;
+}
+.aqs-site-header{background:#fff;border-bottom:1px solid var(--aqs-border);box-shadow:0 3px 14px rgba(23,32,51,.04)}
+.aqs-site-logo,.aqs-site-logo-name{color:#12304a}
+.aqs-site-nav-link{color:#344258}
+.aqs-site-nav-link:hover,.aqs-site-nav-highlight{color:#a96115}
+.aqs-card,.self-quiz-card,.section-card,.aqs-create-wrap,.aqs-table-wrap{
+ border-color:var(--aqs-border);box-shadow:var(--aqs-shadow)
+}
+.aqs-card-header{background:#f8f9fc;border-color:var(--aqs-border);color:#172033}
+.aqs-field input,.aqs-field select,.aqs-field textarea,
+.aqs-create-wrap input,.aqs-create-wrap select,.aqs-create-wrap textarea{
+ max-width:100%;min-width:0
+}
+.aqs-btn-primary,.aqs-btn-primary:hover{background:#12304a;border-color:#12304a;color:#fff}
+.aqs-toggle.active,.aqs-source-tab.active{background:#12304a;border-color:#12304a;color:#fff}
+.aqs-step-num{background:#fff0dc;color:#a96115}
+.aqs-phase2-page-header{background:#fff;border-bottom:1px solid var(--aqs-border);color:#172033}
+.aqs-phase2-page-title{color:#172033}
+.aqs-phase2-back{color:#a96115}
+main,.aqs-page-main,.self-quiz-shell,.quiz-setup-main{min-width:0;max-width:100%}
+img,svg,video,canvas{max-width:100%}
+@media(max-width:700px){
+ .aqs-page-main,.self-quiz-shell,.quiz-setup-main{padding-left:14px;padding-right:14px}
+ .aqs-create-grid{grid-template-columns:minmax(0,1fr)}
+ .aqs-field-row{grid-template-columns:minmax(0,1fr)}
+ .aqs-site-nav{max-width:100%}
+ .aqs-card-body{padding:16px}
+}
