@@ -126,3 +126,9 @@ test('League statistics and tie-break seed reset for a replay', () => {
   assert.match(backend, /ch\.player_stats\[p\.position\] = \{ correct: 0, answered: 0, total_time_ms: 0 \}/);
   assert.match(backend, /ch\.tie_break_seed = require\('crypto'\)\.randomBytes\(16\)/);
 });
+
+test('Challenge score configuration agrees with the server steal award', () => {
+  assert.match(challengeHtml, /steal_score: 3/);
+  assert.match(mobileHtml, /steal_score: 3/);
+  assert.match(backend, /stealing \? \(useDoubleSteal \? 6 : 3\)/);
+});
