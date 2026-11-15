@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const admin = require('firebase-admin');
 const { onRequest } = require('firebase-functions/v2/https');
 
-admin.initializeApp();
+admin.initializeApp({ databaseURL: 'https://smartquiz-darapet-default-rtdb.firebaseio.com' });
 
 exports.multiplayer = require('./multiplayer-functions').multiplayer;
 exports.challenge = require('./challenge-functions').challenge;
