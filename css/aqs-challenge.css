@@ -1132,3 +1132,9 @@
     transition-duration:.01ms !important;
   }
 }
+
+/* Low-contrast legacy inline accent colors: preserve their meaning with darker accessible equivalents. */
+.aqs-ch-page [style*="color:#f59e0b"],
+.aqs-ch-page [style*="color: #f59e0b"] { color:#8b4d09 !important; -webkit-text-fill-color:#8b4d09 !important; }
+.aqs-ch-page [style*="color:#f87171"],
+.aqs-ch-page [style*="color: #f87171"] { color:#b91c1c !important; -webkit-text-fill-color:#b91c1c !important; }
