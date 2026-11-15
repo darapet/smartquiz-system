@@ -1100,7 +1100,8 @@
             var rawQs = await generateQuestionsWithAI(textContent, sec.numQ, subj);
             sections[i].questions = normalizeQuestionsMath(rawQs.questions);
             sections[i].offTopicRejected = rawQs.rejected || 0;
-            sections[i].failedBatches = rawQs.failedBatches || 0;\n            if (sections[i].failedBatches) { var partialError = new Error('Some question batches failed. Tap Continue generation to finish this section.'); partialError.generationStats = { rejected: rawQs.rejected || 0, failedBatches: rawQs.failedBatches || 0, questions: sections[i].questions }; throw partialError; }
+            sections[i].failedBatches = rawQs.failedBatches || 0;
+            if (sections[i].failedBatches) { var partialError = new Error('Some question batches failed. Tap Continue generation to finish this section.'); partialError.generationStats = { rejected: rawQs.rejected || 0, failedBatches: rawQs.failedBatches || 0, questions: sections[i].questions }; throw partialError; }
         } catch(e) {
             if (e.generationStats) { sections[i].offTopicRejected = e.generationStats.rejected || 0; sections[i].failedBatches = e.generationStats.failedBatches || 0; if (Array.isArray(e.generationStats.questions)) sections[i].questions = normalizeQuestionsMath(e.generationStats.questions); }
             throw e;
