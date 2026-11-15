@@ -58,7 +58,22 @@ function advanceQuestion(ch, now) {
     if (ch.league_mode && active.length > 1) {
       const scores = ch.scores || {};
       const lowest = Math.min(...active.map((p) => Number(scores[p]) || 0));
-      const eliminated = active.filter((p) => (Number(scores[p]) || 0) === lowest).slice(-1)[0];
+      const tiedLowest = active.filter((p) => (Number(scores[p]) || 0) === lowest);
+      const stats = ch.player_stats || {};
+      const leastCorrect = Math.min(...tiedLowest.map((p) => Number((stats[p] || {}).correct) || 0));
+      const accuracyTied = tiedLowest.filter((p) => (Number((stats[p] || {}).correct) || 0) === leastCorrect);
+      const averageTime = (p) => {
+        const entry = stats[p] || {};
+        const answered = Number(entry.answered) || 0;
+        return answered > 0 ? (Number(entry.total_time_ms) || 0) / answered : Number.POSITIVE_INFINITY;
+      };
+      const slowestAverage = Math.max(...accuracyTied.map(averageTime));
+      const finalTied = accuracyTied.filter((p) => averageTime(p) === slowestAverage);
+      const tieKey = finalTied.slice().sort((a, b) => a - b).join(',');
+      const tieDigest = require('crypto').createHash('sha256')
+        .update(String(ch.tie_break_seed || ch.code) + ':' + String(ch.league_round || 1) + ':' + tieKey)
+        .digest();
+      const eliminated = finalTied[tieDigest.readUInt32BE(0) % finalTied.length];
       const players = list(ch.players);
       const player = players.find((p) => Number(p.position) === eliminated);
       const remaining = active.filter((p) => p !== eliminated);
@@ -106,6 +121,15 @@ function progressRoom(ch, now) {
           answer_idx: -1, is_correct: false, time_ms: elapsed * 1000,
           is_steal: !!ch.steal_mode, pts: 0,
         } };
+        const stats = { ...(ch.player_stats || {}) };
+        const previousStats = stats[pos] || {};
+        const allowedSeconds = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
+        stats[pos] = {
+          correct: Number(previousStats.correct) || 0,
+          answered: (Number(previousStats.answered) || 0) + 1,
+          total_time_ms: (Number(previousStats.total_time_ms) || 0) + (allowedSeconds * 1000),
+        };
+        ch.player_stats = stats;
         const effects = { ...(ch.skill_effects || {}) };
         if (effects[pos] && !effects[pos].doubleSteal) delete effects[pos];
         ch.skill_effects = effects;
@@ -293,9 +317,12 @@ async function runAction(action, data, uid) {
     questions = validateQuestions(questions);
     const roomCode = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
     const playerToken = require('crypto').randomBytes(18).toString('hex');
+    const tieBreakSeed = require('crypto').randomBytes(16).toString('hex');
     const playerName = String(data.host_name || 'Host').trim().slice(0, 40) || 'Host';
     const ch = {
-      code: roomCode, host_uid: uid, title: String(data.title || ('Challenge ' + roomCode)).slice(0, 100),
+      code: roomCode, tie_break_seed: tieBreakSeed,
+      player_stats: { 0: { correct: 0, answered: 0, total_time_ms: 0 } },
+      host_uid: uid, title: String(data.title || ('Challenge ' + roomCode)).slice(0, 100),
       status: 'waiting', phase: 'waiting', num_players: numPlayers, num_rounds: rounds,
       questions_per_round: qpr, time_per_question: time, num_questions: numPlayers * qpr * rounds,
       questions, players: { 0: { position: 0, player_name: playerName,
@@ -333,6 +360,7 @@ async function runAction(action, data, uid) {
         player_token: playerToken, character_id: String(data.character_id || 'koda').slice(0, 32),
         is_host: 0, score: 0, joined_at: now } };
       ch.scores = { ...(ch.scores || {}), [position]: 0 };
+      ch.player_stats = { ...(ch.player_stats || {}), [position]: { correct: 0, answered: 0, total_time_ms: 0 } };
       return ch;
     });
     if (!result.committed) fail('This challenge is full or has already started.');
@@ -487,6 +515,14 @@ async function runAction(action, data, uid) {
       const scores = { ...(ch.scores || {}) };
       scores[pos] = (Number(scores[pos]) || 0) + points;
       ch.scores = scores;
+      const playerStats = { ...(ch.player_stats || {}) };
+      const previousStats = playerStats[pos] || {};
+      playerStats[pos] = {
+        correct: (Number(previousStats.correct) || 0) + (isCorrect ? 1 : 0),
+        answered: (Number(previousStats.answered) || 0) + 1,
+        total_time_ms: (Number(previousStats.total_time_ms) || 0) + Math.max(0, elapsed * 1000),
+      };
+      ch.player_stats = playerStats;
       ch.answers_this_q = { ...answers, [pos]: {
         answer_idx: answerIdx, is_correct: isCorrect, time_ms: elapsed * 1000,
         is_steal: stealing, pts: points,
@@ -524,7 +560,12 @@ async function runAction(action, data, uid) {
       ch.status = 'waiting'; ch.phase = 'waiting'; ch.round = 1; ch.q_in_round = 1;
       ch.attempt_idx = 0; ch.active_pos = 0; ch.primary_pos = 0;
       ch.steal_mode = false; ch.steal_of_pos = null; ch.answers_this_q = {};
-      ch.scores = {}; list(ch.players).forEach((p) => { ch.scores[p.position] = 0; });
+      ch.scores = {}; ch.player_stats = {};
+      list(ch.players).forEach((p) => {
+        ch.scores[p.position] = 0;
+        ch.player_stats[p.position] = { correct: 0, answered: 0, total_time_ms: 0 };
+      });
+      ch.tie_break_seed = require('crypto').randomBytes(16).toString('hex');
       ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = []; ch.rate_limits = {};
       ch.last_result = null; ch.question_started_at = null; ch.reveal_started_at = null;
       ch.pending_stealer = null; ch.finish_after_league_transition = false;
