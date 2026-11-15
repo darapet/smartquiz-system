@@ -26,6 +26,7 @@
 
   function initSkillBar(charId){
     _S.charId=charId||_S.charId;
+    if(window.CH&&window.CH.skillsUsed&&window.CH.skillsUsed[window.CH.position]) _S.used=true;
     var sk=_sk(_S.charId);
     var ch=window.AQS_AVATARS?AQS_AVATARS.getChar(_S.charId):null;
     $('#aqs-skill-bar').remove();
