@@ -106,6 +106,9 @@ function progressRoom(ch, now) {
           answer_idx: -1, is_correct: false, time_ms: elapsed * 1000,
           is_steal: !!ch.steal_mode, pts: 0,
         } };
+        const effects = { ...(ch.skill_effects || {}) };
+        if (effects[pos] && !effects[pos].doubleSteal) delete effects[pos];
+        ch.skill_effects = effects;
         ch.phase = 'reveal';
         ch.steal_mode = false;
         ch.steal_of_pos = null;
@@ -168,7 +171,7 @@ function progressRoom(ch, now) {
     }
   }
 }
-function publicState(ch, code, now) {
+function publicState(ch, code, now, viewerToken) {
   const owner = Number(ch.steal_mode ? ch.steal_of_pos : ch.primary_pos) || 0;
   const q = questionFor(ch, owner);
   let safeQuestion = null;
@@ -180,6 +183,8 @@ function publicState(ch, code, now) {
     delete safeQuestion.correct_answer;
   }
   const players = cleanPlayers(ch.players);
+  const viewer = getPlayer(ch, viewerToken);
+  const viewerPos = viewer ? Number(viewer.position) : -1;
   return {
     code, status: ch.status, phase: ch.phase,
     round: ch.round || 1, attempt_idx: ch.attempt_idx || 0,
@@ -201,6 +206,8 @@ function publicState(ch, code, now) {
     chat: list(ch.chat).slice(-100),
     server_time: now / 1000,
     question_started_at: (Number(ch.question_started_at) || now) / 1000,
+    skills_used: ch.skills_used || {},
+    my_skill_effect: viewerPos >= 0 ? ((ch.skill_effects || {})[viewerPos] || {}) : {},
     league_mode: !!ch.league_mode, league_round: ch.league_round || 1,
     league_active_players: ch.league_active_players || null,
     league_eliminated_pos: ch.league_eliminated_pos ?? null,
@@ -328,7 +335,7 @@ async function runAction(action, data, uid) {
       return JSON.stringify(ch) === before ? undefined : ch;
     });
     if (!result.snapshot.exists()) fail('Challenge not found.', 404);
-    return publicState(result.snapshot.val(), code, now);
+    return publicState(result.snapshot.val(), code, now, String(data.player_token || ''));
   }
 
   if (action === 'aqs_ch_skill_activate') {
