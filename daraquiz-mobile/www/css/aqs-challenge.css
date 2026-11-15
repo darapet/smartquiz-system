@@ -902,3 +902,283 @@
     .aqs-ch-option { padding:11px 12px !important; font-size:0.85rem !important; }
     .aqs-ch-question-text { font-size:0.92rem !important; }
 }
+
+
+/* ============================================================
+   CHALLENGE ACCESSIBILITY + SYSTEM CREAM THEME
+   Keep all Challenge surfaces aligned with the main AQS theme.
+   ============================================================ */
+:root {
+  --ch-primary:#e8912d;
+  --ch-secondary:#d97706;
+  --ch-accent:#b45309;
+  --ch-success:#047857;
+  --ch-danger:#b91c1c;
+  --ch-dark:#12304a;
+  --ch-card:#ffffff;
+  --ch-border:#eee2d3;
+  --ch-text:#12304a;
+  --ch-muted:#526579;
+}
+.aqs-ch-page {
+  background:#faf3ea !important;
+  color:#12304a !important;
+  color-scheme:light;
+}
+.aqs-ch-page .aqs-ch-topbar {
+  background:rgba(255,255,255,.96) !important;
+  border-bottom:1px solid #eee2d3 !important;
+  box-shadow:0 2px 12px rgba(18,48,74,.06);
+}
+.aqs-ch-page .aqs-ch-logo,
+.aqs-ch-page .aqs-ch-card-title {
+  background:none !important;
+  color:#12304a !important;
+  -webkit-text-fill-color:#12304a !important;
+  text-shadow:none !important;
+}
+.aqs-ch-page .aqs-ch-card,
+.aqs-ch-page .aqs-ch-reveal-card {
+  background:#ffffff !important;
+  border:1px solid #eee2d3 !important;
+  color:#12304a !important;
+  box-shadow:0 4px 18px rgba(18,48,74,.07) !important;
+}
+.aqs-ch-page :is(h1,h2,h3,h4,h5,p,label,small,strong,em,li,th,td,.aqs-ch-question-text,.aqs-ch-player-name,.aqs-ch-player-badge,.aqs-ch-reveal-title,.aqs-ch-reveal-explanation) {
+  color:#12304a !important;
+  -webkit-text-fill-color:#12304a !important;
+  text-shadow:none;
+}
+.aqs-ch-page :is(.aqs-ch-card-sub,.aqs-ch-muted,.aqs-ch-reveal-lb-title,.aqs-ch-round-badge-top) {
+  color:#526579 !important;
+  -webkit-text-fill-color:#526579 !important;
+}
+.aqs-ch-page [style*="color:rgba(255,255,255"],
+.aqs-ch-page [style*="color: rgba(255,255,255"],
+.aqs-ch-page [style*="color:#fff"],
+.aqs-ch-page [style*="color: #fff"],
+.aqs-ch-page [style*="color:#e2e8f0"],
+.aqs-ch-page [style*="color: #e2e8f0"],
+.aqs-ch-page [style*="color:#a5b4fc"],
+.aqs-ch-page [style*="color: #a5b4fc"] {
+  color:#12304a !important;
+  -webkit-text-fill-color:#12304a !important;
+}
+.aqs-ch-page .aqs-ch-input,
+.aqs-ch-page input,
+.aqs-ch-page textarea,
+.aqs-ch-page select {
+  background:#ffffff !important;
+  color:#12304a !important;
+  border:1px solid #d8cbb9 !important;
+  caret-color:#12304a;
+}
+.aqs-ch-page :is(input,textarea)::placeholder {
+  color:#64748b !important;
+  opacity:1 !important;
+}
+.aqs-ch-page :is(input,textarea,select):focus-visible,
+.aqs-ch-page button:focus-visible,
+.aqs-ch-page a:focus-visible {
+  outline:3px solid rgba(232,145,45,.45) !important;
+  outline-offset:2px;
+}
+.aqs-ch-page .aqs-ch-option {
+  background:#ffffff !important;
+  color:#12304a !important;
+  border-color:#e2d7c8 !important;
+}
+.aqs-ch-page .aqs-ch-option-letter {
+  background:#fff1dc !important;
+  color:#7c3f08 !important;
+}
+.aqs-ch-page .aqs-ch-option:not(:disabled):hover {
+  background:#fff7eb !important;
+  border-color:#e8912d !important;
+}
+.aqs-ch-page .aqs-ch-option.selected {
+  background:#fff3df !important;
+  border-color:#c96f16 !important;
+}
+.aqs-ch-page .aqs-ch-option.correct {
+  background:#ecfdf5 !important;
+  border-color:#059669 !important;
+}
+.aqs-ch-page .aqs-ch-option.wrong {
+  background:#fef2f2 !important;
+  border-color:#dc2626 !important;
+}
+.aqs-ch-page .aqs-ch-btn,
+.aqs-ch-page .aqs-ch-tab-btn,
+.aqs-ch-page .aqs-ch-source-tab {
+  color:#12304a !important;
+  border-color:#e3d6c5 !important;
+  background:#ffffff !important;
+}
+ .aqs-ch-page .aqs-ch-btn-primary {
+  background:linear-gradient(135deg,#e8912d,#d97706) !important;
+  border-color:#c96f16 !important;
+  color:#081b2d !important;
+  -webkit-text-fill-color:#081b2d !important;
+}
+.aqs-ch-page .aqs-ch-btn-primary:hover:not(:disabled) {
+  background:linear-gradient(135deg,#d97706,#e8912d) !important;
+}
+.aqs-ch-page .aqs-ch-btn-ghost {
+  background:#ffffff !important;
+  color:#12304a !important;
+  border-color:#d8cbb9 !important;
+}
+.aqs-ch-page :is(.aqs-ch-tab-btn.active,.aqs-ch-source-tab.active) {
+  background:#fff1dc !important;
+  color:#7c3f08 !important;
+  border-color:#e8912d !important;
+}
+.aqs-ch-page button:disabled {
+  opacity:.68 !important;
+  color:#526579 !important;
+  cursor:not-allowed !important;
+}
+.aqs-ch-page #aqs-ch-chat-msgs {
+  background:#fffaf3 !important;
+  border:1px solid #eee2d3;
+  color:#12304a !important;
+}
+.aqs-ch-page .aqs-ch-chat-msg,
+.aqs-ch-page .aqs-ch-chat-msg-name { color:#12304a !important; }
+.aqs-ch-page .aqs-ch-steal-note {
+  background:#fff7eb !important;
+  border-color:#f2d4a9 !important;
+  color:#7c3f08 !important;
+}
+.aqs-ch-page .aqs-ch-spectator-note {
+  background:#fff7eb !important;
+  border-color:#f2d4a9 !important;
+  color:#7c3f08 !important;
+}
+.aqs-ch-page .aqs-ch-feedback.correct {
+  background:#ecfdf5 !important;
+  border-color:#86efac !important;
+  color:#065f46 !important;
+}
+.aqs-ch-page .aqs-ch-feedback.wrong {
+  background:#fef2f2 !important;
+  border-color:#fecaca !important;
+  color:#991b1b !important;
+}
+.aqs-ch-page .aqs-ch-feedback .aqs-fb-expl { color:#334155 !important; }
+.aqs-ch-page .aqs-ch-reveal {
+  background:rgba(250,243,234,.96) !important;
+}
+.aqs-ch-page .aqs-ch-reveal-title,
+.aqs-ch-page .aqs-ch-reveal-winner,
+.aqs-ch-page .aqs-ch-reveal-pts,
+.aqs-ch-page .aqs-ch-reveal-explanation {
+  text-shadow:none !important;
+}
+.aqs-ch-page .aqs-ch-reveal-pts {
+  background:#fff1dc !important;
+  color:#7c3f08 !important;
+  border:1px solid #f2d4a9;
+}
+.aqs-ch-page .aqs-ch-timer-val { color:#12304a !important; }
+.aqs-ch-page .aqs-ch-timer-ring .track { stroke:#e7dccd !important; }
+.aqs-ch-page .aqs-ch-timer-ring .fill { stroke:#c96f16 !important; }
+.aqs-ch-page .aqs-ch-results-table th,
+.aqs-ch-page .aqs-ch-results-table td {
+  color:#12304a !important;
+  border-color:#eee2d3 !important;
+}
+.aqs-ch-page .aqs-ch-alert {
+  background:#ffffff !important;
+  color:#12304a !important;
+  border:1px solid #e3d6c5 !important;
+  box-shadow:0 4px 16px rgba(18,48,74,.08);
+}
+.aqs-ch-page .aqs-ch-alert-error { background:#fef2f2 !important; color:#991b1b !important; border-color:#fecaca !important; }
+.aqs-ch-page .aqs-ch-alert-success { background:#ecfdf5 !important; color:#065f46 !important; border-color:#86efac !important; }
+.aqs-ch-page .aqs-ch-alert-info { background:#eff6ff !important; color:#1e40af !important; border-color:#bfdbfe !important; }
+#aqs-ch-celebration {
+  background:rgba(250,243,234,.98) !important;
+  color:#12304a !important;
+}
+#aqs-ch-celebration :is(h2,div,p) { color:#12304a !important; }
+#aqs-skill-btn { color:#12304a !important; }
+#aqs-skill-btn .sk-name { color:#12304a !important; }
+#aqs-skill-btn .sk-use-label { color:#7c3f08 !important; }
+#aqs-skill-btn .sk-used-label { color:#065f46 !important; }
+#aqs-skill-active-banner {
+  background:#ffffff !important;
+  color:#12304a !important;
+  text-shadow:none !important;
+}
+#aqs-skill-flash .sk-flash-badge { color:#ffffff !important; text-shadow:none !important; }
+#aqs-skill-flash .sk-flash-desc {
+  color:#ffffff !important;
+  background:rgba(18,48,74,.88);
+  border-radius:8px;
+  padding:6px 12px;
+  text-shadow:none !important;
+}
+@media(max-width:680px) {
+  .aqs-ch-page .aqs-ch-main { padding:16px 10px !important; }
+  .aqs-ch-page .aqs-ch-card { padding:16px !important; }
+  #aqs-skill-bar { bottom:calc(76px + env(safe-area-inset-bottom)) !important; right:10px !important; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .aqs-ch-page *, #aqs-skill-flash * {
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+}
+
+/* Low-contrast legacy inline accent colors: preserve their meaning with darker accessible equivalents. */
+.aqs-ch-page [style*="color:#f59e0b"],
+.aqs-ch-page [style*="color: #f59e0b"] { color:#8b4d09 !important; -webkit-text-fill-color:#8b4d09 !important; }
+.aqs-ch-page [style*="color:#f87171"],
+.aqs-ch-page [style*="color: #f87171"] { color:#b91c1c !important; -webkit-text-fill-color:#b91c1c !important; }
+
+/* Keep compact HUD labels readable on phone-sized displays. */
+#aqs-skill-btn .sk-name { font-size:.72rem !important; line-height:1.3 !important; overflow-wrap:anywhere; }
+#aqs-skill-btn .sk-use-label,
+#aqs-skill-btn .sk-used-label { font-size:.68rem !important; line-height:1.25 !important; }
+.aqs-ch-page .aqs-ch-reveal-lb-title { font-size:.75rem !important; }
+
+/* Character skill controls: keep every label readable over the orange system accent. */
+#aqs-skill-btn {
+  background:#e8912d !important;
+  color:#081b2d !important;
+}
+#aqs-skill-btn .sk-name,
+#aqs-skill-btn .sk-use-label,
+#aqs-skill-btn .sk-used-label { color:#081b2d !important; }
+#aqs-skill-flash .sk-flash-badge {
+  background:#12304a !important;
+  color:#ffffff !important;
+  text-shadow:none !important;
+}
+.aqs-ch-option.sk-eliminated::after { color:#991b1b !important; }
+
+/* Player-turn status pills: distinct states without washed-out text or opacity. */
+.aqs-ch-page .aqs-ch-status-bar {
+  background:#fffaf3 !important;
+  border-color:#eee2d3 !important;
+}
+.aqs-ch-page .aqs-ch-status-pill {
+  background:#ffffff !important;
+  border-color:#e3d6c5 !important;
+  color:#12304a !important;
+}
+.aqs-ch-page .aqs-ch-status-pill .st-name,
+.aqs-ch-page .aqs-ch-status-pill .st-label { color:#12304a !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-waiting,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-miss { opacity:1 !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-waiting { background:#f1f5f9 !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-answering { background:#eff6ff !important; border-color:#93c5fd !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-stealing,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-hit { background:#fff1dc !important; border-color:#e8912d !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-correct { background:#ecfdf5 !important; border-color:#86efac !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-wrong,
+.aqs-ch-page .aqs-ch-status-pill.st-steal-miss { background:#fef2f2 !important; border-color:#fecaca !important; }
+.aqs-ch-page .aqs-ch-status-pill.st-missed { background:#f1f5f9 !important; border-color:#cbd5e1 !important; }

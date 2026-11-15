@@ -26,7 +26,7 @@
       title:'', hostName:'',
       pollTimer:null, countdownTimer:null,
       lastRound:-1, lastAttemptIdx:-1, lastPhase:'', answered:false,
-      chatSeenCount:0, musicUnlocked:false, musicPlaying:false,
+      chatSeenTs:0, musicUnlocked:false, musicPlaying:false,
       serverOffset:0,  /* ms offset between client and server clocks */
       selectedAnswerIdx:-1,  /* -1 = no selection; ≥0 = pending selection not yet confirmed */
       prevScores:{},   /* scores snapshot from the previous question — used to compute deltas */
@@ -238,7 +238,7 @@
               out+=esc(full);
           } else {
               try{
-                  var rendered=katex.renderToString(math,{displayMode:isDisplay,throwOnError:false,trust:true});
+                  var rendered=katex.renderToString(math,{displayMode:isDisplay,throwOnError:false,trust:false});
                   out+=isDisplay?'<span class="aqs-ch-katex-block">'+rendered+'</span>':rendered;
               } catch(e){
                   out+='<code>'+esc(math)+'</code>';
@@ -1198,9 +1198,14 @@
   }
   function updateChat(msgs){
       var $msgs=$('#aqs-ch-chat-msgs'); if(!$msgs.length) return;
-      if(msgs.length===CH.chatSeenCount) return;
-      var newMsgs=msgs.slice(CH.chatSeenCount); CH.chatSeenCount=msgs.length;
-      newMsgs.forEach(function(m){ $msgs.append('<div class="aqs-ch-chat-msg"><span class="aqs-ch-chat-msg-name">'+esc(m.name)+':</span> '+esc(m.msg)+'</div>'); });
+      var lastSeen=Number(CH.chatSeenTs)||0;
+      var newMsgs=(msgs||[]).filter(function(m){return Number(m.ts)>lastSeen;});
+      if(!newMsgs.length) return;
+      newMsgs.forEach(function(m){
+          $msgs.append('<div class="aqs-ch-chat-msg"><span class="aqs-ch-chat-msg-name">'+esc(m.name)+':</span> '+esc(m.msg)+'</div>');
+          CH.chatSeenTs=Math.max(Number(CH.chatSeenTs)||0,Number(m.ts)||0);
+      });
+      while($msgs.children().length>100) $msgs.children().first().remove();
       $msgs.scrollTop($msgs[0]?$msgs[0].scrollHeight:0);
   }
 
@@ -2188,6 +2193,7 @@
               if(o.charAt(0)==='*'){ correctIdx=i; return o.slice(1).trim(); }
               return o;
           });
+          if(correctIdx<0){ alert('Mark the correct answer with * before adding this question.'); return; }
           chQuestions.push({question:question,options:options,correct_answer_index:correctIdx,explanation:explanation});
           $('#aqs-ch-manual-form').remove();
           renderChQList();

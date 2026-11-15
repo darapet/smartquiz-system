@@ -58,7 +58,22 @@ function advanceQuestion(ch, now) {
     if (ch.league_mode && active.length > 1) {
       const scores = ch.scores || {};
       const lowest = Math.min(...active.map((p) => Number(scores[p]) || 0));
-      const eliminated = active.filter((p) => (Number(scores[p]) || 0) === lowest).slice(-1)[0];
+      const tiedLowest = active.filter((p) => (Number(scores[p]) || 0) === lowest);
+      const stats = ch.player_stats || {};
+      const leastCorrect = Math.min(...tiedLowest.map((p) => Number((stats[p] || {}).correct) || 0));
+      const accuracyTied = tiedLowest.filter((p) => (Number((stats[p] || {}).correct) || 0) === leastCorrect);
+      const averageTime = (p) => {
+        const entry = stats[p] || {};
+        const answered = Number(entry.answered) || 0;
+        return answered > 0 ? (Number(entry.total_time_ms) || 0) / answered : Number.POSITIVE_INFINITY;
+      };
+      const slowestAverage = Math.max(...accuracyTied.map(averageTime));
+      const finalTied = accuracyTied.filter((p) => averageTime(p) === slowestAverage);
+      const tieKey = finalTied.slice().sort((a, b) => a - b).join(',');
+      const tieDigest = require('crypto').createHash('sha256')
+        .update(String(ch.tie_break_seed || ch.code) + ':' + String(ch.league_round || 1) + ':' + tieKey)
+        .digest();
+      const eliminated = finalTied[tieDigest.readUInt32BE(0) % finalTied.length];
       const players = list(ch.players);
       const player = players.find((p) => Number(p.position) === eliminated);
       const remaining = active.filter((p) => p !== eliminated);
@@ -106,6 +121,17 @@ function progressRoom(ch, now) {
           answer_idx: -1, is_correct: false, time_ms: elapsed * 1000,
           is_steal: !!ch.steal_mode, pts: 0,
         } };
+        if (!ch.steal_mode) {
+          const stats = { ...(ch.player_stats || {}) };
+          const previousStats = stats[pos] || {};
+          const allowedSeconds = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
+          stats[pos] = {
+            correct: Number(previousStats.correct) || 0,
+            answered: (Number(previousStats.answered) || 0) + 1,
+            total_time_ms: (Number(previousStats.total_time_ms) || 0) + (allowedSeconds * 1000),
+          };
+          ch.player_stats = stats;
+        }
         const effects = { ...(ch.skill_effects || {}) };
         if (effects[pos] && !effects[pos].doubleSteal) delete effects[pos];
         ch.skill_effects = effects;
@@ -171,12 +197,21 @@ function progressRoom(ch, now) {
     }
   }
 }
+function stripAnswerMetadata(value) {
+  if (Array.isArray(value)) return value.map(stripAnswerMetadata);
+  if (!value || typeof value !== 'object') return value;
+  const blocked = new Set(['correct_answer_index', 'correct_idx', 'correctIndex', 'correct_answer', 'correctAnswer', 'correct', 'answer', 'answer_index', 'is_correct', 'isCorrect', 'explanation']);
+  return Object.keys(value).reduce((safe, key) => {
+    if (!blocked.has(key)) safe[key] = stripAnswerMetadata(value[key]);
+    return safe;
+  }, {});
+}
 function publicState(ch, code, now, viewerToken) {
   const owner = Number(ch.steal_mode ? ch.steal_of_pos : ch.primary_pos) || 0;
   const q = questionFor(ch, owner);
   let safeQuestion = null;
   if (q) {
-    safeQuestion = { ...q };
+    safeQuestion = stripAnswerMetadata(q);
     delete safeQuestion.correct_answer_index;
     delete safeQuestion.explanation;
     delete safeQuestion.answer;
@@ -197,13 +232,17 @@ function publicState(ch, code, now, viewerToken) {
     active_pos: ch.active_pos === undefined ? 0 : ch.active_pos,
     primary_pos: ch.primary_pos === undefined ? 0 : ch.primary_pos,
     steal_mode: !!ch.steal_mode, steal_of_pos: ch.steal_of_pos ?? null,
-    answers_this_q: ch.answers_this_q || {}, last_result: ch.last_result || null,
+    answers_this_q: ch.answers_this_q || {}, last_result: ch.phase === 'reveal' ? (ch.last_result || null) : null,
     current_question: safeQuestion,
     reveal_answer: ch.phase === 'reveal' && q ? {
       correct_idx: Number(q.correct_answer_index),
       explanation: q.explanation || '',
     } : null,
-    chat: list(ch.chat).slice(-100),
+    chat: list(ch.chat).slice(-100).map((message) => ({
+      name: String(message.name || message.player_name || 'Player'),
+      msg: String(message.msg || message.message || ''),
+      ts: Number(message.ts) || 0,
+    })),
     server_time: now / 1000,
     question_started_at: (Number(ch.question_started_at) || now) / 1000,
     skills_used: ch.skills_used || {},
@@ -215,6 +254,37 @@ function publicState(ch, code, now, viewerToken) {
     league_eliminated_char: ch.league_eliminated_char || null,
   };
 }
+function validateQuestions(questions) {
+  return questions.map((question, index) => {
+    if (!question || typeof question !== 'object' || Array.isArray(question)) {
+      fail('Question ' + (index + 1) + ' is invalid.');
+    }
+    const text = String(question.question || '').trim();
+    const options = question.options;
+    const correct = Number(question.correct_answer_index);
+    const explanation = question.explanation == null ? '' : question.explanation;
+    if (!text || text.length > 4000) fail('Question ' + (index + 1) + ' must contain 1 to 4,000 characters.');
+    if (!Array.isArray(options) || options.length < 2 || options.length > 6) {
+      fail('Question ' + (index + 1) + ' must have between 2 and 6 answer options.');
+    }
+    if (options.some((option) => typeof option !== 'string' || !option.trim() || option.length > 1000)) {
+      fail('Question ' + (index + 1) + ' has an invalid answer option.');
+    }
+    if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) {
+      fail('Mark one valid correct answer for question ' + (index + 1) + '.');
+    }
+    if (typeof explanation !== 'string' || explanation.length > 3000) {
+      fail('Question ' + (index + 1) + ' has an invalid explanation.');
+    }
+    return {
+      ...question,
+      question: text,
+      options: options.map((option) => option.trim()),
+      correct_answer_index: correct,
+      explanation: explanation.trim(),
+    };
+  });
+}
 function getPlayer(ch, token) {
   return list(ch.players).find((p) => p && p.player_token === token);
 }
@@ -222,6 +292,15 @@ function fail(message, status = 400) {
   const error = new Error(message);
   error.status = status;
   throw error;
+}
+async function enforceRateLimit(ref, limit, windowMs, now) {
+  const result = await ref.transaction((current) => {
+    const start = Number(current && current.start_at) || now;
+    const count = now - start >= windowMs ? 0 : (Number(current && current.count) || 0);
+    if (count >= limit) return;
+    return { start_at: now - start >= windowMs ? now : start, count: count + 1 };
+  });
+  if (!result.committed) fail('Too many requests. Please wait a moment and try again.', 429);
 }
 
 async function runAction(action, data, uid) {
@@ -237,11 +316,15 @@ async function runAction(action, data, uid) {
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch (_) {}
     if (!Array.isArray(questions) || !questions.length) fail('Add questions before creating the challenge.');
     if (questions.length > 1000) fail('A challenge can contain at most 1,000 questions.');
+    questions = validateQuestions(questions);
     const roomCode = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
     const playerToken = require('crypto').randomBytes(18).toString('hex');
+    const tieBreakSeed = require('crypto').randomBytes(16).toString('hex');
     const playerName = String(data.host_name || 'Host').trim().slice(0, 40) || 'Host';
     const ch = {
-      code: roomCode, host_uid: uid, title: String(data.title || ('Challenge ' + roomCode)).slice(0, 100),
+      code: roomCode, tie_break_seed: tieBreakSeed,
+      player_stats: { 0: { correct: 0, answered: 0, total_time_ms: 0 } },
+      host_uid: uid, title: String(data.title || ('Challenge ' + roomCode)).slice(0, 100),
       status: 'waiting', phase: 'waiting', num_players: numPlayers, num_rounds: rounds,
       questions_per_round: qpr, time_per_question: time, num_questions: numPlayers * qpr * rounds,
       questions, players: { 0: { position: 0, player_name: playerName,
@@ -279,6 +362,7 @@ async function runAction(action, data, uid) {
         player_token: playerToken, character_id: String(data.character_id || 'koda').slice(0, 32),
         is_host: 0, score: 0, joined_at: now } };
       ch.scores = { ...(ch.scores || {}), [position]: 0 };
+      ch.player_stats = { ...(ch.player_stats || {}), [position]: { correct: 0, answered: 0, total_time_ms: 0 } };
       return ch;
     });
     if (!result.committed) fail('This challenge is full or has already started.');
@@ -335,13 +419,20 @@ async function runAction(action, data, uid) {
       return JSON.stringify(ch) === before ? undefined : ch;
     });
     if (!result.snapshot.exists()) fail('Challenge not found.', 404);
-    return publicState(result.snapshot.val(), code, now, String(data.player_token || ''));
+    const polledRoom = result.snapshot.val();
+    if (!getPlayer(polledRoom, token)) fail('Join this challenge before viewing its live state.', 403);
+    return publicState(polledRoom, code, now, token);
   }
 
   if (action === 'aqs_ch_skill_activate') {
     let activated = null;
+    let rejectionMessage = null;
     const result = await roomRef.transaction((ch) => {
-      if (!ch || ch.status !== 'active' || ch.phase !== 'active') return;
+      if (!ch || ch.status !== 'active') return;
+      progressRoom(ch, now);
+      if (ch.phase !== 'active') return ch;
+      const elapsedBeforeSkill = (now - (Number(ch.question_started_at) || now)) / 1000;
+      if (elapsedBeforeSkill >= (Number(ch.time_per_question) || 30) + (Number(((ch.skill_effects || {})[Number(ch.active_pos)] || {}).extraTime) || 0)) return;
       const player = getPlayer(ch, token);
       if (!player || Number(player.position) !== Number(ch.active_pos)) return;
       const pos = Number(player.position);
@@ -350,18 +441,27 @@ async function runAction(action, data, uid) {
         blaze: 'double', reaper: 'double', samurai: 'double', koda: 'double',
         cyber: 'shield', luna: 'shield',
         inferno: 'timeboost', ember: 'timeboost', aang: 'timeboost',
-        nova: 'fiftyfifty', phantom: 'fiftyfifty', viper: 'doubleSteal',
+        nova: 'fiftyfifty', phantom: 'fiftyfifty', viper: 'doublesteal',
       };
       const effect = skillByCharacter[player.character_id];
       if (!effect) return;
+      if (effect === 'doublesteal' && !ch.steal_mode) {
+        rejectionMessage = 'Viper Strike can only be activated during a steal turn.';
+        return;
+      }
+      if (effect === 'double' && ch.steal_mode) {
+        rejectionMessage = 'This points boost can only be activated on your primary turn.';
+        return;
+      }
       const state = { ...(ch.skill_effects || {}) };
       const skill = {};
       if (effect === 'double') skill.boost = true;
       if (effect === 'shield') skill.shield = true;
       if (effect === 'timeboost') skill.extraTime = 10;
-      if (effect === 'doubleSteal') skill.doubleSteal = true;
+      if (effect === 'doublesteal') skill.doubleSteal = true;
       if (effect === 'fiftyfifty') {
-        const q = questionFor(ch, pos);
+        const questionOwner = ch.steal_mode ? Number(ch.steal_of_pos) : pos;
+        const q = questionFor(ch, questionOwner);
         const options = q && Array.isArray(q.options) ? q.options : [];
         const correct = Number(q && q.correct_answer_index);
         const wrong = options.map((_, index) => index).filter((index) => index !== correct);
@@ -377,7 +477,7 @@ async function runAction(action, data, uid) {
       activated = { effect, eliminated_indices: skill.eliminatedOptionIndices || [], extra_time: skill.extraTime || 0 };
       return ch;
     });
-    if (!result.committed || !activated) fail('This skill cannot be used now, or it has already been used.');
+    if (!result.committed || !activated) fail(rejectionMessage || 'This skill cannot be used now, or it has already been used.');
     return activated;
   }
 
@@ -400,6 +500,7 @@ async function runAction(action, data, uid) {
       const owner = stealing ? Number(ch.steal_of_pos) : pos;
       const q = questionFor(ch, owner);
       if (!q) return;
+      if (answerIdx >= (Array.isArray(q.options) ? q.options.length : 0)) return;
       const correct = Number(q.correct_answer_index);
       const isCorrect = answerIdx >= 0 && answerIdx === correct;
       const effectiveTime = (Number(ch.time_per_question) || 30) + (Number(activeSkill.extraTime) || 0);
@@ -420,6 +521,16 @@ async function runAction(action, data, uid) {
       const scores = { ...(ch.scores || {}) };
       scores[pos] = (Number(scores[pos]) || 0) + points;
       ch.scores = scores;
+      if (!stealing) {
+        const playerStats = { ...(ch.player_stats || {}) };
+        const previousStats = playerStats[pos] || {};
+        playerStats[pos] = {
+          correct: (Number(previousStats.correct) || 0) + (isCorrect ? 1 : 0),
+          answered: (Number(previousStats.answered) || 0) + 1,
+          total_time_ms: (Number(previousStats.total_time_ms) || 0) + Math.max(0, elapsed * 1000),
+        };
+        ch.player_stats = playerStats;
+      }
       ch.answers_this_q = { ...answers, [pos]: {
         answer_idx: answerIdx, is_correct: isCorrect, time_ms: elapsed * 1000,
         is_steal: stealing, pts: points,
@@ -457,9 +568,21 @@ async function runAction(action, data, uid) {
       ch.status = 'waiting'; ch.phase = 'waiting'; ch.round = 1; ch.q_in_round = 1;
       ch.attempt_idx = 0; ch.active_pos = 0; ch.primary_pos = 0;
       ch.steal_mode = false; ch.steal_of_pos = null; ch.answers_this_q = {};
-      ch.scores = {}; list(ch.players).forEach((p) => { ch.scores[p.position] = 0; });
-      ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = [];
-      ch.last_result = null; ch.question_started_at = null;
+      ch.scores = {}; ch.player_stats = {};
+      list(ch.players).forEach((p) => {
+        ch.scores[p.position] = 0;
+        ch.player_stats[p.position] = { correct: 0, answered: 0, total_time_ms: 0 };
+      });
+      ch.tie_break_seed = require('crypto').randomBytes(16).toString('hex');
+      ch.skills_used = {}; ch.skill_effects = {}; ch.voice = {}; ch.chat = []; ch.rate_limits = {};
+      ch.last_result = null; ch.question_started_at = null; ch.reveal_started_at = null;
+      ch.pending_stealer = null; ch.finish_after_league_transition = false;
+      ch.league_eliminated_pos = null; ch.league_eliminated_name = null;
+      ch.league_eliminated_char = null; ch.league_transition_at = null;
+      ch.next_league_round = null; ch.league_round = 1;
+      ch.league_active_players = ch.league_mode
+        ? Array.from({ length: Number(ch.num_players) || 2 }, (_, i) => i)
+        : null;
       delete ch.player_questions; delete ch.finished_at;
       return ch;
     });
@@ -485,18 +608,37 @@ async function runAction(action, data, uid) {
     if (!snap.exists()) fail('Challenge not found.', 404);
     const player = getPlayer(snap.val(), token);
     if (!player) fail('Player not found.', 403);
-    await roomRef.child('chat').push({ player_name: player.player_name, message, ts: now });
-    return { ok: true };
+    await enforceRateLimit(roomRef.child('rate_limits/' + player.position + '/chat'), 8, 10000, now);
+    let entryTs = now;
+    await roomRef.child('chat').transaction((current) => {
+      const entries = list(current);
+      const lastTs = entries.length ? Number(entries[entries.length - 1].ts) || 0 : 0;
+      entryTs = Math.max(now, lastTs + 1);
+      entries.push({ name: player.player_name, msg: message, ts: entryTs });
+      return entries.slice(-100);
+    });
+    return { ok: true, ts: entryTs };
   }
 
   if (action === 'aqs_ch_voice_push') {
     const chunk = String(data.chunk || '');
     if (!chunk || chunk.length > 180000) fail('Audio chunk is empty or too large.');
     const snap = await roomRef.get();
-    if (!snap.exists() || !getPlayer(snap.val(), token)) fail('Player not found.', 403);
-    const pos = String(getPlayer(snap.val(), token).position);
-    await roomRef.child('voice/' + pos).set({ data: chunk, ts: now, mime: String(data.mime || 'audio/webm').slice(0, 80) });
-    return { ok: true };
+    if (!snap.exists()) fail('Challenge not found.', 404);
+    const player = getPlayer(snap.val(), token);
+    if (!player) fail('Player not found.', 403);
+    const pos = String(player.position);
+    await enforceRateLimit(roomRef.child('rate_limits/' + pos + '/voice_push'), 20, 10000, now);
+    let chunkTs = now;
+    await roomRef.child('voice/' + pos).transaction((current) => {
+      const queue = Array.isArray(current) ? current.slice()
+        : (current && current.data ? [current] : list(current));
+      const previousTs = queue.length ? Number(queue[queue.length - 1].ts) || 0 : 0;
+      chunkTs = Math.max(now, previousTs + 1);
+      queue.push({ data: chunk, ts: chunkTs, mime: String(data.mime || 'audio/webm').slice(0, 80) });
+      return queue.slice(-30);
+    });
+    return { ok: true, ts: chunkTs };
   }
 
   if (action === 'aqs_ch_voice_poll') {
@@ -505,12 +647,22 @@ async function runAction(action, data, uid) {
     const ch = snap.val();
     const player = getPlayer(ch, token);
     if (!player) fail('Player not found.', 403);
+    await enforceRateLimit(roomRef.child('rate_limits/' + player.position + '/voice_poll'), 24, 10000, now);
     const since = Number(data.since) || 0;
     const voice = ch.voice || {};
-    const chunks = Object.keys(voice).filter((p) => Number(p) !== Number(player.position))
-      .filter((p) => voice[p] && voice[p].data && Number(voice[p].ts) > since)
-      .map((p) => ({ pos: Number(p), data: voice[p].data, mime: voice[p].mime || 'audio/webm', ts: voice[p].ts }));
-    return { chunks, server_time: now };
+    const chunks = [];
+    Object.keys(voice).forEach((pos) => {
+      if (Number(pos) === Number(player.position)) return;
+      const stored = voice[pos];
+      const queue = Array.isArray(stored) ? stored : (stored && stored.data ? [stored] : list(stored));
+      queue.forEach((chunk) => {
+        if (chunk && chunk.data && Number(chunk.ts) > since) {
+          chunks.push({ pos: Number(pos), data: chunk.data, mime: chunk.mime || 'audio/webm', ts: Number(chunk.ts) });
+        }
+      });
+    });
+    chunks.sort((a, b) => a.ts - b.ts);
+    return { chunks: chunks.slice(-60), server_time: now };
   }
   fail('Unsupported Challenge action.');
 }
