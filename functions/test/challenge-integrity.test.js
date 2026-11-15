@@ -132,3 +132,8 @@ test('Challenge score configuration agrees with the server steal award', () => {
   assert.match(mobileHtml, /steal_score: 3/);
   assert.match(backend, /stealing \? \(useDoubleSteal \? 6 : 3\)/);
 });
+
+test('primary-only double-point skills cannot be wasted on a steal attempt', () => {
+  assert.match(backend, /effect === 'double' && ch\.steal_mode/);
+  assert.match(backend, /This points boost can only be activated on your primary turn/);
+});
