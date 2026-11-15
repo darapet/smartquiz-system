@@ -2188,6 +2188,7 @@
               if(o.charAt(0)==='*'){ correctIdx=i; return o.slice(1).trim(); }
               return o;
           });
+          if(correctIdx<0){ alert('Mark the correct answer with * before adding this question.'); return; }
           chQuestions.push({question:question,options:options,correct_answer_index:correctIdx,explanation:explanation});
           $('#aqs-ch-manual-form').remove();
           renderChQList();
