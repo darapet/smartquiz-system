@@ -143,7 +143,7 @@
   }
   function openPlan(id) {
     var plan = state.plans.find(function (item) { return item.id === id; }); if (!plan) return;
-    state.activePlan = plan; state.activeId = id; byId('sg-list-view').classList.add('sg-hidden'); byId('sg-workspace').style.display = 'block'; renderWorkspace();
+    state.activePlan = plan; state.activeId = id; byId('sg-list-view').classList.add('sg-hidden'); byId('sg-workspace').style.display = 'block'; renderWorkspace(); if (activeTopic() && !activeTopic().lesson) generateLesson();
   }
   function backToPlans() {
     state.activePlan = null; state.activeId = null; byId('sg-workspace').style.display = 'none'; byId('sg-list-view').classList.remove('sg-hidden'); renderPlans();
