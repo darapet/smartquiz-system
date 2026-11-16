@@ -603,8 +603,7 @@ function shCopyNotes(){
 function shPrintNotes(){
   const w=window.open('','_blank');
   const css='body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.8;color:#111;}h1,h2,h3{margin:20px 0 8px;}strong{color:#333;}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0} .sh-gpa-row{grid-template-columns:minmax(0,1fr) 64px 64px 28px;gap:5px} .sh-gpa-breakdown{grid-template-columns:1fr} .sh-panel{padding:16px 12px}}';
-  w.document.write('<html><head><title>Study Notes</title><style>'+css+'</style></head><body>'+document.getElementById('notes-output').innerHTML+'<script src="js/aqs-studyhub-dashboard.js?v=1"></script>
-</body></html>');
+  w.document.write('<html><head><title>Study Notes</title><style>'+css+'</style></head><body>'+document.getElementById('notes-output').innerHTML+'</body></html>');
   w.document.close(); w.print();
 }
 
@@ -759,5 +758,6 @@ function shGpaReset(){
 window.addEventListener('load',function(){shGpaAddRow();shGpaAddRow();shGpaAddRow();shFC_init();});
 </script>
 <script src="js/aqs-study-plan.js?v=1"></script>
-<script src="js/aqs-studyhub-dashboard.js?v=1"></script>\n</body>
+<script src="js/aqs-studyhub-dashboard.js?v=1"></script>
+</body>
 </html>
