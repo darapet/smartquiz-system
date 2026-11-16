@@ -85,7 +85,10 @@ service cloud.firestore {
             && data.topics.size() > 0
             && data.topics.size() <= 20
             && data.currentTopicIndex is int
+            && data.currentTopicIndex >= 0
+            && data.currentTopicIndex < data.topics.size()
             && data.completedTopics is list
+            && data.completedTopics.size() <= data.topics.size()
             && data.status in ['in_progress', 'completed']
             && data.createdAt is timestamp
             && data.updatedAt is timestamp;
