@@ -19,6 +19,9 @@ test('StudyHub web and Android page assets remain identical', () => {
 test('study plans are stored below the signed-in user account', () => {
   const firebase = read('js/aqs-firebase.js');
   const rules = read('firestore.rules');
+  const androidRules = read('daraquiz-mobile/www/firestore.rules');
+  const studyRules = (source) => source.slice(source.indexOf('match /studyPlans/{planId}'), source.indexOf('match /studyPlans/{planId}') + 1900).replace(/\\s/g, '');
+  assert.equal(studyRules(rules), studyRules(androidRules));
   assert.match(firebase, /collection\(db,\s*'users',\s*user\.uid,\s*'studyPlans'\)/);
   assert.match(rules, /match \/users\/\{userId\}[\s\S]*?match \/studyPlans\/\{planId\}/);
   assert.match(rules, /request\.auth\.uid == userId/);
