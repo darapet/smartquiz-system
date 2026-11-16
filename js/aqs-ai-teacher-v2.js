@@ -51,6 +51,7 @@ function setMode(mode){
  if(activeMode==='text')scrollConversation();
 }
 function addMessage(role,content){
+ if(role==='assistant')showMathWorkspace(content);else if(role==='user')app.classList.remove('ait-math-workspace');
  var message={role:role,content:String(content||''),at:Date.now()};messages.push(message);renderMessage(message);
  app.classList.add('has-messages');persist();scrollConversation();
 }
@@ -155,7 +156,7 @@ function stopSpeaking(){
 function speakBrowser(text){
  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){showToast('Text-to-speech is unavailable here. The written answer is saved.');return;}
  speechQueue=text.match(/[^.!?]+[.!?]*/g)||[text];
- function next(){if(!speechQueue.length){setState('','Answer ready.');return;}var part=speechQueue.shift();var utterance=new SpeechSynthesisUtterance(part);utterance.rate=1;utterance.onstart=function(){setState('speaking','AI Teacher is speaking…');};utterance.onend=next;utterance.onerror=function(){setState('','Answer ready.');};window.speechSynthesis.speak(utterance);}
+ function next(){if(!speechQueue.length){setState('','Answer ready.');autoListen();return;}var part=speechQueue.shift();var utterance=new SpeechSynthesisUtterance(part);utterance.rate=1;utterance.onstart=function(){setState('speaking','AI Teacher is speaking…');};utterance.onend=next;utterance.onerror=function(){setState('','Answer ready.');};window.speechSynthesis.speak(utterance);}
  next();
 }
 function speakAnswer(text){
@@ -183,7 +184,7 @@ function onNativeSpeechEvent(event){
  }
  if(!activeSpeechId||detail.value!==activeSpeechId)return;
  if(detail.type==='speech-start')setState('speaking','AI Teacher is speaking…');
- if(detail.type==='speech-end'){activeSpeechId=null;setState('','Answer ready.');}
+ if(detail.type==='speech-end'){activeSpeechId=null;setState('','Answer ready.');autoListen();}
  if(detail.type==='speech-error'){activeSpeechId=null;setState('error','Android voice output failed.');showToast('Android voice output failed. Your written answer is saved.');}
 }
 function toggleVoice(){
@@ -222,11 +223,71 @@ function bindUI(){
  window.addEventListener('beforeunload',function(){stopListening();stopSpeaking();});
  document.addEventListener('visibilitychange',function(){if(document.hidden){stopListening();stopSpeaking();}});
 }
+
+var PROFILE_KEY='aqs_ai_teacher_profile_v1';
+var TEACHERS=[
+ {name:'Sarah',gender:'female',voice:'female'},
+ {name:'Mary',gender:'female',voice:'female'},
+ {name:'Grace',gender:'female',voice:'female'},
+ {name:'Esther',gender:'female',voice:'female'},
+ {name:'Deborah',gender:'female',voice:'female'},
+ {name:'David',gender:'male',voice:'male'},
+ {name:'Daniel',gender:'male',voice:'male'},
+ {name:'Samuel',gender:'male',voice:'male'},
+ {name:'Michael',gender:'male',voice:'male'},
+ {name:'Ezekiel',gender:'male',voice:'male'}
+];
+var learnerProfile=null,autoListenAfterSpeech=false;
+function getProfile(){try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');}catch(e){return null;}}
+function saveProfile(profile){learnerProfile=profile;try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch(e){}}
+function teacherVoice(){return TEACHERS.find(function(t){return t.name===((learnerProfile||{}).teacher);})||TEACHERS[1];}
+function chooseBrowserVoice(teacher){
+ if(!window.speechSynthesis||!window.speechSynthesis.getVoices)return null;
+ var voices=window.speechSynthesis.getVoices().filter(function(v){return /^en/i.test(v.lang||'');});
+ var pattern=teacher.gender==='female'?/female|woman|samantha|karen|moira|zira|aria|jenny|susan|victoria|tessa|ava|siri.*female/i:/male|man|daniel|david|alex|guy|ryan|fred|jorge|tom|arthur|siri.*male/i;
+ return voices.find(function(v){return pattern.test(v.name);})||voices.find(function(v){return /natural|google|microsoft/i.test(v.name);})||voices[0]||null;
+}
+function speakIntro(text,onDone){
+ if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){if(onDone)onDone();return;}
+ window.speechSynthesis.cancel();
+ var utter=new SpeechSynthesisUtterance(text),voice=chooseBrowserVoice(teacherVoice());
+ if(voice)utter.voice=voice;
+ utter.lang=voice?voice.lang:'en-US';utter.rate=.96;utter.pitch=teacherVoice().gender==='female'?1.04:.94;
+ utter.onend=function(){if(onDone)onDone();};
+ utter.onerror=function(){if(onDone)onDone();};
+ window.speechSynthesis.speak(utter);
+}
+function renderOnboarding(){
+ var old=document.getElementById('ait-onboarding');if(old)old.remove();
+ var overlay=document.createElement('div');overlay.id='ait-onboarding';overlay.className='ait-onboarding';
+ overlay.innerHTML='<div class="ait-onboarding-card"><div class="ait-onboarding-mark">✦</div><p class="ait-onboarding-kicker">DARAPET LEARNING SYSTEM</p><h1>Let’s personalise your learning</h1><p class="ait-onboarding-copy">Choose your AI teacher and tell us what to call you. You can change these choices later.</p><label for="ait-learner-name">What should I call you?</label><input id="ait-learner-name" maxlength="40" autocomplete="given-name" placeholder="Enter your name"><label for="ait-teacher-choice">Choose your teacher</label><select id="ait-teacher-choice">'+TEACHERS.map(function(t){return '<option value="'+t.name+'">'+t.name+' · '+(t.gender==='female'?'Female':'Male')+'</option>';}).join('')+'</select><button type="button" id="ait-onboarding-start" class="ait-onboarding-start">Meet my teacher <span>→</span></button><p class="ait-onboarding-foot">Your choices are saved on this device.</p></div>';
+ document.body.appendChild(overlay);
+ var nameInput=overlay.querySelector('#ait-learner-name'),select=overlay.querySelector('#ait-teacher-choice');
+ var existing=getProfile();if(existing){nameInput.value=existing.learnerName||'';select.value=existing.teacher||'Mary';}
+ overlay.querySelector('#ait-onboarding-start').addEventListener('click',function(){
+  var learnerName=nameInput.value.trim();if(!learnerName){nameInput.focus();nameInput.setAttribute('aria-invalid','true');return;}
+  saveProfile({learnerName:learnerName,teacher:select.value,updatedAt:Date.now()});overlay.classList.add('closing');
+  setTimeout(function(){overlay.remove();beginTeacherWelcome();},220);
+ });
+ nameInput.addEventListener('keydown',function(e){if(e.key==='Enter')overlay.querySelector('#ait-onboarding-start').click();});
+}
+function beginTeacherWelcome(){
+ var p=learnerProfile||getProfile();if(!p)return;
+ var teacher=teacherVoice(),greeting='Welcome to the Darapet Learning System. My name is '+teacher.name+'. It is lovely to meet you, '+p.learnerName+'. What would you like to learn today? You can tell me by speaking, or type your question.';
+ setState('speaking',teacher.name+' is welcoming you…');
+ speakIntro(greeting,function(){setState('','I’m ready to listen. Speak or type your question.');if(voiceEnabled&&activeMode==='voice')setTimeout(startListening,450);});
+}
+function autoListen(){if(voiceEnabled&&activeMode==='voice'&&!thinking&&!speaking&&!listening){setTimeout(function(){if(!thinking&&!speaking&&!listening)startListening();},500);}}
+function showMathWorkspace(text){
+ var math=/(\\$\\$[\\s\\S]+?\\$\\$|\\b(step\\s*\\d|solve|calculate|equation|therefore|substitute|simplif|differentiat|integrat|factoris|factoriz|quadratic|=\\s*\\d))/i.test(text);
+ app.classList.toggle('ait-math-workspace',!!math);
+}
+
 function init(){
  var button=document.getElementById('ait-voice-toggle');button.textContent=voiceEnabled?'🔊':'🔇';button.title=voiceEnabled?'Voice on':'Voice off';button.setAttribute('aria-label',voiceEnabled?'Turn voice off':'Turn voice on');
  document.getElementById('ait-voice-state').textContent=voiceEnabled?'Voice enabled':'Voice muted';
  currentSession=sessions.find(function(s){return s.id===currentId;})||currentSession;messages=Array.isArray(currentSession.messages)?currentSession.messages.slice():[];
- renderMessages();persist();bindUI();setupKeyboard();setMode('voice');setState('',messages.length?'Welcome back. Tap the microphone and speak.':'Tap the microphone and speak to your AI Teacher.');
+ renderMessages();persist();bindUI();setupKeyboard();setMode('voice');learnerProfile=getProfile();if(learnerProfile&&learnerProfile.learnerName&&learnerProfile.teacher){setState('','Welcome back, '+learnerProfile.learnerName+'.');}else{setState('','Let’s personalise your teaching experience.');renderOnboarding();}
 }
 init();
 })();
