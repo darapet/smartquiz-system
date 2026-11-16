@@ -171,3 +171,8 @@ body{background:var(--sh-bg)!important;color:var(--sh-text)!important}
  #sh-toast{left:12px;right:12px;bottom:12px;align-items:stretch}
 }
 @media(prefers-reduced-motion:reduce){.sg-spinner{animation:none}.sh-tab-btn,.sg-topic-item{transition:none}}
+
+
+.sh-hdr-actions a[title="Library"]{background:#fff!important;color:var(--sh-text)!important;border-color:var(--sh-border)!important}
+#sh-panel-notes strong[style*="#fcd34d"]{color:#9a5a13!important}
+.sh-badge-gold{color:#8a541b!important}
