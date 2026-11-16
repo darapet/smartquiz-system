@@ -1,0 +1,32 @@
+
+name: Firestore rules validation
+
+on:
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'daraquiz-mobile/www/firestore.rules'
+      - '.github/workflows/firestore-rules-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'daraquiz-mobile/www/firestore.rules'
+      - '.github/workflows/firestore-rules-check.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+      - name: Compile Firestore security rules in emulator
+        run: firebase emulators:exec --only firestore --project demo-smartquiz "echo 'Firestore security rules compiled successfully'"

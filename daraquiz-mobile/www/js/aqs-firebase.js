@@ -349,6 +349,73 @@ window.aqsAjax = async function(data, successFn, failFn) {
     }
 };
 
+/* ── Private per-user StudyHub plan storage ──────────────────────────────
+   Plans live below users/{uid}/studyPlans so Firestore rules can enforce
+   ownership. There is intentionally no per-user plan-count cap. */
+function _aqsStudyPlanUser() {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user || user.isAnonymous) throw new Error('Sign in to save and continue your study plans.');
+    return user;
+}
+function _aqsValidateStudyPlan(data) {
+    if (!data || typeof data !== 'object') throw new Error('Invalid study plan data.');
+    if (!String(data.subject || '').trim()) throw new Error('Add a subject or course name.');
+    if (String(data.sourceMaterial || '').length > 24000) throw new Error('Study material must be 24,000 characters or fewer.');
+    if (!Array.isArray(data.topics) || !data.topics.length || data.topics.length > 20) throw new Error('The study plan must contain between 1 and 20 topics.');
+}
+window.aqsStudyPlanStore = {
+    list: async function() {
+        var user = _aqsStudyPlanUser();
+        var plansRef = collection(db, 'users', user.uid, 'studyPlans');
+        var snapshot = await getDocs(query(plansRef, orderBy('updatedAt', 'desc')));
+        return snapshot.docs.map(function(item) {
+            return Object.assign({ id: item.id }, item.data());
+        });
+    },
+    create: async function(data) {
+        var user = _aqsStudyPlanUser();
+        _aqsValidateStudyPlan(data);
+        var payload = {
+            uid: user.uid,
+            subject: String(data.subject).trim().slice(0, 120),
+            courseCode: String(data.courseCode || '').slice(0, 60),
+            sourceMaterial: String(data.sourceMaterial || ''),
+            sourceName: String(data.sourceName || '').slice(0, 120),
+            topics: data.topics,
+            currentTopicIndex: 0,
+            completedTopics: [],
+            status: 'in_progress',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        var created = await addDoc(collection(db, 'users', user.uid, 'studyPlans'), payload);
+        return created.id;
+    },
+    update: async function(id, data) {
+        var user = _aqsStudyPlanUser();
+        if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
+        _aqsValidateStudyPlan(data);
+        await updateDoc(doc(db, 'users', user.uid, 'studyPlans', id), {
+            uid: user.uid,
+            subject: String(data.subject).trim().slice(0, 120),
+            courseCode: String(data.courseCode || '').slice(0, 60),
+            sourceMaterial: String(data.sourceMaterial || ''),
+            sourceName: String(data.sourceName || '').slice(0, 120),
+            topics: data.topics,
+            currentTopicIndex: Math.max(0, parseInt(data.currentTopicIndex, 10) || 0),
+            completedTopics: Array.isArray(data.completedTopics) ? data.completedTopics : [],
+            status: data.status === 'completed' ? 'completed' : 'in_progress',
+            updatedAt: serverTimestamp()
+        });
+    },
+    remove: async function(id) {
+        var user = _aqsStudyPlanUser();
+        if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
+        await deleteDoc(doc(db, 'users', user.uid, 'studyPlans', id));
+    }
+};
+
+
 /* ── File upload to Cloudinary (used by StudyCo and admin pages) ────────
    Only public cloud names and unsigned upload presets are stored in the
    public settings document. API secrets never belong in this browser app.

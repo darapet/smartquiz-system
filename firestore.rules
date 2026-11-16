@@ -83,6 +83,52 @@ service cloud.firestore {
               && request.resource.data.registration_status == 'complete'
               && request.resource.data.status == resource.data.status)
           ));
+
+      // Private StudyHub learning plans and all saved lesson/assessment progress.
+      match /studyPlans/{planId} {
+        function validStudyPlan(data) {
+          return data.keys().hasOnly([
+              'uid', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
+              'topics', 'currentTopicIndex', 'completedTopics', 'status',
+              'createdAt', 'updatedAt'
+            ])
+            && data.keys().hasAll([
+              'uid', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
+              'topics', 'currentTopicIndex', 'completedTopics', 'status',
+              'createdAt', 'updatedAt'
+            ])
+            && data.uid == userId
+            && data.subject is string
+            && data.subject.size() > 0
+            && data.subject.size() <= 120
+            && data.courseCode is string
+            && data.sourceMaterial is string
+            && data.sourceMaterial.size() <= 24000
+            && data.sourceName is string
+            && data.topics is list
+            && data.topics.size() > 0
+            && data.topics.size() <= 20
+            && data.currentTopicIndex is int
+            && data.currentTopicIndex >= 0
+            && data.currentTopicIndex < data.topics.size()
+            && data.completedTopics is list
+            && data.completedTopics.size() <= data.topics.size()
+            && data.status in ['in_progress', 'completed']
+            && data.createdAt is timestamp
+            && data.updatedAt is timestamp;
+        }
+        allow read, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && validStudyPlan(request.resource.data);
+        allow update: if isSignedIn()
+          && request.auth.uid == userId
+          && resource.data.uid == userId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.createdAt == resource.data.createdAt
+          && validStudyPlan(request.resource.data);
+      }
+
       match /savedImages/{imageId} {
         allow read, delete: if isSignedIn() && request.auth.uid == userId;
         allow create, update: if isSignedIn()
