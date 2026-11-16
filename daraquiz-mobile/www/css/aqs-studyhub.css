@@ -176,3 +176,11 @@ body{background:var(--sh-bg)!important;color:var(--sh-text)!important}
 .sh-hdr-actions a[title="Library"]{background:#fff!important;color:var(--sh-text)!important;border-color:var(--sh-border)!important}
 #sh-panel-notes strong[style*="#fcd34d"]{color:#9a5a13!important}
 .sh-badge-gold{color:#8a541b!important}
+
+.sg-review-item{margin-top:10px;padding:11px 12px;border:1px solid #d8e6dc;border-radius:10px;background:#fff}
+.sg-review-item>strong{display:block;color:var(--sh-text);font-size:.82rem;line-height:1.5}
+.sg-review-item p{margin:6px 0;color:#344f66;font-size:.76rem;line-height:1.5}
+.sg-review-item p.is-correct{color:#16845b;font-weight:800}
+.sg-review-item p.is-wrong{color:#b43d35;font-weight:800}
+.sg-review-item small{display:block;color:var(--sh-muted);font-size:.73rem;line-height:1.55}
+.sh-back{background:#fff!important;border-color:var(--sh-border)!important;color:var(--sh-muted)!important}
