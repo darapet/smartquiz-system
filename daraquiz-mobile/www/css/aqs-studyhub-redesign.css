@@ -192,3 +192,66 @@ body[data-aqs-page="studyhub"] button:disabled{cursor:not-allowed;opacity:.55}
 @media(prefers-reduced-motion:reduce){
  body[data-aqs-page="studyhub"] *,body[data-aqs-page="studyhub"] *:before,body[data-aqs-page="studyhub"] *:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* StudyHub screen architecture — matching the approved cream/navy/orange mockups */
+body[data-aqs-page="studyhub"] .sh-panel{max-width:1240px;padding:30px clamp(16px,3vw,34px) 52px}
+body[data-aqs-page="studyhub"] .sh-home-hero,
+body[data-aqs-page="studyhub"] .sh-feature-hero{display:flex;align-items:center;justify-content:space-between;gap:26px;margin:0 0 24px;padding:clamp(24px,4vw,42px);border:1px solid #ead9c4;border-radius:24px;background:linear-gradient(115deg,#fff 0%,#fff8ee 72%,#f4e4ce 100%);box-shadow:0 12px 32px rgba(18,48,74,.075)}
+body[data-aqs-page="studyhub"] .sh-home-hero-copy{max-width:720px}
+body[data-aqs-page="studyhub"] .sh-home-eyebrow{display:block;margin-bottom:10px;color:#a56825;font-size:.68rem;font-weight:900;letter-spacing:.14em}
+body[data-aqs-page="studyhub"] .sh-home-hero h1,
+body[data-aqs-page="studyhub"] .sh-feature-hero h1{margin:0 0 10px;color:#12304a;font-size:clamp(1.8rem,3.4vw,2.7rem);line-height:1.12;letter-spacing:-.045em}
+body[data-aqs-page="studyhub"] .sh-home-hero p,
+body[data-aqs-page="studyhub"] .sh-feature-hero p{max-width:700px;margin:0 0 18px;color:#627487;font-size:.94rem;line-height:1.75}
+body[data-aqs-page="studyhub"] .sh-home-hero-art{display:flex;flex:0 0 190px;width:190px;height:190px;align-items:center;justify-content:center;flex-direction:column;border-radius:32px;background:linear-gradient(145deg,#12304a,#1d4968);color:#fff;box-shadow:0 16px 32px rgba(18,48,74,.18)}
+body[data-aqs-page="studyhub"] .sh-home-hero-art span{color:#f3b45e;font-size:2rem}
+body[data-aqs-page="studyhub"] .sh-home-hero-art strong{font-size:1.65rem;letter-spacing:.14em}
+body[data-aqs-page="studyhub"] .sh-home-hero-art small{margin-top:5px;color:#d9e4ec;font-size:.55rem;letter-spacing:.1em}
+body[data-aqs-page="studyhub"] .sh-home-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 28px}
+body[data-aqs-page="studyhub"] .sh-home-stat{padding:18px 20px;border:1px solid #eadfce;border-radius:16px;background:#fff;box-shadow:0 7px 22px rgba(18,48,74,.045)}
+body[data-aqs-page="studyhub"] .sh-home-stat span{display:block;color:#627487;font-size:.76rem;font-weight:700}
+body[data-aqs-page="studyhub"] .sh-home-stat strong{display:block;margin-top:6px;color:#12304a;font-size:1.55rem;font-weight:900}
+body[data-aqs-page="studyhub"] .sh-home-section-head{margin:0 0 14px}
+body[data-aqs-page="studyhub"] .sh-home-section-head h2{margin:0 0 4px;color:#12304a;font-size:1.2rem}
+body[data-aqs-page="studyhub"] .sh-home-section-head p{margin:0;color:#627487;font-size:.82rem}
+body[data-aqs-page="studyhub"] .sh-home-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+body[data-aqs-page="studyhub"] .sh-home-tool{display:flex;min-height:230px;flex-direction:column;align-items:flex-start;padding:20px;border:1px solid #eadfce;border-radius:18px;background:#fff;color:#12304a;text-align:left;box-shadow:0 9px 24px rgba(18,48,74,.055);cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+body[data-aqs-page="studyhub"] .sh-home-tool:hover{transform:translateY(-3px);border-color:#e6bd8e;box-shadow:0 15px 32px rgba(18,48,74,.1)}
+body[data-aqs-page="studyhub"] .sh-home-tool-icon{display:grid;place-items:center;width:48px;height:48px;margin-bottom:14px;border-radius:15px;background:#fff2df;font-size:1.4rem}
+body[data-aqs-page="studyhub"] .sh-home-tool-tag{margin-bottom:9px;padding:4px 9px;border:1px solid #f0ddc4;border-radius:99px;background:#fff7eb;color:#9a5a13;font-size:.62rem;font-weight:800}
+body[data-aqs-page="studyhub"] .sh-home-tool strong{margin-bottom:7px;font-size:.96rem}
+body[data-aqs-page="studyhub"] .sh-home-tool>span:not(.sh-home-tool-icon):not(.sh-home-tool-tag){color:#627487;font-size:.78rem;line-height:1.55}
+body[data-aqs-page="studyhub"] .sh-home-tool .sh-home-tool-action{margin-top:auto;padding-top:16px;color:#a56825;font-size:.76rem;font-weight:900}
+body[data-aqs-page="studyhub"] .sh-home-tip{margin-top:20px;padding:18px 20px;border:1px solid #efdfca;border-radius:16px;background:#fffaf3;color:#526579}
+body[data-aqs-page="studyhub"] .sh-home-tip strong{display:block;margin-bottom:5px;color:#12304a}
+body[data-aqs-page="studyhub"] .sh-home-tip p{margin:0;font-size:.82rem;line-height:1.65}
+body[data-aqs-page="studyhub"] .sh-feature-dashboard{padding-bottom:12px}
+body[data-aqs-page="studyhub"] .sh-feature-dashboard[hidden],body[data-aqs-page="studyhub"] .sh-feature-workspace[hidden]{display:none!important}
+body[data-aqs-page="studyhub"] .sh-feature-hero{display:block;position:relative;overflow:hidden}
+body[data-aqs-page="studyhub"] .sh-feature-hero:after{content:"";position:absolute;right:-60px;top:-100px;width:230px;height:230px;border-radius:50%;background:rgba(232,145,45,.1);pointer-events:none}
+body[data-aqs-page="studyhub"] .sh-feature-hero>*{position:relative;z-index:1}
+body[data-aqs-page="studyhub"] .sh-feature-hero .sh-btn{position:relative}
+body[data-aqs-page="studyhub"] .sh-feature-quick{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding:22px;border:1px solid #eadfce;border-radius:18px;background:#fff;box-shadow:0 9px 24px rgba(18,48,74,.05)}
+body[data-aqs-page="studyhub"] .sh-feature-info-card{max-width:720px;color:#526579;font-size:.88rem;line-height:1.75}
+body[data-aqs-page="studyhub"] .sh-workspace-back{margin:0 0 18px}
+body[data-aqs-page="studyhub"] .sh-guided-dashboard-hero{margin-bottom:20px}
+body[data-aqs-page="studyhub"] .sh-guided-dashboard-hero h1{font-size:clamp(1.7rem,3vw,2.3rem)}
+body[data-aqs-page="studyhub"] .sh-tabbar{display:none!important}
+body[data-aqs-page="studyhub"] .sh-hdr{background:#fff;border-bottom:1px solid #eadfce;box-shadow:0 2px 12px rgba(18,48,74,.035)}
+body[data-aqs-page="studyhub"] #sh-nav-dropdown{background:#fff;border-color:#eadfce}
+body[data-aqs-page="studyhub"] .sh-nav-item{width:100%;border:0;background:transparent;text-align:left;font:inherit}
+body[data-aqs-page="studyhub"] .sh-nav-item.active{background:#fff3e3;color:#12304a}
+@media(max-width:900px){body[data-aqs-page="studyhub"] .sh-home-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+ body[data-aqs-page="studyhub"] .sh-panel{padding:18px 13px 34px}
+ body[data-aqs-page="studyhub"] .sh-home-hero{display:block;padding:22px}
+ body[data-aqs-page="studyhub"] .sh-home-hero-art{display:none}
+ body[data-aqs-page="studyhub"] .sh-home-stats{gap:8px}
+ body[data-aqs-page="studyhub"] .sh-home-stat{padding:12px 10px}
+ body[data-aqs-page="studyhub"] .sh-home-stat strong{font-size:1.2rem}
+ body[data-aqs-page="studyhub"] .sh-home-tools{grid-template-columns:1fr;gap:10px}
+ body[data-aqs-page="studyhub"] .sh-home-tool{min-height:0;padding:16px}
+ body[data-aqs-page="studyhub"] .sh-feature-hero{padding:22px}
+ body[data-aqs-page="studyhub"] .sh-feature-quick{align-items:stretch;flex-direction:column;padding:17px}
+ body[data-aqs-page="studyhub"] .sh-feature-quick .sh-btn{width:100%;justify-content:center}
+}
