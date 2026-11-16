@@ -156,7 +156,7 @@ function stopSpeaking(){
 function speakBrowser(text){
  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){showToast('Text-to-speech is unavailable here. The written answer is saved.');return;}
  speechQueue=text.match(/[^.!?]+[.!?]*/g)||[text];
- function next(){if(!speechQueue.length){setState('','Answer ready.');autoListen();return;}var part=speechQueue.shift();var utterance=new SpeechSynthesisUtterance(part);utterance.rate=1;utterance.onstart=function(){setState('speaking','AI Teacher is speaking…');};utterance.onend=next;utterance.onerror=function(){setState('','Answer ready.');};window.speechSynthesis.speak(utterance);}
+ function next(){if(!speechQueue.length){setState('','Answer ready.');autoListen();return;}var part=speechQueue.shift();var utterance=new SpeechSynthesisUtterance(part),profileTeacher=teacherVoice(),pickedVoice=chooseBrowserVoice(profileTeacher);if(pickedVoice)utterance.voice=pickedVoice;utterance.lang=pickedVoice?pickedVoice.lang:'en-US';utterance.pitch=profileTeacher.gender==='female'?1.04:.94;utterance.rate=1;utterance.onstart=function(){setState('speaking','AI Teacher is speaking…');};utterance.onend=next;utterance.onerror=function(){setState('','Answer ready.');};window.speechSynthesis.speak(utterance);}
  next();
 }
 function speakAnswer(text){
@@ -260,20 +260,21 @@ function speakIntro(text,onDone){
 function renderOnboarding(){
  var old=document.getElementById('ait-onboarding');if(old)old.remove();
  var overlay=document.createElement('div');overlay.id='ait-onboarding';overlay.className='ait-onboarding';
- overlay.innerHTML='<div class="ait-onboarding-card"><div class="ait-onboarding-mark">✦</div><p class="ait-onboarding-kicker">DARAPET LEARNING SYSTEM</p><h1>Let’s personalise your learning</h1><p class="ait-onboarding-copy">Choose your AI teacher and tell us what to call you. You can change these choices later.</p><label for="ait-learner-name">What should I call you?</label><input id="ait-learner-name" maxlength="40" autocomplete="given-name" placeholder="Enter your name"><label for="ait-teacher-choice">Choose your teacher</label><select id="ait-teacher-choice">'+TEACHERS.map(function(t){return '<option value="'+t.name+'">'+t.name+' · '+(t.gender==='female'?'Female':'Male')+'</option>';}).join('')+'</select><button type="button" id="ait-onboarding-start" class="ait-onboarding-start">Meet my teacher <span>→</span></button><p class="ait-onboarding-foot">Your choices are saved on this device.</p></div>';
+ overlay.innerHTML='<div class="ait-onboarding-card"><div class="ait-onboarding-mark">✦</div><p class="ait-onboarding-kicker">DARAPET LEARNING SYSTEM</p><h1>Let’s personalise your learning</h1><p class="ait-onboarding-copy">Choose your AI teacher and tell us what to call you. You can change these choices later.</p><label for="ait-learner-name">What should I call you?</label><input id="ait-learner-name" maxlength="40" autocomplete="given-name" placeholder="Enter your name"><label for="ait-teacher-choice">Choose your teacher voice</label><select id="ait-teacher-choice">'+TEACHERS.map(function(t){return '<option value="'+t.name+'">'+t.name+' · '+(t.gender==='female'?'Female':'Male')+'</option>';}).join('')+'</select><label for="ait-teacher-display-name">What should your teacher be called?</label><input id="ait-teacher-display-name" maxlength="28" placeholder="e.g. Mary"><button type="button" id="ait-onboarding-start" class="ait-onboarding-start">Meet my teacher <span>→</span></button><p class="ait-onboarding-foot">Your choices are saved on this device.</p></div>';
  document.body.appendChild(overlay);
- var nameInput=overlay.querySelector('#ait-learner-name'),select=overlay.querySelector('#ait-teacher-choice');
- var existing=getProfile();if(existing){nameInput.value=existing.learnerName||'';select.value=existing.teacher||'Mary';}
+ var nameInput=overlay.querySelector('#ait-learner-name'),select=overlay.querySelector('#ait-teacher-choice'),displayName=overlay.querySelector('#ait-teacher-display-name');
+ select.addEventListener('change',function(){if(!displayName.dataset.edited)displayName.value=select.value;});displayName.value=select.value;
+ var existing=getProfile();if(existing){nameInput.value=existing.learnerName||'';select.value=existing.teacher||'Mary';displayName.value=existing.teacherName||select.value;}
  overlay.querySelector('#ait-onboarding-start').addEventListener('click',function(){
   var learnerName=nameInput.value.trim();if(!learnerName){nameInput.focus();nameInput.setAttribute('aria-invalid','true');return;}
-  saveProfile({learnerName:learnerName,teacher:select.value,updatedAt:Date.now()});overlay.classList.add('closing');
+  saveProfile({learnerName:learnerName,teacher:select.value,teacherName:(displayName.value.trim()||select.value).slice(0,28),updatedAt:Date.now()});overlay.classList.add('closing');
   setTimeout(function(){overlay.remove();beginTeacherWelcome();},220);
  });
  nameInput.addEventListener('keydown',function(e){if(e.key==='Enter')overlay.querySelector('#ait-onboarding-start').click();});
 }
 function beginTeacherWelcome(){
  var p=learnerProfile||getProfile();if(!p)return;
- var teacher=teacherVoice(),greeting='Welcome to the Darapet Learning System. My name is '+teacher.name+'. It is lovely to meet you, '+p.learnerName+'. What would you like to learn today? You can tell me by speaking, or type your question.';
+ var teacher=teacherVoice(),teacherName=p.teacherName||teacher.name,greeting='Welcome to the Darapet Learning System. My name is '+teacherName+'. It is lovely to meet you, '+p.learnerName+'. What would you like to learn today? You can tell me by speaking, or type your question.';
  setState('speaking',teacher.name+' is welcoming you…');
  speakIntro(greeting,function(){setState('','I’m ready to listen. Speak or type your question.');if(voiceEnabled&&activeMode==='voice')setTimeout(startListening,450);});
 }
