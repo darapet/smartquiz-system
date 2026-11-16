@@ -254,7 +254,13 @@
 
         showTyping(true);
         scrollToBottom();
-        callAI();
+        Promise.resolve().then(callAI).catch(function(error){
+            console.error('[daraquiz] send pipeline failed:',error);
+            showTyping(false);
+            var send=document.getElementById('dts-send');if(send)send.disabled=false;
+            isStreaming=false;
+            appendMessage('ai','I could not send that request just now. Please check your connection and try again.');
+        });
     }
 
     /* =========================================================
@@ -1083,15 +1089,24 @@
 
     /* ── Bootstrap ── */
     function setupVoice() {
+        window.addEventListener('aqs-native-voice', function(event){
+            var d=event&&event.detail?event.detail:{};
+            if(d.type==='start'){voiceListening=true;setVoiceState('listening');}
+            if(d.type==='partial'){setVoiceTranscript(d.value||'');}
+            if(d.type==='result'){var said=String(d.value||'').trim();voiceListening=false;if(said)sendVoiceMessage(said);}
+            if(d.type==='end'){voiceListening=false;if(voiceActive&&voiceAiTalking===false)setVoiceState('idle');}
+            if(d.type==='error'){voiceListening=false;setVoiceState('error');setVoiceTranscript('Voice input failed. Check microphone permission or type your question.');}
+        });
         var openBtn  = document.getElementById('dts-voice-btn');
         var closeBtn = document.getElementById('dts-voice-close');
         var endBtn   = document.getElementById('dts-voice-end');
         var togBtn   = document.getElementById('dts-voice-toggle');
 
         var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var nativeVoiceAvailable = !!(window.AqsNativeVoice && typeof window.AqsNativeVoice.startListening === 'function');
 
         if (openBtn) {
-            if (!SpeechRec) {
+            if (!SpeechRec && !nativeVoiceAvailable) {
                 /* Browser does not support voice */
                 openBtn.title   = 'Voice chat requires Chrome, Edge, or Safari';
                 openBtn.style.opacity = '0.35';
@@ -1183,7 +1198,13 @@
     function startVoiceListening() {
         if (!voiceActive) return;
         var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec || voiceListening) return;
+        if (voiceListening) return;
+        if (!SpeechRec && window.AqsNativeVoice && typeof window.AqsNativeVoice.startListening === 'function') {
+            stopVoiceSpeaking();setVoiceState('listening');setVoiceTranscript('Listening… speak now.');voiceListening=true;
+            try { window.AqsNativeVoice.startListening('en-US'); } catch(nativeError) { voiceListening=false;setVoiceState('error');setVoiceTranscript('Could not start the microphone. Check app permissions.'); }
+            return;
+        }
+        if (!SpeechRec) {setVoiceState('error');setVoiceTranscript('Speech recognition is unavailable. You can still use text chat.');return;}
 
         stopVoiceSpeaking();
         setVoiceState('listening');
