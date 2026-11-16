@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#faf3ea">
 <title>📚 AI Study Hub — xzily AI</title>
 <!-- App Version: 2.9.0 -->
@@ -197,6 +197,7 @@ a{text-decoration:none;color:inherit;}
 </style>
   <script src="js/aqs-nav-loader.js"></script>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
+<link rel="stylesheet" href="css/aqs-studyhub.css?v=1">
 </head>
 <body data-aqs-page="studyhub" data-aqs-page-group="study hub">
 <header class="aqs-phase2-page-header" aria-label="📚 AI Study Hub"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">📚 AI Study Hub</span></header>
@@ -222,7 +223,10 @@ a{text-decoration:none;color:inherit;}
 <!-- HAMBURGER DROPDOWN NAV -->
 <div id="sh-nav-dropdown">
   <div class="sh-nav-items">
-    <div class="sh-nav-item active" data-tab="notes" onclick="shTab('notes');shMenuClose()">
+    <div class="sh-nav-item" data-tab="guided" onclick="shTab('guided');shMenuClose()">
+      <span class="nav-icon">🎓</span><span class="nav-label">Guided Study</span>
+    </div>
+    <div class="sh-nav-item" data-tab="notes" onclick="shTab('notes');shMenuClose()">
       <span class="nav-icon">📄</span><span class="nav-label">AI Study Notes</span>
     </div>
     <div class="sh-nav-item" data-tab="flashcards" onclick="shTab('flashcards');shMenuClose()">
@@ -239,10 +243,115 @@ a{text-decoration:none;color:inherit;}
   </div>
 </div>
 
+
+<!-- STUDYHUB PRIMARY TABS -->
+<nav class="sh-tabbar" role="tablist" aria-label="StudyHub sections">
+  <button type="button" class="sh-tab-btn active" data-tab="guided" role="tab" aria-selected="true" onclick="shTab('guided')">🎓 Guided Study</button>
+  <button type="button" class="sh-tab-btn" data-tab="notes" role="tab" aria-selected="false" onclick="shTab('notes')">📝 AI Notes</button>
+  <button type="button" class="sh-tab-btn" data-tab="flashcards" role="tab" aria-selected="false" onclick="shTab('flashcards')">🗂️ Flashcards</button>
+  <button type="button" class="sh-tab-btn" data-tab="gpa" role="tab" aria-selected="false" onclick="shTab('gpa')">📊 GPA Calculator</button>
+</nav>
+
+<!-- GUIDED STUDY — AI-GENERATED, SAVED LEARNING PLANS -->
+<section id="sh-panel-guided" class="sh-panel active" role="tabpanel">
+  <div id="sg-list-view">
+    <div class="sg-intro">
+      <div class="sg-intro-copy">
+        <span class="sg-eyebrow">✦ YOUR PERSONAL AI TUTOR</span>
+        <h1>Learn one topic at a time.</h1>
+        <p>Add a course or subject and your learning material. SmartQuiz will organise it into a study plan, teach each topic, check your understanding and save your progress so you can continue whenever you return.</p>
+      </div>
+    </div>
+    <div class="sg-summary" aria-live="polite">
+      <div class="sg-stat"><strong id="sg-stat-plans">0</strong><span>My study plans</span></div>
+      <div class="sg-stat"><strong id="sg-stat-topics">0</strong><span>Topics organised</span></div>
+      <div class="sg-stat"><strong id="sg-stat-completed">0</strong><span>Topics completed</span></div>
+    </div>
+    <div id="sg-auth-notice" class="sg-empty sg-hidden"><strong>Your study plans are saved to your account</strong>Please sign in to create plans and continue your learning across devices. <a href="login.html" style="color:#9a5a13;font-weight:800">Sign in or create an account</a>.</div>
+    <form id="sg-create-form" class="sh-card sg-create-card">
+      <div class="sg-section-head" style="margin:0 0 16px">
+        <div><h2>Create a new study plan</h2><p>There is no limit to the number of plans you can create.</p></div>
+        <span class="sg-plan-icon">＋</span>
+      </div>
+      <div class="sg-create-grid">
+        <div class="sg-field">
+          <label for="sg-subject">Subject or course name *</label>
+          <input id="sg-subject" type="text" maxlength="120" required placeholder="e.g. Human Anatomy, MTH 201 — Calculus">
+        </div>
+        <div class="sg-field">
+          <label for="sg-course-code">Course code or level (optional)</label>
+          <input id="sg-course-code" type="text" maxlength="60" placeholder="e.g. BCH 202 · 200 Level">
+        </div>
+        <div class="sg-field sg-field-wide">
+          <label for="sg-material">Study material *</label>
+          <textarea id="sg-material" required placeholder="Paste your lecture notes, course outline, textbook extracts or study material here. The AI will use this as the main source for your learning plan."></textarea>
+          <div class="sg-upload-row">
+            <label class="sg-upload-label" for="sg-material-file">＋ Upload PDF / TXT / MD</label>
+            <input id="sg-material-file" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden>
+            <span id="sg-upload-name" class="sg-upload-name">No file selected</span>
+          </div>
+        </div>
+      </div>
+      <div class="sg-create-actions">
+        <span class="sg-hint">Your material is used to build your plan and guide each lesson.</span>
+        <button type="submit" class="sh-btn sh-btn-primary" id="sg-create-btn">✨ Build my study plan</button>
+      </div>
+      <div id="sg-create-status" class="sg-status" role="status" aria-live="polite"></div>
+    </form>
+    <div class="sg-section-head">
+      <div><h2>My study plans</h2><p>Pick up where you stopped, or start another subject.</p></div>
+    </div>
+    <div id="sg-plan-list" class="sg-plan-grid"><div class="sg-loading"><span class="sg-spinner"></span> Checking your saved plans…</div></div>
+  </div>
+
+  <div id="sg-workspace" class="sg-workspace">
+    <div class="sg-workspace-head">
+      <button type="button" id="sg-back-plans" class="sh-btn sh-btn-ghost">← All study plans</button>
+      <div class="sg-workspace-title">
+        <span class="sg-eyebrow">YOUR LEARNING JOURNEY</span>
+        <h2 id="sg-workspace-subject">Study plan</h2>
+        <p id="sg-workspace-code"></p>
+      </div>
+    </div>
+    <div class="sg-plan-progress"><span id="sg-workspace-progress" style="width:0%"></span></div>
+    <div id="sg-workspace-percent" class="sg-progress-note" style="text-align:right;margin:5px 0 14px">0% complete</div>
+    <div class="sg-workspace-grid">
+      <aside class="sg-topic-sidebar">
+        <h3>Study topics</h3>
+        <div id="sg-topic-list" class="sg-topic-list"></div>
+      </aside>
+      <main class="sg-topic-main">
+        <article class="sg-lesson-card">
+          <div class="sg-lesson-top"><span id="sg-topic-kicker" class="sg-topic-kicker">TOPIC 1</span><span id="sg-topic-time" class="sh-badge sh-badge-purple">25 min study</span></div>
+          <h2 id="sg-topic-title" class="sg-lesson-title">Your first topic</h2>
+          <div id="sg-topic-content"><div class="sg-loading"><span class="sg-spinner"></span> Preparing your lesson…</div></div>
+          <div class="sg-lesson-actions">
+            <button type="button" id="sg-next-topic" class="sh-btn sh-btn-primary">Continue to next topic →</button>
+          </div>
+          <section class="sg-ask-box">
+            <h3>Need more explanation?</h3>
+            <p>Ask your AI tutor for another example, a simpler explanation or deeper knowledge about this topic.</p>
+            <div class="sg-ask-row">
+              <textarea id="sg-ask-input" maxlength="1200" placeholder="Ask your tutor anything about this topic…"></textarea>
+              <button type="button" id="sg-ask-btn" class="sh-btn sh-btn-primary">Ask tutor</button>
+            </div>
+            <div id="sg-discussion" class="sg-discussion"></div>
+          </section>
+          <section class="sg-quiz-panel">
+            <h3>Quick knowledge check</h3>
+            <p>When you are ready, take a short objective quiz. Submit all answers together to receive your score and AI feedback.</p>
+            <div id="sg-quiz-area"><p>Complete the lesson, then generate your assessment.</p><button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-generate">Generate objective quiz</button></div>
+          </section>
+        </article>
+      </main>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════
      TAB 1: AI STUDY NOTES
 ═══════════════════════════════════ -->
-<div id="sh-panel-notes" class="sh-panel active">
+<div id="sh-panel-notes" class="sh-panel">
   <div class="sh-section-title">📄 AI Study Notes Generator</div>
   <div class="sh-section-sub">Enter any course topic and get comprehensive, structured study notes instantly — key concepts, definitions, examples and exam tips included.</div>
 
@@ -348,6 +457,7 @@ a{text-decoration:none;color:inherit;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
 <script src="js/aqs-groq-key.js?v=client-keys-2"></script>
 <script>
@@ -356,12 +466,14 @@ a{text-decoration:none;color:inherit;}
 ══════════════════════════════════════════════════ */
 
 /* ── NAV / TABS ── */
-var _SH_TAB_LABELS={notes:'AI Notes',flashcards:'Flashcards',gpa:'GPA Calculator'};
+var _SH_TAB_LABELS={guided:'Guided Study',notes:'AI Notes',flashcards:'Flashcards',gpa:'GPA Calculator'};
 function shTab(name){
  document.querySelectorAll('.sh-panel').forEach(function(p){p.classList.remove('active');});
  var panel=document.getElementById('sh-panel-'+name);if(panel)panel.classList.add('active');
  document.querySelectorAll('.sh-nav-item').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-tab')===name);});
+ document.querySelectorAll('.sh-tab-btn').forEach(function(el){var active=el.getAttribute('data-tab')===name;el.classList.toggle('active',active);el.setAttribute('aria-selected',active?'true':'false');});
  var badge=document.getElementById('sh-hdr-active-tab');if(badge)badge.textContent=_SH_TAB_LABELS[name]||name;
+ if(name==='guided'&&window.shGuidedLoadPlans)window.shGuidedLoadPlans();
 }
 function shMenuToggle(){
   var d=document.getElementById('sh-nav-dropdown');
@@ -464,7 +576,8 @@ Make it thorough, academically rigorous, and student-friendly.`;
 function shMarkdown(md){
   if(typeof marked !== 'undefined'){
     try{
-      return marked.parse(md, {breaks:true, gfm:true});
+      var parsed=marked.parse(md, {breaks:true, gfm:true});
+      return window.DOMPurify ? window.DOMPurify.sanitize(parsed, {USE_PROFILES:{html:true}}) : '<pre>'+String(md||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>';
     }catch(e){}
   }
   /* Fallback parser (used if marked.js fails to load) */
@@ -644,5 +757,6 @@ function shGpaReset(){
 
 window.addEventListener('load',function(){shGpaAddRow();shGpaAddRow();shGpaAddRow();shFC_init();});
 </script>
+<script src="js/aqs-study-plan.js?v=1"></script>
 </body>
 </html>
