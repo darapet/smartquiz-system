@@ -70,6 +70,9 @@
         '\n- Technical expertise: code in any programming language, debugging, architecture design, DevOps, and system design.' +
 
         '\n\n## RESPONSE FORMAT RULES:' +
+        '\n- Lead with the direct answer in the first sentence, then explain. Be accurate: never invent facts, sources, numbers or quotes; say plainly when unsure.' +
+        '\n- When an image and/or document is attached, base the answer on its actual contents and refer to specific details from it.' +
+        '\n- When web data is provided, synthesize across sources, note disagreements, and name the sources used.' +
         '\n- Give complete, useful answers, not lazy one-liners. Use headings, steps and examples when they improve clarity; keep simple answers proportionate.' +
         '\n- For learning help, explain the reasoning step by step and include a relevant example or check for understanding.' +
         '\n- Infer clear intent from context. Ask a concise clarification only when ambiguity materially changes the answer.' +
@@ -835,12 +838,12 @@
             if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){copyBtn.textContent='✅ Copied!';setTimeout(function(){copyBtn.textContent='📋 Copy';},1800);});
         });
         msgContent.appendChild(copyBtn);
-        var index = 0, step = 3;
+        var index = 0, step = 5;
         function typeNext(){
             index = Math.min(index + step, content.length);
             bubble.textContent = content.slice(0,index);
             scrollToBottom(true);
-            if(index < content.length){setTimeout(typeNext, 20);return;}
+            if(index < content.length){setTimeout(typeNext, 16);return;}
             bubble.innerHTML = renderMessage(content);
             if (/Deep search:/i.test(content)) {
                 var badge=document.createElement('span');badge.className='dts-deep-badge';badge.textContent='🔍 Deep search';bubble.insertBefore(badge,bubble.firstChild);
@@ -1013,10 +1016,23 @@
             var input2 = document.getElementById('dts-input');
             if (input2) { input2.value = ''; input2.style.height = 'auto'; }
 
+            var imgWebContext = '', imgWebTag = '';
+            if (deepSearchEnabled && text) {
+                showTyping(true, '\uD83D\uDD0D Searching\u2026');
+                try {
+                    var imgQs = [text, text + ' explanation and latest information'];
+                    var imgRes = await Promise.all(imgQs.map(function (q) { return performWebSearch(q).catch(function () { return null; }); }));
+                    imgRes = imgRes.filter(Boolean);
+                    if (imgRes.length) {
+                        imgWebContext = imgRes.map(function (r, i) { return 'Query ' + (i + 1) + ' via ' + r.source + ':\n' + r.content; }).join('\n\n');
+                        imgWebTag = '\uD83D\uDD0D *Deep search used alongside your upload*';
+                    }
+                } catch (imgDeepErr) { console.warn('image deep search failed', imgDeepErr); }
+            }
             showTyping(true, 'XZILY AI is analysing your image\u2026');
 
             var visionMessages = [
-                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') + (lastGeneratedArtifact ? '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nPreserve previous requirements when revising this output.' : '') },
+                { role: 'system', content: SYSTEM_PROMPT + (attachedFileText ? '\n\nDOCUMENTS ATTACHED TO THIS CONVERSATION:\n' + attachedFileText.slice(0, 30000) : '') + (imgWebContext ? '\n\n===== LIVE WEB DATA (deep search, retrieved now) =====\n' + imgWebContext.slice(0, 12000) + '\n===== END WEB DATA =====\nUse it together with the uploaded image(s) and cite the sources you used.' : '') + (lastGeneratedArtifact ? '\n\nPREVIOUS GENERATED OUTPUT IN THIS CONVERSATION:\n' + lastGeneratedArtifact.text.slice(0, 20000) + '\nPreserve previous requirements when revising this output.' : '') },
                 {
                     role: 'user',
                     content: snapImages.map(function (image) {
@@ -1052,6 +1068,7 @@
                         deliverAIArtifact(text, reply).finally(function () { isSending = false; setSendState(false); });
                         return;
                     }
+                    if (imgWebTag) reply = reply + '\n\n---\n' + imgWebTag;
                     chatHistory.push({ role: 'assistant', content: reply });
                     streamReply(reply, function () { saveSession(); renderHistoryList(); });
                 }
