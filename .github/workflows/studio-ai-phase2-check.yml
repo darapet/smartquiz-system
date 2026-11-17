@@ -18,8 +18,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Check Studio AI JavaScript syntax
+      - name: Check Studio, AI Teacher and Quiz Studio JavaScript syntax
         run: |
+          node --check js/aqs-ai-teacher-v2.js
+          node --check js/aqs-quiz-studio.js
+          node --check daraquiz-mobile/www/js/aqs-ai-teacher-v2.js
+          node --check daraquiz-mobile/www/js/aqs-quiz-studio.js
           node --check js/aqs-studio.js
           node --check js/aqs-studio-artifacts.js
           node --check js/aqs-studio-attachment-store.js

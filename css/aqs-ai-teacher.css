@@ -127,3 +127,26 @@ body:has(#ait-voice-screen.active) .ait-screen-voice .ait-voice-note{display:non
 @media(prefers-reduced-motion:reduce){body:has(#ait-voice-screen.active) .ait-orb,body:has(#ait-voice-screen.active) .ait-orb::before,body:has(#ait-voice-screen.active) .ait-orb-wave,body:has(#ait-voice-screen.active) .ait-orb-ribbon{animation:none!important}}
 
 body:has(#ait-voice-screen.active) .ait-history-count{display:none!important}
+
+
+/* Personalised AI Teacher onboarding and calculation workspace */
+.ait-onboarding{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:20px;background:rgba(4,7,20,.88);backdrop-filter:blur(18px);opacity:1;transition:opacity .22s}
+.ait-onboarding.closing{opacity:0}
+.ait-onboarding-card{width:min(470px,100%);padding:clamp(24px,5vw,38px);border:1px solid rgba(145,173,255,.24);border-radius:26px;background:linear-gradient(155deg,#18234a,#10162f 62%,#171334);box-shadow:0 24px 90px rgba(0,0,0,.48),0 0 55px rgba(102,113,255,.16);color:#f5f7ff}
+.ait-onboarding-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,#5fc8ff,#9b68ff);font-size:1.45rem;box-shadow:0 0 28px rgba(112,133,255,.4)}
+.ait-onboarding-kicker{margin:19px 0 7px;color:#a9b4ff;font-size:.64rem;font-weight:900;letter-spacing:.17em}
+.ait-onboarding-card h1{margin:0;font-size:clamp(1.45rem,5vw,2rem);letter-spacing:-.04em}
+.ait-onboarding-copy{margin:10px 0 22px;color:#aeb9d8;font-size:.84rem;line-height:1.6}
+.ait-onboarding-card label{display:block;margin:15px 0 7px;color:#dce4ff;font-size:.76rem;font-weight:800}
+.ait-onboarding-card input,.ait-onboarding-card select{width:100%;height:48px;padding:0 13px;border:1px solid rgba(153,174,255,.22);border-radius:13px;background:#0d1430;color:#f5f7ff;font:inherit;outline:none}
+.ait-onboarding-card input:focus,.ait-onboarding-card select:focus{border-color:#8c9aff;box-shadow:0 0 0 3px rgba(125,137,255,.13)}
+.ait-onboarding-start{width:100%;height:50px;margin-top:22px;border:0;border-radius:14px;background:linear-gradient(110deg,#5b9cff,#9a69f3);color:#fff;font-weight:850;box-shadow:0 9px 28px rgba(99,113,255,.28)}
+.ait-onboarding-start span{float:right;font-size:1.1rem}.ait-onboarding-foot{text-align:center;color:#8997bd;font-size:.66rem;margin:13px 0 0}
+.ait-math-workspace .ait-screen-voice{display:none!important}
+.ait-math-workspace .ait-screen-text{display:flex!important;min-height:calc(100dvh - 62px)}
+.ait-math-workspace .ait-screen-text .ait-conversation{padding-top:70px}
+.ait-math-workspace .ait-screen-text:before{content:"✦  AI Teacher is working through the solution";position:fixed;z-index:4;top:72px;left:50%;transform:translateX(-50%);width:min(90%,760px);padding:12px 15px;border:1px solid rgba(133,158,255,.2);border-radius:14px;background:rgba(17,25,58,.94);color:#dfe7ff;font-size:.78rem;font-weight:800;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.ait-math-workspace .ait-screen-text:after{content:"";position:fixed;z-index:6;right:clamp(16px,4vw,34px);top:76px;width:34px;height:34px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#9bd8ff 18%,#8c75ff 48%,rgba(104,104,255,.12) 72%);box-shadow:0 0 14px rgba(126,142,255,.8),0 0 30px rgba(113,117,255,.45);animation:ait-orb-pulse 2.8s ease-in-out infinite}
+@keyframes ait-orb-pulse{0%,100%{transform:scale(.92);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+.ait-name-entry{display:flex;gap:8px;align-items:center}.ait-name-entry input{flex:1;min-width:0}.ait-name-entry button{height:48px;min-width:50px;border:1px solid rgba(153,174,255,.22);border-radius:13px;background:#202c55;color:#fff;font-size:1.1rem}
+@media(max-width:620px){.ait-onboarding-card{border-radius:22px}.ait-math-workspace .ait-screen-text:before{top:65px;font-size:.7rem}}
