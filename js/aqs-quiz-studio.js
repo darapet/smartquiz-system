@@ -1566,6 +1566,23 @@
                 .then(function(blob) {
                     if (!voiceAiTalking) { finish(); return; }
 
+                    /* Android WebView can resolve audio.play() for blob URLs without
+                       producing sound. Keep the shared AudioContext playback path first. */
+                    if (typeof window.aqsPlayAudioBlob === 'function') {
+                        var playback = { cancelled: false };
+                        currentStudioAudio = playback;
+                        window.aqsPlayAudioBlob(blob, function() {
+                            if (currentStudioAudio !== playback) return;
+                            currentStudioAudio = null;
+                            playNext();
+                        }, function() {
+                            if (currentStudioAudio !== playback) return;
+                            currentStudioAudio = null;
+                            fallbackRemaining();
+                        });
+                        return;
+                    }
+
                     var blobUrl = URL.createObjectURL(blob);
                     var audio   = new Audio();
                     audio.setAttribute('playsinline', '');   /* iOS inline playback */
