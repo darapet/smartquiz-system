@@ -146,4 +146,7 @@ body:has(#ait-voice-screen.active) .ait-history-count{display:none!important}
 .ait-math-workspace .ait-screen-text{display:flex!important;min-height:calc(100dvh - 62px)}
 .ait-math-workspace .ait-screen-text .ait-conversation{padding-top:70px}
 .ait-math-workspace .ait-screen-text:before{content:"✦  AI Teacher is working through the solution";position:fixed;z-index:4;top:72px;left:50%;transform:translateX(-50%);width:min(90%,760px);padding:12px 15px;border:1px solid rgba(133,158,255,.2);border-radius:14px;background:rgba(17,25,58,.94);color:#dfe7ff;font-size:.78rem;font-weight:800;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.ait-math-workspace .ait-screen-text:after{content:"";position:fixed;z-index:6;right:clamp(16px,4vw,34px);top:76px;width:34px;height:34px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#9bd8ff 18%,#8c75ff 48%,rgba(104,104,255,.12) 72%);box-shadow:0 0 14px rgba(126,142,255,.8),0 0 30px rgba(113,117,255,.45);animation:ait-orb-pulse 2.8s ease-in-out infinite}
+@keyframes ait-orb-pulse{0%,100%{transform:scale(.92);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+.ait-name-entry{display:flex;gap:8px;align-items:center}.ait-name-entry input{flex:1;min-width:0}.ait-name-entry button{height:48px;min-width:50px;border:1px solid rgba(153,174,255,.22);border-radius:13px;background:#202c55;color:#fff;font-size:1.1rem}
 @media(max-width:620px){.ait-onboarding-card{border-radius:22px}.ait-math-workspace .ait-screen-text:before{top:65px;font-size:.7rem}}
