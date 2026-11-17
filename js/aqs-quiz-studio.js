@@ -1310,6 +1310,7 @@
     function stopVoiceSpeaking() {
         if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
         if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
+        if (typeof window.aqsStopCurrentAudio === 'function') { try { window.aqsStopCurrentAudio(); } catch(_) {} }
         if (window.speechSynthesis) window.speechSynthesis.cancel();
         voiceAiTalking = false;
     }
