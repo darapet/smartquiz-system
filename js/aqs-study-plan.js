@@ -66,6 +66,7 @@
     if (byId('sg-stat-plans')) byId('sg-stat-plans').textContent = String(plans.length);
     if (byId('sg-stat-topics')) byId('sg-stat-topics').textContent = String(totalTopics);
     if (byId('sg-stat-completed')) byId('sg-stat-completed').textContent = String(doneTopics);
+    if (typeof window!=='undefined'&&window.shGuidedSnapshot)window.shGuidedSnapshot(plans);
     if (!plans.length) { list.innerHTML = '<div class="sg-empty"><strong>Your learning space is ready</strong>Create your first study plan above. Your subjects, lessons, quiz results and progress will appear here.</div>'; return; }
     list.innerHTML = plans.map(function (plan) {
       var p = getProgress(plan);
