@@ -2,7 +2,10 @@
 :root{--n:#12304a;--o:#e8912d;--cr:#faf3ea}
 body.shs{background:var(--cr)!important}
 body.shs .sh-hdr,body.shs .sh-tabbar,body.shs #sh-nav-dropdown{display:none!important}
-.shs-side{position:fixed;left:0;top:0;bottom:0;width:236px;background:var(--n);color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:4px;z-index:60;overflow-y:auto}
+body.shs .dara-category-nav{display:none!important}
+body.shs .aqs-phase2-page-header{display:flex!important;margin:0!important;padding:10px 14px;gap:12px;align-items:center;background:transparent}
+@media(max-width:860px){body.shs .aqs-phase2-page-header{display:flex!important}}
+.shs-side{position:fixed;left:0;top:0;bottom:0;height:100vh;min-height:100vh;width:236px;background:var(--n);color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:4px;z-index:60;overflow-y:auto}
 .shs-brand{font-weight:900;font-size:1.15rem;padding:4px 12px 18px}
 .shs-brand small{display:block;font-weight:600;font-size:.64rem;color:#9fb3c6}
 .shs-nav{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;border:0;border-radius:999px;background:transparent;color:#c9d6e2;font:700 .88rem Inter,system-ui,sans-serif;text-align:left;cursor:pointer;text-decoration:none}
@@ -42,7 +45,7 @@ body.shs .sh-panel{max-width:1120px;margin:0 0 0 236px;padding:28px clamp(16px,3
 .shs-bottom{display:none}
 @media(max-width:860px){
  .shs-side{display:none}
- body.shs .sh-panel{margin:0;padding:18px 14px 96px}
+ body.shs .sh-panel{margin:0;padding:18px 14px calc(20px + 116px + env(safe-area-inset-bottom))!important}
  .shs-g4,.shs-g3{grid-template-columns:repeat(2,1fr)}.shs-g2{grid-template-columns:1fr}
  .shs-hero{flex-direction:column;align-items:flex-start}
  .shs-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #eadbc9;z-index:70;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
@@ -54,4 +57,31 @@ body.shs .aqs-bottom-nav{display:none!important}
 body.shs .shs-hero h1,body.shs .shs-hero h1 *{color:#fff!important}
 body.shs .shs-hero p{color:#c9d6e2!important}
 .shs-hero:after{z-index:0}.shs-hero>*{position:relative;z-index:1}
-@media(min-width:861px){body.shs>header,body.shs .aqs-phase2-page-header{margin-left:236px;width:auto;box-sizing:border-box}}
+@media(min-width:861px){body.shs>header,body.shs .aqs-phase2-page-header{margin-left:236px!important;width:auto;box-sizing:border-box}}
+
+/* Batch 2 history + streak charts */
+.sh-hist-stack{display:grid;gap:16px;margin:14px 0 28px;padding:0 0 20px}
+.sh-hist{background:#fff;border:1px solid #ead9c4;border-radius:14px;padding:14px;box-shadow:0 4px 16px rgba(18,48,74,.06)}
+.sh-hist-title{margin:0 0 10px;color:#12304a;font-size:1rem}
+.sh-hist-chart{background:#faf3ea;border:1px solid #f0dfc9;border-radius:10px;padding:10px;margin-bottom:12px}
+.shs-bars{display:flex;align-items:flex-end;gap:6px;height:64px}
+.shs-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%}
+.shs-bar-fill{width:70%;max-width:26px;background:linear-gradient(180deg,#e8912d,#d97706);border-radius:4px 4px 0 0}
+.shs-col span{font-size:.6rem;color:#8a7a65}
+.shs-col b{font-size:.65rem;color:#12304a}
+.shs-bars-note{font-size:.7rem;color:#8a7a65;margin-top:6px}
+.sh-hist-list{display:grid;gap:10px}
+.sh-hist-card{border:1px solid #ead9c4;border-radius:10px;padding:10px;background:#fff}
+.sh-hist-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sh-hist-top strong{color:#12304a;font-size:.9rem}
+.sh-hist-ago{font-size:.72rem;color:#8a7a65;white-space:nowrap}
+.sh-hist-meta,.sh-hist-empty{margin:0;color:#8a7a65;font-size:.82rem}
+.sh-hist-body{margin:8px 0 0;color:#12304a;font-size:.84rem;line-height:1.5}
+.sh-hist-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sh-hist-editor{border:1px dashed #e8912d;border-radius:10px;padding:10px;background:#fff7ec;margin:8px 0}
+.sh-hist-editor textarea{width:100%;box-sizing:border-box;margin-top:8px}
+.sh-btn-danger{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+
+/* Batch 2 shipped guard: history stacks must clear fixed sidebar on desktop and bottom nav on mobile */
+@media (min-width:861px){.sh-hist-stack{margin:14px 0;max-width:1120px;width:100%;box-sizing:border-box}}
+@media (max-width:860px){body.shs .sh-panel{margin:0!important;max-width:100%!important;width:100%!important;padding:18px 14px 116px!important;box-sizing:border-box}.sh-hist-stack{margin:14px 0 40px;max-width:100%;width:100%;box-sizing:border-box}html,body.shs{overflow-x:hidden}}
