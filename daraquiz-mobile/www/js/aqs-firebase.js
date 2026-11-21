@@ -3075,6 +3075,7 @@ async function actionGetMyStats() {
     }
 
     return {
+        display_name: name,
         quizzes_taken: attempts.length,
         quizzes_created: quizzesCreated,
         streak: streak,
