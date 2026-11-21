@@ -3062,16 +3062,28 @@ async function actionGetMyStats() {
 
     var recent = attempts.slice(0, 5).map(function(a) {
         var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
-        return { text: 'Took a quiz — scored <b>' + a.score + '/' + a.total + ' (' + pct + '%)</b>', time: (a.time || '').substring(0, 16) };
+        return { text: 'Took a quiz — scored ' + a.score + '/' + a.total + ' (' + pct + '%)', time: (a.time || '').substring(0, 16) };
     });
+    var totalCorrect = attempts.reduce(function(sum, a) { return sum + (Number(a.score) || 0); }, 0);
+    var totalQuestions = attempts.reduce(function(sum, a) { return sum + (Number(a.total) || 0); }, 0);
+    var weeklyActivity = [];
+    for (var dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        var day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - dayOffset);
+        var dayKey = day.toISOString().slice(0, 10);
+        var count = attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === dayKey; }).length;
+        weeklyActivity.push({ day: day.toLocaleDateString('en', { weekday: 'short' }), count: count });
+    }
 
     return {
-        quizzes_taken:   attempts.length,
+        quizzes_taken: attempts.length,
         quizzes_created: quizzesCreated,
-        streak:          streak,
-        quiz_streak:     quizStreak,
-        app_days:         appDays.slice(-120),
-        app_days_count:   appDays.length,
+        streak: streak,
+        quiz_streak: quizStreak,
+        total_questions_answered: totalQuestions,
+        average_accuracy: totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+        weekly_activity: weeklyActivity,
+        app_days: appDays.slice(-120),
+        app_days_count: appDays.length,
         recent_activity: recent
     };
 }
