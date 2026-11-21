@@ -122,6 +122,31 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── Private per-user profile details ────────────────────────────
+    // Contact and academic details are readable only by their owner.
+    match /user_private_profiles/{userId} {
+      function validPrivateProfile(data) {
+        return data.keys().hasOnly(['uid', 'faculty', 'level', 'phone', 'dateOfBirth', 'updatedAt'])
+          && data.keys().hasAll(['uid', 'updatedAt'])
+          && data.uid == userId
+          && data.updatedAt is int
+          && (!('faculty' in data) || (data.faculty is string && data.faculty.size() <= 120))
+          && (!('level' in data) || (data.level is string && data.level.size() <= 40))
+          && (!('phone' in data) || (data.phone is string && data.phone.size() <= 24))
+          && (!('dateOfBirth' in data) || (data.dateOfBirth is string && data.dateOfBirth.size() == 10));
+      }
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && validPrivateProfile(request.resource.data);
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && resource.data.uid == userId
+        && validPrivateProfile(request.resource.data);
+      allow delete: if false;
+    }
+
     // ─── Daily quotes ──────────────────────────────────────────────
     // Everyone may read the shared quote cache. Only the admin may
     // generate, refresh, or remove cached quotes.
