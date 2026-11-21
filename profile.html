@@ -594,7 +594,8 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
     }
     overlay.classList.add('open');
   };
-  function labelsForPrivateField(key){return {faculty:'Faculty',level:'Academic level',phone:'Phone number',dateOfBirth:'Date of birth'}[key]||'Profile';}\n  window.closeFieldEdit=function(){document.getElementById('fe-overlay').classList.remove('open');};
+  function labelsForPrivateField(key){return {faculty:'Faculty',level:'Academic level',phone:'Phone number',dateOfBirth:'Date of birth'}[key]||'Profile';}
+  window.closeFieldEdit=function(){document.getElementById('fe-overlay').classList.remove('open');};
   window.saveFieldEdit=async function(){
     if(_editField==='name'){
       const fname=document.getElementById('fe-fname').value.trim();
@@ -619,7 +620,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       const key = _editField;
       const value = document.getElementById('fe-value').value.trim();
       if (value.length > 120) { window.libToast('Please use 120 characters or fewer.'); return; }
-      if (key === 'phone' && value && !/^[+0-9()\\-\\s]{7,24}$/.test(value)) { window.libToast('Enter a valid phone number.'); return; }
+      if (key === 'phone' && value && !/^[+0-9()\s-]{7,24}$/.test(value)) { window.libToast('Enter a valid phone number.'); return; }
       if (key === 'dateOfBirth' && value) {
         const dob = new Date(value + 'T00:00:00');
         const today = new Date(); today.setHours(0,0,0,0);
