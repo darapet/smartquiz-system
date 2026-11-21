@@ -8,9 +8,25 @@
  */
 (function () {
   'use strict';
+
+  /* Load the unified DaraQuiz blue design system and persisted user theme on every page using the shared loader. */
+  (function loadDaraQuizDesignSystem() {
+    if (!document.querySelector('link[data-daraquiz-design]')) {
+      var design = document.createElement('link');
+      design.rel = 'stylesheet'; design.href = 'css/daraquiz-design-system.css?v=1';
+      design.setAttribute('data-daraquiz-design', 'true'); document.head.appendChild(design);
+    }
+    if (!document.querySelector('script[data-daraquiz-theme]')) {
+      var theme = document.createElement('script');
+      theme.src = 'js/daraquiz-theme.js?v=1'; theme.defer = true;
+      theme.setAttribute('data-daraquiz-theme', 'true'); document.head.appendChild(theme);
+    }
+  })();
   var IMAGE_GEN_URL = 'image-gen.html';
 
-  /* Add the category menu to every mobile page that uses the shared loader. */
+  /* Add the category menu to every page that already uses the shared loader.
+     The category script is intentionally separate so Social remains the main
+     switcher while Edu and Workspace expose only their own tools. */
   (function loadDaraCategoryNav() {
     var categoryCss = document.createElement('link');
     categoryCss.rel = 'stylesheet';
@@ -22,14 +38,6 @@
     document.head.appendChild(categoryScript);
   })();
 
-  /* Use the homepage navigation as the only shared bottom navigation. */
-  (function loadAqsBottomNav() {
-    var bottomNavScript = document.createElement('script');
-    bottomNavScript.src = 'js/aqs-bottom-nav.js';
-    bottomNavScript.defer = true;
-    document.head.appendChild(bottomNavScript);
-  })();
-
   var isIndex = (function () {
     var p = location.pathname;
     return p.endsWith('index.html') || p === '/' ||
@@ -37,6 +45,13 @@
   })();
 
   /* ── Inject styles ─────────────────────────────────────────────────── */
+  (function loadAqsBottomNav() {
+    var navScript = document.createElement('script');
+    navScript.src = 'js/aqs-bottom-nav.js';
+    navScript.defer = true;
+    document.head.appendChild(navScript);
+  })();
+
   var css = [
     '#_aqsNL{position:fixed;inset:0;z-index:99998;',
       'background:linear-gradient(155deg,#0f0c1d 0%,#1a1640 55%,#0f0c1d 100%);',
@@ -183,6 +198,21 @@
      Keep the five primary destinations visible and group every other
      destination under one accessible Explore menu. */
   function compactNavigation() {
+    /* Quiz creation is one entry point. Keep the choice between a personal
+       quiz and a hosted quiz on the next screen instead of splitting it into
+       two competing nav links. */
+    document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
+      Array.from(nav.children).forEach(function (child) {
+        if (child.tagName !== 'A') return;
+        var href = (child.getAttribute('href') || '').replace(/\?.*$/, '').replace(/^.*\//, '');
+        if (href === 'create-quiz.html') {
+          child.setAttribute('href', 'quiz-setup.html');
+        } else if (href === 'self-quiz.html') {
+          child.parentNode.removeChild(child);
+        }
+      });
+    });
+
     document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
       if (nav.dataset.aqsCompactNav === 'true') return;
       nav.dataset.aqsCompactNav = 'true';
@@ -196,12 +226,12 @@
       var hasStudyHub = false;
       var hasChallenge = false;
       var hasLibrary = false;
-      var hasCreatorStudio = false;
+       var hasCreatorStudio = false;
 
       links.forEach(function (link) {
         var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
         var href = rawHref.replace(/^.*\//, '');
-        var creatorStudioLink = href === 'image-gen.html' ||
+         var creatorStudioLink = href === 'image-gen.html' ||
           href === 'image-editor.html' ||
           rawHref === 'image-gen' ||
           rawHref === 'ai-creator-studio-pro' ||
@@ -211,7 +241,7 @@
           link.setAttribute('href', IMAGE_GEN_URL);
           primary.push(link);
           hasCreatorStudio = true;
-        } else if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+        } else if (href === 'quiz-setup.html' || href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
             href === 'challenge.html' || href === 'library.html') {
           primary.push(link);
           if (href === 'studyhub.html') hasStudyHub = true;
@@ -255,11 +285,11 @@
       });
       if (!hasCreatorStudio) {
         var creatorStudio = document.createElement('a');
-        creatorStudio.href = IMAGE_GEN_URL;
+         creatorStudio.href = IMAGE_GEN_URL;
         creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
           (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
         creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';
-        creatorStudio.textContent = 'Image Studio';
+         creatorStudio.textContent = 'Image Studio';
         primary.push(creatorStudio);
       }
 
@@ -302,6 +332,7 @@
     'studio':         'AI Studio',
     'dashboard':      'Dashboard',
     'user-dashboard': 'My Dashboard',
+    'quiz-setup':    'Create Quiz',
     'create-quiz':    'Create Quiz',
     'challenge':      'Challenge',
     'studyhub':       'Study Hub',
@@ -311,14 +342,13 @@
     'image-editor':   'Image Editor',
     'tts':            'Text to Speech',
     'profile':        'Profile',
-    'social':         'Social',
     'quiz-results':   'Results',
     'quiz-manage':    'Manage Quiz',
     'puzzle':         'Puzzle',
     'library':        'Library',
     'library-upload': 'Library Upload',
     'library-read':   'Library',
-    'ai-creator-studio-pro': 'Image Studio',
+     'ai-creator-studio-pro': 'Image Studio',
   };
 
   document.addEventListener('click', function (e) {
@@ -333,7 +363,7 @@
 
     var slug = href.replace(/\?.*$/, '').replace(/#.*$/, '')
                    .replace(/\.html$/, '').replace(/^.*\//, '');
-    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1 || href.indexOf('image-gen') !== -1;
+     var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1 || href.indexOf('image-gen') !== -1;
     var label = isCreatorStudio ? PAGE_LABELS['ai-creator-studio-pro'] :
       PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
     show(label + '…');

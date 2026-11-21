@@ -1839,7 +1839,7 @@ async function actionGetMyAttempts(data) {
     /* Get user profile to find name */
     var profileSnap = await getDoc(doc(db, 'users', user.uid));
     var profile = profileSnap.exists() ? profileSnap.data() : {};
-    var name = profile.name || user.displayName || user.email || '';
+    var name = user.displayName || profile.name || user.email || '';
 
     /* Single where only — avoids composite index; sort + limit client-side */
     var snap = await getDocs(
@@ -3025,7 +3025,7 @@ async function actionGetMyStats() {
     await _aqsRecordAppUse(user);
     var profileSnap = await getDoc(doc(db, 'users', user.uid));
     var profile = profileSnap.exists() ? profileSnap.data() : {};
-    var name = profile.name || user.displayName || user.email || '';
+    var displayName = user.displayName || profile.name || user.email || '';
     var appDays = Array.isArray(profile.app_activity_days) ? profile.app_activity_days : [];
     var streak = _aqsGetAppUseStreak(appDays);
 
@@ -3033,17 +3033,20 @@ async function actionGetMyStats() {
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
     var quizzesCreated = createdSnap.size;
 
-    /* Attempts where participant matches this user's display name */
-    var attempts = [];
-    if (name) {
-        var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
-        attempts = attSnap.docs.map(function(d) {
+    /* Keep historical attempts when a learner changes their display name. */
+    var participantNames = Array.from(new Set([profile.name, user.displayName, user.email]
+        .map(function(value) { return String(value || '').trim(); }).filter(Boolean)));
+    var attemptMap = {};
+    for (var nameIndex = 0; nameIndex < participantNames.length; nameIndex++) {
+        var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', participantNames[nameIndex])));
+        attSnap.docs.forEach(function(d) {
             var a = d.data();
             var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
-            return { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
+            attemptMap[d.id] = { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
         });
-        attempts.sort(function(a, b) { return b._ms - a._ms; });
     }
+    var attempts = Object.keys(attemptMap).map(function(id) { return attemptMap[id]; });
+    attempts.sort(function(a, b) { return b._ms - a._ms; });
 
     /* Quiz streak counts days with completed quiz attempts, not app visits. */
     var quizDaySet = {};
@@ -3062,16 +3065,29 @@ async function actionGetMyStats() {
 
     var recent = attempts.slice(0, 5).map(function(a) {
         var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
-        return { text: 'Took a quiz — scored <b>' + a.score + '/' + a.total + ' (' + pct + '%)</b>', time: (a.time || '').substring(0, 16) };
+        return { text: 'Took a quiz — scored ' + a.score + '/' + a.total + ' (' + pct + '%)', time: (a.time || '').substring(0, 16) };
     });
+    var totalCorrect = attempts.reduce(function(sum, a) { return sum + (Number(a.score) || 0); }, 0);
+    var totalQuestions = attempts.reduce(function(sum, a) { return sum + (Number(a.total) || 0); }, 0);
+    var weeklyActivity = [];
+    for (var dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        var day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - dayOffset);
+        var dayKey = day.toISOString().slice(0, 10);
+        var count = attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === dayKey; }).length;
+        weeklyActivity.push({ day: day.toLocaleDateString('en', { weekday: 'short' }), count: count });
+    }
 
     return {
-        quizzes_taken:   attempts.length,
+        display_name: displayName,
+        quizzes_taken: attempts.length,
         quizzes_created: quizzesCreated,
-        streak:          streak,
-        quiz_streak:     quizStreak,
-        app_days:         appDays.slice(-120),
-        app_days_count:   appDays.length,
+        streak: streak,
+        quiz_streak: quizStreak,
+        total_questions_answered: totalQuestions,
+        average_accuracy: totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+        weekly_activity: weeklyActivity,
+        app_days: appDays.slice(-120),
+        app_days_count: appDays.length,
         recent_activity: recent
     };
 }

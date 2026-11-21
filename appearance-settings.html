@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2457d6"><title>Appearance & Theme — DaraQuiz AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-style.css"><link rel="stylesheet" href="css/daraquiz-design-system.css">
+<script src="js/daraquiz-theme.js" defer></script><script type="module" src="js/aqs-firebase.js"></script>
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--dq-bg);color:var(--dq-text)}
+.dq-settings{width:min(1080px,calc(100% - 32px));margin:28px auto 80px}
+.dq-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px}
+.dq-top a{color:var(--dq-primary);text-decoration:none;font-weight:700}
+.dq-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:18px}
+.dq-card{background:var(--dq-surface);border:1px solid var(--dq-border);border-radius:20px;padding:22px;box-shadow:var(--dq-shadow);margin-bottom:16px}
+.dq-card h2{font-size:1rem;margin:0 0 6px}.dq-help{color:var(--dq-muted);font-size:.82rem;line-height:1.5;margin:0 0 18px}
+.dq-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.dq-field{display:flex;flex-direction:column;gap:7px;min-width:0}.dq-field label{font-size:.78rem;font-weight:700;color:var(--dq-text)}
+.dq-colour{display:flex;gap:8px;align-items:center}.dq-colour input[type=color]{width:48px;height:42px;border:1px solid var(--dq-border);border-radius:10px;padding:3px;background:#fff}.dq-colour input[type=text]{width:100%;min-width:0;padding:10px;border:1px solid var(--dq-border);border-radius:10px;font:inherit;font-size:.82rem}
+.dq-field select,.dq-field input[type=range]{width:100%}.dq-field select{padding:11px;border:1px solid var(--dq-border);border-radius:10px;background:var(--dq-surface);color:var(--dq-text)}
+.dq-preview{border-radius:18px;padding:20px;background:var(--dq-bg);border:1px solid var(--dq-border)}.dq-preview-card{padding:18px;border-radius:var(--dq-radius);background:var(--dq-surface);border:1px solid var(--dq-border);box-shadow:var(--dq-shadow)}.dq-preview-button{border:0;border-radius:11px;padding:10px 14px;background:var(--dq-primary);color:#fff;font-weight:700;margin-top:12px}
+.dq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.dq-btn{border:1px solid var(--dq-border);border-radius:11px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--dq-surface);color:var(--dq-text)}.dq-btn.primary{background:var(--dq-primary);border-color:var(--dq-primary);color:#fff}.dq-status{min-height:22px;margin-top:10px;color:var(--dq-muted);font-size:.82rem}
+@media(max-width:760px){.dq-grid{grid-template-columns:1fr}.dq-fields{grid-template-columns:1fr 1fr}.dq-settings{margin-top:18px}.dq-card{padding:17px}}
+@media(max-width:420px){.dq-fields{grid-template-columns:1fr}.dq-top{align-items:flex-start;flex-direction:column}}
+</style></head>
+<body data-aqs-page="appearance-settings">
+<main class="dq-settings">
+<header class="dq-top"><div><a href="index.html">← Back to dashboard</a><h1 style="margin:14px 0 4px">Appearance & theme</h1><p style="margin:0;color:var(--dq-muted)">Make DaraQuiz feel right for you. Your theme applies across the app.</p></div><a href="account-settings.html">Account settings →</a></header>
+<div class="dq-grid"><section>
+<div class="dq-card"><h2>Brand colours</h2><p class="dq-help">Customize the main palette. Royal blue is the default, with violet and cyan accents.</p><div class="dq-fields" id="dq-colours">
+<div class="dq-field"><label for="dq-primary">Primary colour</label><div class="dq-colour"><input type="color" id="dq-primary" data-theme="primary"><input type="text" data-hex="primary" value="#2457d6" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-secondary">Secondary colour</label><div class="dq-colour"><input type="color" id="dq-secondary" data-theme="secondary"><input type="text" data-hex="secondary" value="#7657d5" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-accent">Accent colour</label><div class="dq-colour"><input type="color" id="dq-accent" data-theme="accent"><input type="text" data-hex="accent" value="#19a7d8" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-background">Page background</label><div class="dq-colour"><input type="color" id="dq-background" data-theme="background"><input type="text" data-hex="background" value="#f4f7fc" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-surface">Cards & panels</label><div class="dq-colour"><input type="color" id="dq-surface" data-theme="surface"><input type="text" data-hex="surface" value="#ffffff" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-header">Header & sidebar</label><div class="dq-colour"><input type="color" id="dq-header" data-theme="header"><input type="text" data-hex="header" value="#ffffff" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-border">Borders & dividers</label><div class="dq-colour"><input type="color" id="dq-border" data-theme="border"><input type="text" data-hex="border" value="#dfe7f2" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-button">Button colour</label><div class="dq-colour"><input type="color" id="dq-button" data-theme="button"><input type="text" data-hex="button" value="#2457d6" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-text">Main text</label><div class="dq-colour"><input type="color" id="dq-text" data-theme="text"><input type="text" data-hex="text" value="#17243a" maxlength="7"></div></div>
+<div class="dq-field"><label for="dq-muted">Secondary text</label><div class="dq-colour"><input type="color" id="dq-muted" data-theme="muted"><input type="text" data-hex="muted" value="#66758c" maxlength="7"></div></div>
+</div></div>
+<div class="dq-card"><h2>Typography & layout</h2><p class="dq-help">Adjust readability and interface density.</p><div class="dq-fields">
+<div class="dq-field"><label for="dq-fontsize">Font size: <output id="dq-fontsize-value">16px</output></label><input id="dq-fontsize" type="range" min="14" max="20" step="1" data-number="fontSize"></div>
+<div class="dq-field"><label for="dq-lineheight">Line spacing: <output id="dq-lineheight-value">1.55</output></label><input id="dq-lineheight" type="range" min="1.35" max="1.9" step=".05" data-number="lineHeight"></div>
+<div class="dq-field"><label for="dq-font-family">Font family</label><select id="dq-font-family" data-choice="fontFamily"><option value="Inter">Inter</option><option value="system">System default</option><option value="Georgia">Georgia</option></select></div>
+<div class="dq-field"><label for="dq-density">Layout spacing</label><select id="dq-density" data-choice="density"><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="spacious">Spacious</option></select></div>
+<div class="dq-field"><label for="dq-radius">Card shape</label><select id="dq-radius" data-choice="radius"><option value="soft">Soft corners</option><option value="rounded">Rounded</option><option value="sharp">Sharper corners</option></select></div>
+</div><div class="dq-actions"><button class="dq-btn primary" id="dq-save">Save & sync settings</button><button class="dq-btn" id="dq-reset">Restore default blue theme</button></div><div class="dq-status" id="dq-status" role="status" aria-live="polite"></div></div>
+</section>
+<aside class="dq-card"><h2>Live preview</h2><p class="dq-help">Changes preview here before you save them.</p><div class="dq-preview"><div class="dq-preview-card"><span style="font-size:.7rem;font-weight:800;color:var(--dq-primary)">DARAQUIZ AI · LEARNING</span><h2 style="margin:10px 0 6px">Your learning, organized.</h2><p style="font-size:.84rem;margin:0;color:var(--dq-muted)">A consistent interface across your dashboard and learning tools.</p><button class="dq-preview-button">Continue learning</button></div></div></aside>
+</div></main>
+<script>
+(function(){
+var keys=['primary','secondary','accent','background','surface','header','border','button','text','muted'];
+var defaults=window.DaraQuizTheme?window.DaraQuizTheme.defaults:{primary:'#2457d6',secondary:'#7657d5',accent:'#19a7d8',background:'#f4f7fc',surface:'#ffffff',header:'#ffffff',border:'#dfe7f2',button:'#2457d6',text:'#17243a',muted:'#66758c',fontSize:16,fontFamily:'Inter',lineHeight:1.55,density:'comfortable',radius:'soft'};
+function values(){var t={};keys.forEach(function(k){var el=document.querySelector('[data-theme="'+k+'"]');if(el)t[k]=el.value;});document.querySelectorAll('[data-number]').forEach(function(el){t[el.dataset.number]=Number(el.value);});document.querySelectorAll('[data-choice]').forEach(function(el){t[el.dataset.choice]=el.value;});return t;}
+function fill(t){keys.forEach(function(k){var c=document.querySelector('[data-theme="'+k+'"]'),h=document.querySelector('[data-hex="'+k+'"]');if(c)c.value=t[k];if(h)h.value=t[k];});document.querySelectorAll('[data-number]').forEach(function(el){el.value=t[el.dataset.number];});document.querySelectorAll('[data-choice]').forEach(function(el){el.value=t[el.dataset.choice];});document.getElementById('dq-fontsize-value').textContent=t.fontSize+'px';document.getElementById('dq-lineheight-value').textContent=t.lineHeight;}
+function preview(){var t=values();if(window.DaraQuizTheme)window.DaraQuizTheme.apply(t);document.getElementById('dq-fontsize-value').textContent=t.fontSize+'px';document.getElementById('dq-lineheight-value').textContent=t.lineHeight;}
+keys.forEach(function(k){var c=document.querySelector('[data-theme="'+k+'"]'),h=document.querySelector('[data-hex="'+k+'"]');c.addEventListener('input',function(){h.value=c.value;preview();});h.addEventListener('change',function(){if(/^#[0-9a-f]{6}$/i.test(h.value)){c.value=h.value;preview();}else h.value=c.value;});});
+document.querySelectorAll('[data-number],[data-choice]').forEach(function(el){el.addEventListener('input',preview);el.addEventListener('change',preview);});
+if(window.DaraQuizTheme)fill(window.DaraQuizTheme.get());else fill(defaults);
+document.addEventListener('daraquiz:themechange',function(e){fill(e.detail);});
+document.getElementById('dq-reset').addEventListener('click',function(){if(window.DaraQuizTheme){window.DaraQuizTheme.reset();fill(defaults);}});
+document.getElementById('dq-save').addEventListener('click',async function(){var status=document.getElementById('dq-status');status.textContent='Saving your preferences…';try{await window.DaraQuizTheme.save(values());status.textContent='Saved on this device'+(window._aqsFirebaseUser&&!window._aqsFirebaseUser.isAnonymous?' and synced to your account.':'. Sign in to sync across devices.');}catch(e){status.textContent=e.message||'Could not sync preferences.';}});
+})();
+</script></body></html>

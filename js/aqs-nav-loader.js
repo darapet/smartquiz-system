@@ -8,6 +8,20 @@
  */
 (function () {
   'use strict';
+
+  /* Load the unified DaraQuiz blue design system and persisted user theme on every page using the shared loader. */
+  (function loadDaraQuizDesignSystem() {
+    if (!document.querySelector('link[data-daraquiz-design]')) {
+      var design = document.createElement('link');
+      design.rel = 'stylesheet'; design.href = 'css/daraquiz-design-system.css?v=1';
+      design.setAttribute('data-daraquiz-design', 'true'); document.head.appendChild(design);
+    }
+    if (!document.querySelector('script[data-daraquiz-theme]')) {
+      var theme = document.createElement('script');
+      theme.src = 'js/daraquiz-theme.js?v=1'; theme.defer = true;
+      theme.setAttribute('data-daraquiz-theme', 'true'); document.head.appendChild(theme);
+    }
+  })();
   var IMAGE_GEN_URL = 'image-gen.html';
 
   /* Add the category menu to every page that already uses the shared loader.

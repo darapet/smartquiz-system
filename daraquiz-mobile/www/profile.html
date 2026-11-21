@@ -173,6 +173,8 @@
     body[data-aqs-page="profile"] .prf-edit-status{min-height:18px;margin-top:9px;color:#6258cf;font-size:.75rem}
     @media(max-width:540px){body[data-aqs-page="profile"] .prf-activity-calendar{gap:3px}body[data-aqs-page="profile"] .prf-achievement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   </style>
+  <link rel="stylesheet" href="css/daraquiz-design-system.css?v=1" data-daraquiz-design="true">
+  <script src="js/daraquiz-theme.js?v=1" defer data-daraquiz-theme="true"></script>
 </head>
 <body style="background:#faf3ea;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
 <header class="aqs-phase2-page-header" aria-label="My Profile"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">My Profile</span></header>
@@ -277,13 +279,33 @@
       </div>
       <div class="prf-info-row">
         <div class="prf-info-icon">🎓</div>
-        <div style="flex:1"><div class="prf-info-label">Institution</div><div class="prf-info-value" id="pi-inst">—</div></div>
+        <div style="flex:1"><div class="prf-info-label">School / Institution</div><div class="prf-info-value" id="pi-inst">—</div></div>
         <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('institution')">Edit</button></div>
       </div>
       <div class="prf-info-row">
         <div class="prf-info-icon">📘</div>
         <div style="flex:1"><div class="prf-info-label">Department</div><div class="prf-info-value" id="pi-dept">—</div></div>
         <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('department')">Edit</button></div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">🏛️</div>
+        <div style="flex:1"><div class="prf-info-label">Faculty</div><div class="prf-info-value" id="pi-faculty">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('faculty')">Edit</button></div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">🎓</div>
+        <div style="flex:1"><div class="prf-info-label">Academic level</div><div class="prf-info-value" id="pi-level">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('level')">Edit</button></div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">📱</div>
+        <div style="flex:1"><div class="prf-info-label">Phone number <small style="font-weight:500;color:#64748b">· Private</small></div><div class="prf-info-value" id="pi-phone">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('phone')">Edit</button></div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">🎂</div>
+        <div style="flex:1"><div class="prf-info-label">Date of birth <small style="font-weight:500;color:#64748b">· Private & optional</small></div><div class="prf-info-value" id="pi-dob">—</div></div>
+        <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('dateOfBirth')">Edit</button></div>
       </div>
     </div>
   </div>
@@ -356,10 +378,11 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
 <script type="module" src="js/aqs-library.js?v=20260922-profile-upload"></script>
 <script type="module">
   import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getAuth, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getAuth, signOut as fbSignOut, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
   let _user = null;
   let _profile = null;
+  let _privateProfile = {};
   let _editField = null;
 
   window.libOnAuth(async function(user) {
@@ -373,6 +396,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
 
   async function loadProfile() {
     _profile = await window.libGetProfile(_user.uid) || {};
+    _privateProfile = window._aqsFS ? (await window._aqsFS.get('user_private_profiles', _user.uid) || {}) : {};
     const name = _profile.displayName || _user.displayName || 'User';
     const av = document.getElementById('prf-avatar');
     const photo = _profile.photoURL || _user.photoURL;
@@ -383,6 +407,10 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
     document.getElementById('pi-name').textContent = name;
     document.getElementById('pi-inst').textContent = _profile.institution || '—';
     document.getElementById('pi-dept').textContent = _profile.department || '—';
+    document.getElementById('pi-faculty').textContent = _privateProfile.faculty || '—';
+    document.getElementById('pi-level').textContent = _privateProfile.level || '—';
+    document.getElementById('pi-phone').textContent = _privateProfile.phone || '—';
+    document.getElementById('pi-dob').textContent = _privateProfile.dateOfBirth ? new Date(_privateProfile.dateOfBirth + 'T00:00:00').toLocaleDateString() : '—';
     await loadProfilePrivacy();
 
     // Role badge
@@ -555,14 +583,18 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
           <label class="lib-label">Last Name</label>
           <input class="lib-input" id="fe-lname" value="${parts.slice(1).join(' ')||''}" placeholder="Last name">
         </div>`;
-    } else if (field==='institution' || field==='department') {
-      const isInstitution = field === 'institution';
-      document.getElementById('fe-title').textContent = isInstitution ? 'Edit Institution' : 'Edit Department';
-      const value = isInstitution ? (_profile.institution || '') : (_profile.department || '');
-      content.innerHTML = `<label class="lib-label" for="fe-value">${isInstitution ? 'Institution / School' : 'Department / Course'}</label><input class="prf-profile-input" id="fe-value" maxlength="120" value="${String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="${isInstitution ? 'Enter your institution' : 'Enter your department'}">`;
+    } else if (['institution','department','faculty','level','phone','dateOfBirth'].includes(field)) {
+      const labels = {institution:'Institution / School',department:'Department / Course',faculty:'Faculty',level:'Academic level',phone:'Phone number',dateOfBirth:'Date of birth'};
+      const isPrivate = ['faculty','level','phone','dateOfBirth'].includes(field);
+      const value = isPrivate ? (_privateProfile[field] || '') : (_profile[field] || '');
+      const type = field === 'dateOfBirth' ? 'date' : (field === 'phone' ? 'tel' : 'text');
+      const safeValue = String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      document.getElementById('fe-title').textContent = 'Edit ' + labels[field];
+      content.innerHTML = `<label class="lib-label" for="fe-value">${labels[field]}</label><input type="${type}" class="prf-profile-input" id="fe-value" maxlength="120" value="${safeValue}" placeholder="Enter ${labels[field].toLowerCase()}">${isPrivate ? '<p style="font-size:.75rem;color:#64748b;margin-top:8px">This information is private and only visible to you.</p>' : ''}`;
     }
     overlay.classList.add('open');
   };
+  function labelsForPrivateField(key){return {faculty:'Faculty',level:'Academic level',phone:'Phone number',dateOfBirth:'Date of birth'}[key]||'Profile';}
   window.closeFieldEdit=function(){document.getElementById('fe-overlay').classList.remove('open');};
   window.saveFieldEdit=async function(){
     if(_editField==='name'){
@@ -571,6 +603,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       if(!fname){window.libToast('Name required');return;}
       const name=(fname+' '+lname).trim();
       await window.libSaveProfile(_user.uid,{displayName:name});
+      await updateProfile(_user,{displayName:name});
       _profile.displayName=name;
       document.getElementById('prf-name').textContent=name;
       document.getElementById('pi-name').textContent=name;
@@ -584,6 +617,22 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       _profile[key] = value;
       document.getElementById(key === 'institution' ? 'pi-inst' : 'pi-dept').textContent = value || '—';
       window.libToast((key === 'institution' ? 'Institution' : 'Department') + ' updated!');
+    } else if (['faculty','level','phone','dateOfBirth'].includes(_editField)) {
+      const key = _editField;
+      const value = document.getElementById('fe-value').value.trim();
+      if (value.length > 120) { window.libToast('Please use 120 characters or fewer.'); return; }
+      if (key === 'phone' && value && !/^[+0-9()\s-]{7,24}$/.test(value)) { window.libToast('Enter a valid phone number.'); return; }
+      if (key === 'dateOfBirth' && value) {
+        const dob = new Date(value + 'T00:00:00');
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (Number.isNaN(dob.getTime()) || dob > today) { window.libToast('Choose a valid date that is not in the future.'); return; }
+      }
+      const saved = window._aqsFS && await window._aqsFS.set('user_private_profiles', _user.uid, {uid:_user.uid, [key]:value, updatedAt:Date.now()}, {merge:true});
+      if (!saved) { window.libToast('Could not save your private profile details. Please try again.'); return; }
+      _privateProfile[key] = value;
+      const target = {faculty:'pi-faculty',level:'pi-level',phone:'pi-phone',dateOfBirth:'pi-dob'}[key];
+      document.getElementById(target).textContent = key === 'dateOfBirth' && value ? new Date(value + 'T00:00:00').toLocaleDateString() : (value || '—');
+      window.libToast(labelsForPrivateField(key) + ' updated!');
     }
     closeFieldEdit();
   };
