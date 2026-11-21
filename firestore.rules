@@ -138,6 +138,21 @@ service cloud.firestore {
       }
     }
 
+    // ─── Private per-user appearance preferences ─────────────────────
+    // A user can read and update only their own theme document.
+    match /user_preferences/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.keys().hasOnly(['uid', 'theme', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['uid', 'theme', 'updatedAt'])
+        && request.resource.data.theme is map
+        && request.resource.data.updatedAt is int;
+      allow delete: if false;
+    }
+
     // ─── Daily quotes ──────────────────────────────────────────────
     // Everyone may read the shared quote cache. Only the admin may
     // generate, refresh, or remove cached quotes.
