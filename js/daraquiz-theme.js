@@ -6,7 +6,7 @@ function cleanHex(v,fallback){var s=String(v||'').trim();return /^#[0-9a-f]{6}$/
 function normalize(raw){raw=raw&&typeof raw==='object'?raw:{};return {
 primary:cleanHex(raw.primary,DEFAULTS.primary),secondary:cleanHex(raw.secondary,DEFAULTS.secondary),accent:cleanHex(raw.accent,DEFAULTS.accent),
 background:cleanHex(raw.background,DEFAULTS.background),surface:cleanHex(raw.surface,DEFAULTS.surface),header:cleanHex(raw.header,DEFAULTS.header),border:cleanHex(raw.border,DEFAULTS.border),button:cleanHex(raw.button,DEFAULTS.button),text:cleanHex(raw.text,DEFAULTS.text),muted:cleanHex(raw.muted,DEFAULTS.muted),
-fontSize:Math.max(14,Math.min(20,Number(raw.fontSize)||DEFAULTS.fontSize)),fontFamily:['Inter','system','Georgia'].includes(raw.fontFamily)?raw.fontFamily:DEFAULTS.fontFamily,lineHeight:Math.max(1.35,Math.min(1.9,Number(raw.lineHeight)||DEFAULTS.lineHeight),
+fontSize:Math.max(14,Math.min(20,Number(raw.fontSize)||DEFAULTS.fontSize)),fontFamily:['Inter','system','Georgia'].includes(raw.fontFamily)?raw.fontFamily:DEFAULTS.fontFamily,lineHeight:Math.max(1.35,Math.min(1.9,Number(raw.lineHeight)||DEFAULTS.lineHeight)),
 density:['compact','comfortable','spacious'].includes(raw.density)?raw.density:DEFAULTS.density,
 radius:['soft','rounded','sharp'].includes(raw.radius)?raw.radius:DEFAULTS.radius
 };}
