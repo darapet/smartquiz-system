@@ -441,6 +441,173 @@ service cloud.firestore {
         && validUserPreference(request.resource.data);
     }
 
+    // ─── Private academic and contact profile fields ────────────────
+    // Phone number and date of birth are never exposed through public profile documents.
+    match /user_private_profiles/{userId} {
+      function validPrivateProfile(data) {
+        return data.keys().hasOnly(['uid', 'faculty', 'level', 'phone', 'dateOfBirth', 'updatedAt'])
+          && data.keys().hasAll(['uid', 'updatedAt'])
+          && data.uid == userId
+          && data.updatedAt is int
+          && (!('faculty' in data) || (data.faculty is string && data.faculty.size() <= 120))
+          && (!('level' in data) || (data.level is string && data.level.size() <= 40))
+          && (!('phone' in data) || (data.phone is string && data.phone.size() <= 24))
+          && (!('dateOfBirth' in data) || (data.dateOfBirth is string && data.dateOfBirth.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}
+    match /settings/{settingId} {
+      /* API key pools live in settings/main; reading them requires a real
+         signed-in account. Guest (anonymous) sessions, used for multiplayer,
+         can never read them. */
+      allow read: if isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && settingId != 'private';
+      allow write: if isAdmin();
+    }
+
+    // API credentials are server-only. The client can never read this
+    // document, even though other public app settings remain readable.
+    match /settings/private {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Ads ────────────────────────────────────────────────────────
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Deleted Quizzes ────────────────────────────────────────────
+    match /deleted_quizzes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Challenges ─────────────────────────────────────────────────
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid)
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ─── Library Books ──────────────────────────────────────────────
+    match /library_books/{bookId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.uploaderUid == request.auth.uid)
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']))
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']))
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']);
+    }
+
+    // ─── Library Profiles ───────────────────────────────────────────
+    match /library_profiles/{uid} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    // ─── Library Likes ──────────────────────────────────────────────
+    match /library_likes/{likeId} {
+      allow read: if true;
+      allow create, delete: if isSignedIn();
+    }
+
+    // ─── Library Comments ───────────────────────────────────────────
+    match /library_comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid)
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']))
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']));
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ─── Library Replies ────────────────────────────────────────────
+    match /library_replies/{replyId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ─── Library Follows ────────────────────────────────────────────
+    match /library_follows/{followId} {
+      allow read: if true;
+      allow create, delete: if isSignedIn();
+    }
+
+    // SmartQuiz multiplayer is server-authoritative. Clients can only read
+    // an authenticated room and its roster. All writes, including lifecycle,
+    // roster, answers, and scores, go through the authenticated Cloud Function.
+    match /multiplayerRooms/{roomId} {
+      allow get: if isSignedIn()
+        && (request.auth.uid == resource.data.hostUid
+          || exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid)));
+      allow list: if false;
+      allow create, update, delete: if false;
+
+      match /players/{playerUid} {
+        allow read: if isSignedIn()
+          && (request.auth.uid == get(/databases/$(database)/documents/multiplayerRooms/$(roomId)).data.hostUid
+            || exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid)));
+        allow create, update, delete: if false;
+      }
+
+      match /answers/{answerId} {
+        allow read, write: if false;
+      }
+
+      match /private/{privateId} {
+        allow read, write: if false;
+      }
+
+      match /avatarClaims/{avatarId} {
+        allow read, write: if false;
+      }
+
+      // Voice chat signaling only. Peers exchange WebRTC offers, answers and
+      // ICE candidates here. Messages can only be sent between players of the
+      // same room, and only the addressed player can read or clear them.
+      match /signals/{signalId} {
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly(['from', 'to', 'kind', 'data', 'at'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to is string
+          && request.resource.data.kind in ['offer', 'answer', 'ice']
+          && request.resource.data.data is string
+          && request.resource.data.data.size() < 6000
+          && exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid))
+          && exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.resource.data.to));
+        allow read, delete: if isSignedIn() && resource.data.to == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    // Rate-limit counters for live multiplayer (guests can host and use the AI).
+    // Only the Cloud Function reads or writes these.
+    match /multiplayerLimits/{limitId} {
+      allow read, write: if false;
+    }
+
+    // ─── Library Views ──────────────────────────────────────────────
+    match /library_views/{viewId} {
+      allow read: if isSignedIn();
+      allow create: if true;
+    }
+
+  }
+}
+)));
+      }
+      allow read, delete: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && validPrivateProfile(request.resource.data);
+    }
+
     // ─── Settings ───────────────────────────────────────────────────
     match /settings/{settingId} {
       /* API key pools live in settings/main; reading them requires a real
