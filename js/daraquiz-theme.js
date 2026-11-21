@@ -21,8 +21,8 @@ document.documentElement.dataset.dqDensity=t.density;document.documentElement.da
 try{localStorage.setItem(KEY,JSON.stringify(t));}catch(e){}
 document.dispatchEvent(new CustomEvent('daraquiz:themechange',{detail:t}));return t;}
 function local(){try{return normalize(JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){return normalize({});}}
-async function load(){var t=local(),u=window._aqsFirebaseUser;if(u&&!u.isAnonymous&&window._aqsFS&&window._aqsFS.get){try{var p=await window._aqsFS.get('users',u.uid);if(p&&p.preferences&&p.preferences.theme)t=normalize(p.preferences.theme);}catch(e){console.warn('[DaraQuiz theme] Cloud preferences unavailable',e);}}return apply(t);}
-async function save(raw){var t=apply(raw),u=window._aqsFirebaseUser;if(u&&!u.isAnonymous&&window._aqsFS&&window._aqsFS.set){var ok=await window._aqsFS.set('users',u.uid,{preferences:{theme:t}},{merge:true});if(!ok)throw new Error('Could not sync theme settings. Your changes remain saved on this device.');}return t;}
+async function load(){var t=local(),u=window._aqsFirebaseUser;if(u&&!u.isAnonymous&&window._aqsFS&&window._aqsFS.get){try{var p=await window._aqsFS.get('user_preferences',u.uid);if(p&&p.theme)t=normalize(p.theme);}catch(e){console.warn('[DaraQuiz theme] Cloud preferences unavailable',e);}}return apply(t);}
+async function save(raw){var t=apply(raw),u=window._aqsFirebaseUser;if(u&&!u.isAnonymous&&window._aqsFS&&window._aqsFS.set){var ok=await window._aqsFS.set('user_preferences',u.uid,{uid:u.uid,theme:t,updatedAt:Date.now()},{merge:true});if(!ok)throw new Error('Could not sync theme settings. Your changes remain saved on this device.');}return t;}
 window.DaraQuizTheme={defaults:normalize(DEFAULTS),get:local,apply:apply,load:load,save:save,reset:function(){return apply(DEFAULTS);}};
 apply(local());
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
