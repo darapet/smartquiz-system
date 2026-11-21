@@ -1839,7 +1839,7 @@ async function actionGetMyAttempts(data) {
     /* Get user profile to find name */
     var profileSnap = await getDoc(doc(db, 'users', user.uid));
     var profile = profileSnap.exists() ? profileSnap.data() : {};
-    var name = profile.name || user.displayName || user.email || '';
+    var name = user.displayName || profile.name || user.email || '';
 
     /* Single where only — avoids composite index; sort + limit client-side */
     var snap = await getDocs(
