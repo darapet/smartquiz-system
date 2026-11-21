@@ -1,12 +1,12 @@
 (function(){
 'use strict';
 var KEY='daraquiz.theme.v1';
-var DEFAULTS={primary:'#2457d6',secondary:'#7657d5',accent:'#19a7d8',background:'#f4f7fc',surface:'#ffffff',text:'#17243a',muted:'#66758c',fontSize:16,lineHeight:1.55,density:'comfortable',radius:'soft'};
+var DEFAULTS={primary:'#2457d6',secondary:'#7657d5',accent:'#19a7d8',background:'#f4f7fc',surface:'#ffffff',header:'#ffffff',border:'#dfe7f2',button:'#2457d6',text:'#17243a',muted:'#66758c',fontSize:16,fontFamily:'Inter',lineHeight:1.55,density:'comfortable',radius:'soft'};
 function cleanHex(v,fallback){var s=String(v||'').trim();return /^#[0-9a-f]{6}$/i.test(s)?s:fallback;}
 function normalize(raw){raw=raw&&typeof raw==='object'?raw:{};return {
 primary:cleanHex(raw.primary,DEFAULTS.primary),secondary:cleanHex(raw.secondary,DEFAULTS.secondary),accent:cleanHex(raw.accent,DEFAULTS.accent),
 background:cleanHex(raw.background,DEFAULTS.background),surface:cleanHex(raw.surface,DEFAULTS.surface),text:cleanHex(raw.text,DEFAULTS.text),muted:cleanHex(raw.muted,DEFAULTS.muted),
-fontSize:Math.max(14,Math.min(20,Number(raw.fontSize)||DEFAULTS.fontSize)),lineHeight:Math.max(1.35,Math.min(1.9,Number(raw.lineHeight)||DEFAULTS.lineHeight)),
+fontSize:Math.max(14,Math.min(20,Number(raw.fontSize)||DEFAULTS.fontSize)),fontFamily:['Inter','system','Georgia'].includes(raw.fontFamily)?raw.fontFamily:DEFAULTS.fontFamily,lineHeight:Math.max(1.35,Math.min(1.9,Number(raw.lineHeight)||DEFAULTS.lineHeight)),
 density:['compact','comfortable','spacious'].includes(raw.density)?raw.density:DEFAULTS.density,
 radius:['soft','rounded','sharp'].includes(raw.radius)?raw.radius:DEFAULTS.radius
 };}
