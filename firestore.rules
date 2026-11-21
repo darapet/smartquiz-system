@@ -452,7 +452,7 @@ service cloud.firestore {
           && (!('faculty' in data) || (data.faculty is string && data.faculty.size() <= 120))
           && (!('level' in data) || (data.level is string && data.level.size() <= 40))
           && (!('phone' in data) || (data.phone is string && data.phone.size() <= 24))
-          && (!('dateOfBirth' in data) || (data.dateOfBirth is string && (data.dateOfBirth == '' || data.dateOfBirth.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}
+          && (!('dateOfBirth' in data) || (data.dateOfBirth is string && (data.dateOfBirth == '' || (data.dateOfBirth.size() == 10 && data.dateOfBirth.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}')))))
     match /settings/{settingId} {
       /* API key pools live in settings/main; reading them requires a real
          signed-in account. Guest (anonymous) sessions, used for multiplayer,
