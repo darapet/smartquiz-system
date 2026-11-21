@@ -279,7 +279,7 @@
       </div>
       <div class="prf-info-row">
         <div class="prf-info-icon">🎓</div>
-        <div style="flex:1"><div class="prf-info-label">Institution</div><div class="prf-info-value" id="pi-inst">—</div></div>
+        <div style="flex:1"><div class="prf-info-label">School / Institution</div><div class="prf-info-value" id="pi-inst">—</div></div>
         <div class="prf-info-edit"><button class="prf-edit-btn" onclick="openFieldEdit('institution')">Edit</button></div>
       </div>
       <div class="prf-info-row">
@@ -378,7 +378,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
 <script type="module" src="js/aqs-library.js?v=20260922-profile-upload"></script>
 <script type="module">
   import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getAuth, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getAuth, signOut as fbSignOut, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
   let _user = null;
   let _profile = null;
@@ -603,6 +603,7 @@ window.AQS = { ajax_url:'firebase', nonce:'', auth_nonce:'', home_url:'index.htm
       if(!fname){window.libToast('Name required');return;}
       const name=(fname+' '+lname).trim();
       await window.libSaveProfile(_user.uid,{displayName:name});
+      await updateProfile(_user,{displayName:name});
       _profile.displayName=name;
       document.getElementById('prf-name').textContent=name;
       document.getElementById('pi-name').textContent=name;
