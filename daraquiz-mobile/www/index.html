@@ -1,170 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AI Quiz System — Home</title>
-<link rel="icon" href="favicon.svg">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#faf3ea;color:#12304a;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;min-height:100vh;padding-bottom:84px}
-header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(250,243,234,.95);backdrop-filter:blur(8px)}
-.hleft{display:flex;align-items:center;gap:12px}
-.hleft img{width:44px;height:44px;border-radius:50%;object-fit:cover}
-.hleft small{display:block;color:#7a8ba0;font-size:.72rem}
-.hleft b{color:#12304a;font-size:1.25rem;font-weight:800;letter-spacing:-.01em}
-.bell{width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid #eee2d3;display:grid;place-items:center;font-size:1.15rem;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative}
-.avatar{width:44px;height:44px;border-radius:14px;background:#f4a548;color:#12304a;display:grid;place-items:center;font-weight:800;text-decoration:none;font-size:1.05rem;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.wrap{max-width:560px;margin:0 auto;padding:6px 18px 0}
-.hero{position:relative;border-radius:22px;padding:26px 24px 24px;background:linear-gradient(135deg,#faf3ea,#ffffff);box-shadow:0 18px 40px rgba(14,58,82,.35);color:#12304a;margin-bottom:22px;overflow:hidden}
-.hero .tag{color:#12304a;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
-.hero .big{margin-top:10px;font:italic 1.35rem/1.45 Georgia,serif;min-height:2.6em}
-.hero .who{margin-top:10px;color:#12304a;font-size:.8rem}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}
-.tile{display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none;padding:14px 4px}
-.tile .ic{width:52px;height:52px;border-radius:16px;background:#fff;border:1px solid #eee2d3;box-shadow:0 4px 14px rgba(0,0,0,.06);display:grid;place-items:center;font-size:1.35rem}
-.tile .nm{color:#22374d;font-size:.76rem;font-weight:600;text-align:center}
-.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.sec h3{color:#12304a;font-size:1.05rem;font-weight:800}
-.sec a{color:#3d7ab5;font-size:.8rem;text-decoration:none;font-weight:600}
-.empty{background:#fff;border:1px solid #eee2d3;border-radius:16px;padding:16px;color:#12304a;font-size:.86rem;margin-bottom:22px}
-.post{background:#fff;border:1px solid #eee2d3;border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;box-shadow:0 3px 10px rgba(0,0,0,.04)}
-.post .pic{width:42px;height:42px;border-radius:12px;background:#fdf0e0;display:grid;place-items:center;font-size:1.2rem;flex-shrink:0}
-.post .tt{color:#22374d;font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.post .chip{background:#fff4e2;color:#c77b2e;font-size:.62rem;font-weight:800;padding:3px 9px;border-radius:999px}
-.post .who{color:#12304a;font-size:.78rem;margin-top:3px}
-nav.bottom{position:fixed;bottom:0;left:0;right:0;z-index:60;display:grid;grid-template-columns:repeat(6,1fr);background:#fff;border-top:1px solid #eee2d3;padding:10px 8px calc(10px + env(safe-area-inset-bottom))}
-nav.bottom a{display:flex;flex-direction:column;align-items:center;gap:3px;color:#12304a;text-decoration:none;font-size:.64rem;font-weight:600}
-nav.bottom a .ic{font-size:1.3rem}
-nav.bottom a.on{color:#e8912d;background:#fbf1e3;border-radius:14px;padding:4px 10px}
-@media(max-width:420px){.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tile .ic{width:48px;height:48px}}
-
-/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
-@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
-
-/* Home dashboard polish v1 */
-body{background:#f5f7fb;color:#17243a;padding-bottom:calc(94px + env(safe-area-inset-bottom))}
-.home-header{max-width:1180px;margin:0 auto;padding:15px 24px;background:rgba(255,255,255,.92);border:0;border-bottom:1px solid #e8edf5;box-shadow:0 4px 18px rgba(24,39,75,.04)}
-.hleft img{width:46px;height:46px;border-radius:14px}
-.hleft small{color:#718096;font-size:.72rem;font-weight:650;letter-spacing:.04em}
-.hleft b{display:block;color:#17243a;font-size:1.12rem;letter-spacing:-.035em}
-.bell,.avatar{width:44px;height:44px;border:1px solid #e5eaf2;border-radius:14px;background:#fff;color:#263750;box-shadow:0 3px 10px rgba(24,39,75,.05)}
-.avatar{background:#eef0ff;color:#5146bd}
-.wrap{width:min(100% - 40px,1120px);max-width:1120px;margin:0 auto;padding:26px 0 30px}
-.hero{display:flex;flex-direction:column;justify-content:center;min-height:190px;padding:30px clamp(22px,4vw,42px);border:1px solid #293b78;border-radius:24px;background:radial-gradient(circle at 88% 18%,rgba(157,139,255,.32),transparent 30%),linear-gradient(120deg,#111d3b,#202f68 62%,#43358d);box-shadow:0 18px 42px rgba(27,39,91,.18);color:#fff;margin-bottom:30px}
-.hero .tag{color:#c8c5ff;font-size:.7rem;letter-spacing:.16em}
-.hero .big{max-width:720px;margin-top:13px;color:#fff;font:italic clamp(1.35rem,3vw,2rem)/1.4 Georgia,serif;min-height:0}
-.hero .who{margin-top:12px;color:#d6dcf6;font-size:.82rem}
-.home-section{margin:0 0 30px}
-.section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:0 0 15px}
-.eyebrow{display:block;margin-bottom:5px;color:#7771cb;font-size:.65rem;font-weight:850;letter-spacing:.13em}
-.section-heading h2{color:#17243a;font-size:clamp(1.15rem,2vw,1.45rem);font-weight:850;letter-spacing:-.04em}
-.section-heading p{margin-top:5px;color:#78859a;font-size:.86rem}
-.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0}
-.tile{position:relative;min-width:0;min-height:126px;align-items:flex-start;justify-content:center;gap:8px;padding:17px;background:#fff;border:1px solid #e7ebf3;border-radius:18px;box-shadow:0 5px 16px rgba(24,39,75,.045);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
-.tile:hover{transform:translateY(-3px);border-color:#c9c6ff;box-shadow:0 12px 25px rgba(65,70,150,.1)}
-.tile .ic{width:43px;height:43px;border:0;border-radius:13px;background:#f0f1ff;box-shadow:none;font-size:1.25rem}
-.tile .nm{color:#24324a;font-size:.85rem;font-weight:800;text-align:left}
-.tile-note{color:#8792a5;font-size:.72rem;line-height:1.35}
-.tile-featured{border-color:#c9c6ff;background:linear-gradient(145deg,#fff,#f7f6ff)}
-.sec{margin:0 0 12px}
-.sec h3{color:#17243a;font-size:1.05rem}
-.sec a{color:#5b55c8}
-.empty{display:flex;align-items:center;gap:14px;min-height:88px;padding:19px 21px;border:1px dashed #cfd6e4;border-radius:17px;background:#fff;color:#718096;line-height:1.5}
-.empty:before{content:"📘";display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#f0f1ff;font-size:1.2rem}
-.post{align-items:center;min-height:78px;padding:16px 18px;border:1px solid #e7ebf3;border-radius:17px;box-shadow:0 4px 14px rgba(24,39,75,.035)}
-.post .pic{width:44px;height:44px;border-radius:14px;background:#f0f1ff}
-.post .tt{color:#25334a;font-size:.9rem}
-.post .who{color:#78859a;line-height:1.45}
-.post .chip{background:#f0efff;color:#5b55c8}
-nav.bottom{position:fixed;bottom:0;left:0;right:0;grid-template-columns:repeat(6,minmax(0,1fr));padding:9px 10px calc(9px + env(safe-area-inset-bottom));border-top:1px solid #e7ebf3;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);box-shadow:0 -7px 24px rgba(24,39,75,.06)}
-nav.bottom a{min-width:0;min-height:48px;justify-content:center;gap:2px;color:#7c8799;font-size:.65rem}
-nav.bottom a .ic{font-size:1.15rem}
-nav.bottom a.on{padding:4px 5px;background:#f0efff;color:#5b55c8}
-@media(min-width:769px){nav.bottom{position:static;max-width:1120px;margin:0 auto 24px;border:1px solid #e7ebf3;border-radius:16px;box-shadow:0 4px 14px rgba(24,39,75,.04)}}
-@media(max-width:760px){.home-header{padding:12px 16px}.wrap{width:calc(100% - 28px);padding-top:17px}.hero{min-height:170px;padding:23px 21px;border-radius:20px;margin-bottom:25px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.tile{min-height:106px;padding:12px 10px}.tile .ic{width:39px;height:39px}.tile .nm{font-size:.77rem}.tile-note{display:none}.section-heading p{font-size:.78rem}}
-@media(max-width:390px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hleft{gap:9px}.hleft img{width:40px;height:40px}.hleft b{font-size:1rem}.bell,.avatar{width:40px;height:40px}}
-
-</style>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2457d6"><title>DaraQuiz AI — Learning Dashboard</title>
+<link rel="icon" href="favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-cream-theme.css?v=563"><link rel="stylesheet" href="css/daraquiz-design-system.css?v=1"><link rel="stylesheet" href="css/daraquiz-dashboard.css?v=1">
+<script src="js/daraquiz-theme.js?v=1" defer></script><script type="module" src="js/aqs-firebase.js"></script><script src="js/daraquiz-dashboard.js?v=1" defer></script>
+<script src="js/aqs-update-check.js" defer></script>
 </head>
 <body data-aqs-page="index" data-aqs-page-group="dashboard">
-<header class="home-header">
-  <div class="hleft">
-    <img src="img/darapet-logo-brand.png" alt="SmartQuiz logo">
-    <span><small id="greet-time">Good morning</small><b id="greet-name">Hi there 👋</b></span>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <a class="bell" href="notifications.html" aria-label="Notifications">🔔</a>
-    <a class="avatar" href="user-dashboard.html" aria-label="Open my profile">D</a>
-  </div>
-</header>
-
-<div class="wrap">
-  <section class="hero" aria-label="Daily welcome quote">
-    <div class="tag">A thought for today</div>
-    <div class="big" id="q-text">Small steps every day lead to remarkable results.</div>
-    <div class="who" id="q-author">SmartQuiz daily inspiration</div>
-  </section>
-
-  <section class="home-section" aria-labelledby="tools-heading">
-    <div class="section-heading"><div><span class="eyebrow">YOUR LEARNING SPACE</span><h2 id="tools-heading">Explore SmartQuiz</h2><p>Everything you need to learn, create and connect.</p></div></div>
-    <div class="grid">
-      <a class="tile tile-featured" href="quiz-setup.html"><span class="ic">🧠</span><span class="nm">Create Quiz</span><span class="tile-note">Build a practice session</span></a>
-      <a class="tile" href="studyhub.html"><span class="ic">📖</span><span class="nm">Study Hub</span></a>
-      <a class="tile" href="studio.html"><span class="ic">✨</span><span class="nm">Studio AI</span></a>
-      <a class="tile" href="library.html"><span class="ic">📚</span><span class="nm">Library</span></a>
-      <a class="tile" href="image-gen.html"><span class="ic">🎨</span><span class="nm">Image Studio</span></a>
-      <a class="tile" href="multiplayer-dashboard.html"><span class="ic">⚡</span><span class="nm">Multiplayer</span></a>
-      <a class="tile" href="challenge.html"><span class="ic">🏆</span><span class="nm">Challenge</span></a>
-      <a class="tile" href="puzzle.html"><span class="ic">🧩</span><span class="nm">Puzzle Battle</span></a>
-      <a class="tile" href="user-dashboard.html"><span class="ic">💬</span><span class="nm">Dara Social</span></a>
-      <a class="tile" href="text-to-docs.html"><span class="ic">📄</span><span class="nm">Docs Gen</span></a>
-      <a class="tile" href="tts.html"><span class="ic">🎙️</span><span class="nm">Text to Speech</span></a>
-    </div>
-  </section>
-
-  <section class="home-section" aria-labelledby="today-heading">
-    <div class="section-heading"><div><span class="eyebrow">KEEP YOUR MOMENTUM</span><h2 id="today-heading">Your learning today</h2><p>A quick starting point for your next study session.</p></div></div><a href="user-dashboard.html">See all</a></div>
-  <div class="empty">Your recent quiz and study activity will appear here as you use SmartQuiz. Ready to begin? Create a quiz or explore the Study Hub.</div>
-
-  <section class="home-section" aria-labelledby="community-heading">
-    <div class="section-heading"><div><span class="eyebrow">LEARN TOGETHER</span><h2 id="community-heading">Dara Social</h2><p>Connect with other learners and join the conversation.</p></div></div>
-    <a class="post community-link" href="user-dashboard.html" style="text-decoration:none;color:inherit">
-      <div class="pic">💬</div><div><div class="tt">Visit the community <span class="chip">Community</span></div><div class="who">Open Dara Social to see posts, connect with friends and chat.</div></div>
-      <span aria-hidden="true" style="margin-left:auto;color:#7771cb;font-size:1.35rem">→</span>
-    </a>
-  </section>
-</div>
-
-<nav class="bottom">
-  <a href="index.html" class="on"><span class="ic">🏠</span>Home</a>
-  <a href="user-dashboard.html"><span class="ic">💬</span>Discuss</a>
-  <a href="multiplayer-dashboard.html"><span class="ic">⚡</span>Multiplayer</a>
-  <a href="studio.html"><span class="ic">✨</span>AI Coach</a>
-  <a href="library.html"><span class="ic">📚</span>Library</a>
-  <a href="login.html"><span class="ic">👤</span>Me</a>
+<div class="dq-shell">
+<div class="dq-mobile-overlay" id="dq-mobile-overlay"></div>
+<aside class="dq-sidebar" id="dq-sidebar" aria-label="Main navigation">
+<a class="dq-brand" href="index.html"><img src="img/darapet-logo-brand.png" alt="DaraQuiz logo"><span><strong>DaraQuiz AI</strong><small>LEARN · PRACTISE · EXCEL</small></span></a>
+<div class="dq-nav-label">Learning overview</div>
+<nav class="dq-nav">
+<a class="active" href="index.html"><span class="dq-nav-icon">⌂</span>Dashboard</a>
+<a href="quiz-setup.html"><span class="dq-nav-icon">🧠</span>Quiz Generator</a>
+<a href="self-quiz.html"><span class="dq-nav-icon">✍️</span>Self Practice</a>
+<a href="dashboard.html"><span class="dq-nav-icon">🎤</span>Host Quiz</a>
+<a href="multiplayer-dashboard.html"><span class="dq-nav-icon">⚡</span>Multiplayer</a>
+<a href="challenge.html"><span class="dq-nav-icon">🏆</span>Challenge</a>
+<a href="studyco-meet.html"><span class="dq-nav-icon">👥</span>Study Groups</a>
+<a href="studyhub.html"><span class="dq-nav-icon">📚</span>StudyHub</a>
+<a href="ai-teacher.html"><span class="dq-nav-icon">💬</span>AI Teacher</a>
+<a href="image-gen.html"><span class="dq-nav-icon">🎨</span>AI Image Generation</a>
 </nav>
-
-<script src="js/aqs-update-check.js" defer></script>
-<script>
-(function(){
-  var h=new Date().getHours();
-  document.getElementById('greet-time').textContent = h<12?'Good morning':(h<17?'Good afternoon':'Good evening');
-  var quotes=[
-    ["Small steps every day lead to remarkable results.","SmartQuiz daily inspiration"],
-    ["The expert in anything was once a beginner.","SmartQuiz daily inspiration"],
-    ["Consistency beats intensity. Show up today.","SmartQuiz daily inspiration"],
-    ["Every question you ask makes you sharper.","SmartQuiz daily inspiration"],
-    ["Study smart, not just hard.","SmartQuiz daily inspiration"]
-  ];
-  var key=new Date().toDateString();
-  var idx=parseInt(localStorage.getItem('lp_quote_i')||'0',10);
-  if(localStorage.getItem('lp_quote_d')!==key){idx=(idx+1)%quotes.length;localStorage.setItem('lp_quote_i',String(idx));localStorage.setItem('lp_quote_d',key);}
-  var q=quotes[idx]||quotes[0];
-  document.getElementById('q-text').textContent=q[0];
-  document.getElementById('q-author').textContent=q[1];
-})();
-</script>
-</body>
-</html>
+<div class="dq-nav-label">Your resources</div>
+<nav class="dq-nav">
+<a href="library.html"><span class="dq-nav-icon">🗂️</span>Library</a>
+<a href="user-dashboard.html"><span class="dq-nav-icon">🌐</span>Dara Social</a>
+<a href="studio.html"><span class="dq-nav-icon">✨</span>Studio AI</a>
+</nav>
+<div class="dq-sidebar-bottom">
+<a href="profile.html" class="dq-nav"><span class="dq-nav-icon">👤</span>My profile</a>
+<a href="account-settings.html" class="dq-nav"><span class="dq-nav-icon">⚙️</span>Account settings</a>
+<a href="appearance-settings.html" class="dq-nav"><span class="dq-nav-icon">🎨</span>Appearance & theme</a>
+<div class="dq-user-mini"><span class="dq-avatar" id="dq-avatar">D</span><span><strong id="dq-user-name">Loading profile…</strong><small>My learning space</small></span></div>
+</div></aside>
+<main class="dq-main">
+<header class="dq-topbar">
+<div style="display:flex;align-items:center;gap:12px"><button class="dq-menu-toggle" id="dq-menu-toggle" aria-label="Open navigation" aria-expanded="false">☰</button><div class="dq-greeting"><small id="dq-time-greeting">Welcome back</small><h1><span id="dq-greeting-name">there</span> 👋</h1></div></div>
+<div class="dq-top-actions"><a class="dq-icon-btn" href="notifications.html" aria-label="Notifications">🔔</a><a class="dq-icon-btn" href="profile.html" aria-label="My profile">👤</a></div>
+</header>
+<section class="dq-welcome"><div><h2>Your learning journey, all in one place.</h2><p>Plan your study, practise smarter, challenge friends and track your progress with DaraQuiz AI.</p></div><a href="quiz-setup.html">＋ Create a quiz</a></section>
+<section class="dq-section" aria-labelledby="dq-stats-heading"><div class="dq-section-head"><div><h2 id="dq-stats-heading">Your learning at a glance</h2><p>Real statistics from your completed quiz activity.</p></div><span id="dq-stats-note" style="font-size:.7rem;color:var(--dq-muted)">Loading your statistics…</span></div>
+<div class="dq-stat-grid">
+<article class="dq-stat"><div class="dq-stat-top">Learning streak <span class="dq-stat-icon">🔥</span></div><strong id="dq-stat-streak">—</strong><small>Consecutive days with completed quizzes</small></article>
+<article class="dq-stat"><div class="dq-stat-top">Quizzes completed <span class="dq-stat-icon">🏁</span></div><strong id="dq-stat-taken">—</strong><small>Completed quiz attempts</small></article>
+<article class="dq-stat"><div class="dq-stat-top">Average accuracy <span class="dq-stat-icon">🎯</span></div><strong id="dq-stat-accuracy">—</strong><small id="dq-stat-accuracy-note">Based on completed attempts</small></article>
+<article class="dq-stat"><div class="dq-stat-top">Questions answered <span class="dq-stat-icon">📘</span></div><strong id="dq-stat-questions">—</strong><small>Questions across completed attempts</small></article>
+</div></section>
+<section class="dq-section"><div class="dq-section-head"><div><h2>Performance overview</h2><p>See how consistently you have been practising.</p></div></div><div class="dq-analytics">
+<article class="dq-panel"><h3>Quiz activity · last 7 days</h3><p>Number of completed quizzes per day</p><div class="dq-bars" id="dq-week-bars"><div class="dq-chart-empty">Loading activity…</div></div></article>
+<article class="dq-panel"><h3>Accuracy tracker</h3><p>Your average score across completed quiz attempts</p><div class="dq-progress-row"><span>Average accuracy</span><strong id="dq-accuracy-label">—</strong></div><div class="dq-progress-track"><div class="dq-progress-fill" id="dq-accuracy-fill"></div></div><div class="dq-progress-row"><span>Quizzes created</span><strong id="dq-stat-created">—</strong></div><p style="margin-top:12px">Your dashboard updates when your quiz activity is recorded.</p></article>
+</div></section>
+<section class="dq-section"><div class="dq-section-head"><div><h2>All learning tools</h2><p>Every major learning feature is available from your dashboard.</p></div></div>
+<div class="dq-feature-grid">
+<a class="dq-feature" href="quiz-setup.html"><span class="dq-feature-icon">🧠</span><strong>Quiz Generator</strong><small>Create quizzes from topics and learning materials.</small></a>
+<a class="dq-feature" href="self-quiz.html"><span class="dq-feature-icon">✍️</span><strong>Self Practice</strong><small>Practise at your own pace and review answers.</small></a>
+<a class="dq-feature" href="dashboard.html"><span class="dq-feature-icon">🎤</span><strong>Host Quiz</strong><small>Create and manage hosted quiz sessions.</small></a>
+<a class="dq-feature" href="multiplayer-dashboard.html"><span class="dq-feature-icon">⚡</span><strong>Multiplayer</strong><small>Join live quiz rooms and learn together.</small></a>
+<a class="dq-feature" href="challenge.html"><span class="dq-feature-icon">🏆</span><strong>Challenge</strong><small>Take part in competitive quiz challenges.</small></a>
+<a class="dq-feature" href="studyco-meet.html"><span class="dq-feature-icon">👥</span><strong>Study Groups</strong><small>Connect and study with other learners.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">🎓</span><strong>Guided Study</strong><small>Build structured learning plans.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📝</span><strong>AI Notes</strong><small>Generate and organize study notes.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">🗂️</span><strong>Flashcards</strong><small>Review key ideas with flashcards.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📅</span><strong>Study Planner</strong><small>Organize study sessions and goals.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📊</span><strong>GPA Calculator</strong><small>Calculate and track academic results.</small></a>
+<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📈</span><strong>Learning Progress</strong><small>Review your StudyHub learning progress.</small></a>
+<a class="dq-feature" href="ai-teacher.html"><span class="dq-feature-icon">💬</span><strong>AI Teacher</strong><small>Ask questions and understand difficult topics.</small></a>
+<a class="dq-feature" href="image-gen.html"><span class="dq-feature-icon">🎨</span><strong>AI Image Generation</strong><small>Create educational images from prompts.</small></a>
+</div></section>
+<section class="dq-section"><div class="dq-section-head"><div><h2>Recent learning activity</h2><p>Your latest completed quizzes.</p></div></div><article class="dq-panel"><div class="dq-activity" id="dq-recent-activity"><div class="dq-chart-empty">Loading recent activity…</div></div></article></section>
+<footer style="padding:16px 0;color:var(--dq-muted);font-size:.7rem;text-align:center">DaraQuiz AI · Learn smarter, every day.</footer>
+</main></div>
+</body></html>
