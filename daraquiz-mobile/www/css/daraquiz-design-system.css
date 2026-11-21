@@ -41,3 +41,22 @@ body[data-aqs-page] :is(.hero,.prf-hero) .who{color:#dce8ff!important}
 [data-dq-radius="sharp"]{--dq-radius:9px}
 @media(prefers-reduced-motion:no-preference){body[data-aqs-page] :is(a,button,.tile,.aqs-quick-card){transition-duration:.18s}}
 @media(max-width:768px){body[data-aqs-page]{font-size:var(--dq-font-size)}.aqs-sidebar{z-index:10020}}
+
+/* Profile page overrides: keep legacy profile components on the same user-selected palette. */
+body[data-aqs-page="profile"]{background:var(--dq-bg)!important;color:var(--dq-text)!important}
+body[data-aqs-page="profile"] .prf-header{background:var(--dq-header)!important;border-color:var(--dq-border)!important}
+body[data-aqs-page="profile"] .prf-logo{color:var(--dq-text)!important}
+body[data-aqs-page="profile"] .prf-nav a{color:var(--dq-muted)!important}
+body[data-aqs-page="profile"] .prf-nav a:hover{background:var(--dq-primary-soft)!important;color:var(--dq-primary)!important}
+body[data-aqs-page="profile"] .prf-hero{background:radial-gradient(circle at 88% 14%,color-mix(in srgb,var(--dq-accent) 30%,transparent),transparent 32%),linear-gradient(120deg,var(--dq-primary-strong),var(--dq-primary) 62%,var(--dq-secondary))!important;border-color:var(--dq-primary)!important}
+body[data-aqs-page="profile"] .prf-card,body[data-aqs-page="profile"] .prf-learning-card,body[data-aqs-page="profile"] .prf-recent-activity,body[data-aqs-page="profile"] .prf-achievement{background:var(--dq-surface)!important;border-color:var(--dq-border)!important;color:var(--dq-text)!important}
+body[data-aqs-page="profile"] .prf-card-title,body[data-aqs-page="profile"] .prf-info-value,body[data-aqs-page="profile"] .prf-activity-text,body[data-aqs-page="profile"] .prf-danger-label,body[data-aqs-page="profile"] .prf-learning-heading h2,body[data-aqs-page="profile"] .prf-learning-value,body[data-aqs-page="profile"] .prf-recent-title,body[data-aqs-page="profile"] .prf-achievement-name{color:var(--dq-text)!important}
+body[data-aqs-page="profile"] .prf-info-label,body[data-aqs-page="profile"] .prf-activity-time,body[data-aqs-page="profile"] .prf-danger-sub,body[data-aqs-page="profile"] .prf-learning-heading p,body[data-aqs-page="profile"] .prf-learning-label,body[data-aqs-page="profile"] .prf-streak-caption,body[data-aqs-page="profile"] .prf-calendar-legend,body[data-aqs-page="profile"] .prf-empty{color:var(--dq-muted)!important}
+body[data-aqs-page="profile"] .prf-info-icon,body[data-aqs-page="profile"] .prf-learning-icon,body[data-aqs-page="profile"] .prf-card-action,body[data-aqs-page="profile"] .prf-learning-link{background:var(--dq-primary-soft)!important;color:var(--dq-primary)!important;border-color:var(--dq-border)!important}
+body[data-aqs-page="profile"] .prf-info-row,body[data-aqs-page="profile"] .prf-activity-item,body[data-aqs-page="profile"] .prf-danger-row,body[data-aqs-page="profile"] .prf-card-header,body[data-aqs-page="profile"] .prf-quiz-activity-item{border-color:var(--dq-border)!important}
+body[data-aqs-page="profile"] .prf-edit-btn{background:var(--dq-surface)!important;color:var(--dq-primary)!important;border-color:var(--dq-border)!important}
+body[data-aqs-page="profile"] .prf-edit-btn:hover{background:var(--dq-primary-soft)!important}
+body[data-aqs-page="profile"] .prf-day-cell{background:var(--dq-surface-2)!important}
+body[data-aqs-page="profile"] .prf-day-cell.active{background:var(--dq-primary)!important}
+body[data-aqs-page="profile"] .prf-day-cell.today{outline-color:var(--dq-accent)!important}
+body[data-aqs-page="profile"] .prf-profile-input{background:var(--dq-surface)!important;color:var(--dq-text)!important;border-color:var(--dq-border)!important}
