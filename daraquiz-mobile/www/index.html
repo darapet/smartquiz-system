@@ -2,78 +2,71 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2457d6"><title>DaraQuiz AI — Learning Dashboard</title>
+<meta name="theme-color" content="#2457d6"><title>DaraQuiz AI — Home</title>
 <link rel="icon" href="favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/aqs-cream-theme.css?v=563"><link rel="stylesheet" href="css/daraquiz-design-system.css?v=1"><link rel="stylesheet" href="css/daraquiz-dashboard.css?v=1">
-<script src="js/daraquiz-theme.js?v=1" defer></script><script type="module" src="js/aqs-firebase.js"></script><script src="js/daraquiz-dashboard.js?v=1" defer></script>
-<script src="js/aqs-update-check.js" defer></script>
+<link rel="stylesheet" href="css/aqs-cream-theme.css?v=563"><link rel="stylesheet" href="css/daraquiz-design-system.css?v=1"><link rel="stylesheet" href="css/daraquiz-dashboard.css?v=2">
+<script src="js/daraquiz-theme.js?v=1" defer></script><script type="module" src="js/aqs-firebase.js"></script><script src="js/daraquiz-dashboard.js?v=2" defer></script><script src="js/aqs-update-check.js" defer></script>
 </head>
 <body data-aqs-page="index" data-aqs-page-group="dashboard">
 <div class="dq-shell">
 <div class="dq-mobile-overlay" id="dq-mobile-overlay"></div>
 <aside class="dq-sidebar" id="dq-sidebar" aria-label="Main navigation">
-<a class="dq-brand" href="index.html"><img src="img/darapet-logo-brand.png" alt="DaraQuiz logo"><span><strong>DaraQuiz AI</strong><small>LEARN · PRACTISE · EXCEL</small></span></a>
-<div class="dq-nav-label">Learning overview</div>
-<nav class="dq-nav">
-<a class="active" href="index.html"><span class="dq-nav-icon">⌂</span>Dashboard</a>
-<a href="quiz-setup.html"><span class="dq-nav-icon">🧠</span>Quiz Generator</a>
-<a href="self-quiz.html"><span class="dq-nav-icon">✍️</span>Self Practice</a>
-<a href="dashboard.html"><span class="dq-nav-icon">🎤</span>Host Quiz</a>
-<a href="multiplayer-dashboard.html"><span class="dq-nav-icon">⚡</span>Multiplayer</a>
-<a href="challenge.html"><span class="dq-nav-icon">🏆</span>Challenge</a>
-<a href="studyco-meet.html"><span class="dq-nav-icon">👥</span>Study Groups</a>
-<a href="studyhub.html"><span class="dq-nav-icon">📚</span>StudyHub</a>
-<a href="ai-teacher.html"><span class="dq-nav-icon">💬</span>AI Teacher</a>
-<a href="image-gen.html"><span class="dq-nav-icon">🎨</span>AI Image Generation</a>
-</nav>
-<div class="dq-nav-label">Your resources</div>
-<nav class="dq-nav">
-<a href="library.html"><span class="dq-nav-icon">🗂️</span>Library</a>
-<a href="user-dashboard.html"><span class="dq-nav-icon">🌐</span>Dara Social</a>
-<a href="studio.html"><span class="dq-nav-icon">✨</span>Studio AI</a>
+<a class="dq-brand" href="index.html"><img src="img/darapet-logo-brand.png" alt="DaraQuiz AI logo"><span><strong>DaraQuiz AI</strong><small>LEARN · PRACTISE · EXCEL</small></span></a>
+<nav class="dq-nav dq-main-nav" aria-label="Main">
+<a class="active" href="index.html"><span class="dq-nav-icon">⌂</span>Home</a>
+<a href="quiz-setup.html"><span class="dq-nav-icon">▣</span>Quiz Centre <span class="dq-nav-arrow">›</span></a>
+<a href="studyhub.html"><span class="dq-nav-icon">▤</span>StudyHub</a>
+<a href="studio.html"><span class="dq-nav-icon">✧</span>AI Tools</a>
+<a href="multiplayer-dashboard.html"><span class="dq-nav-icon">♧</span>Multiplayer</a>
+<a href="studyco-meet.html"><span class="dq-nav-icon">♧</span>Community</a>
+<a href="library.html"><span class="dq-nav-icon">▤</span>Library</a>
+<a href="notifications.html"><span class="dq-nav-icon">♧</span>Notifications <span class="dq-notice-dot" id="dq-notice-dot" hidden></span></a>
+<a href="user-dashboard.html"><span class="dq-nav-icon">▣</span>My Activity</a>
+<a href="profile.html"><span class="dq-nav-icon">◎</span>Profile</a>
+<a href="account-settings.html"><span class="dq-nav-icon">⚙</span>Settings</a>
+<a href="notifications.html"><span class="dq-nav-icon">?</span>Help &amp; Support</a>
 </nav>
 <div class="dq-sidebar-bottom">
-<a href="profile.html" class="dq-nav"><span class="dq-nav-icon">👤</span>My profile</a>
-<a href="account-settings.html" class="dq-nav"><span class="dq-nav-icon">⚙️</span>Account settings</a>
-<a href="appearance-settings.html" class="dq-nav"><span class="dq-nav-icon">🎨</span>Appearance & theme</a>
-<div class="dq-user-mini"><span class="dq-avatar" id="dq-avatar">D</span><span><strong id="dq-user-name">Loading profile…</strong><small>My learning space</small></span></div>
-</div></aside>
+<div class="dq-pro-card"><span class="dq-pro-crown">♛</span><strong>Upgrade to Pro</strong><p>Unlock more features</p><a href="account-settings.html">Go Pro <span>→</span></a></div>
+<div class="dq-user-mini"><img class="dq-avatar" id="dq-avatar" alt="" hidden><span class="dq-avatar dq-avatar-initial" id="dq-avatar-initial">D</span><span class="dq-user-copy"><strong id="dq-user-name">Loading profile…</strong><small>DaraQuiz learner</small></span></div>
+</div>
+</aside>
 <main class="dq-main">
 <header class="dq-topbar">
-<div style="display:flex;align-items:center;gap:12px"><button class="dq-menu-toggle" id="dq-menu-toggle" aria-label="Open navigation" aria-expanded="false">☰</button><div class="dq-greeting"><small id="dq-time-greeting">Welcome back</small><h1><span id="dq-greeting-name">there</span> 👋</h1></div></div>
-<div class="dq-top-actions"><a class="dq-icon-btn" href="notifications.html" aria-label="Notifications">🔔</a><a class="dq-icon-btn" href="profile.html" aria-label="My profile">👤</a></div>
+<label class="dq-search"><span>⌕</span><input id="dq-search-input" type="search" placeholder="Search for quizzes, topics, or tools…" aria-label="Search DaraQuiz"><kbd>⌕</kbd></label>
+<div class="dq-top-actions">
+<a class="dq-icon-btn dq-notification-btn" href="notifications.html" aria-label="Notifications">♧<i id="dq-top-notice" hidden></i></a>
+<button class="dq-icon-btn" id="dq-theme-toggle" type="button" aria-label="Toggle dark mode">☾</button>
+<div class="dq-profile-menu-wrap"><button class="dq-profile-trigger" id="dq-profile-trigger" type="button" aria-label="Open profile menu"><img id="dq-top-avatar" alt="" hidden><span id="dq-top-avatar-initial">D</span><b>⌄</b></button><div class="dq-profile-menu" id="dq-profile-menu" hidden><strong id="dq-menu-name">Learner</strong><a href="profile.html">View profile</a><a href="account-settings.html">Settings</a><a href="login.html" id="dq-signout-link">Sign out</a></div></div>
+</div>
+<button class="dq-menu-toggle" id="dq-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button>
 </header>
-<section class="dq-welcome"><div><h2>Your learning journey, all in one place.</h2><p>Plan your study, practise smarter, challenge friends and track your progress with DaraQuiz AI.</p></div><a href="quiz-setup.html">＋ Create a quiz</a></section>
-<section class="dq-section" aria-labelledby="dq-stats-heading"><div class="dq-section-head"><div><h2 id="dq-stats-heading">Your learning at a glance</h2><p>Real statistics from your completed quiz activity.</p></div><span id="dq-stats-note" style="font-size:.7rem;color:var(--dq-muted)">Loading your statistics…</span></div>
-<div class="dq-stat-grid">
-<article class="dq-stat"><div class="dq-stat-top">Learning streak <span class="dq-stat-icon">🔥</span></div><strong id="dq-stat-streak">—</strong><small>Consecutive days with completed quizzes</small></article>
-<article class="dq-stat"><div class="dq-stat-top">Quizzes completed <span class="dq-stat-icon">🏁</span></div><strong id="dq-stat-taken">—</strong><small>Completed quiz attempts</small></article>
-<article class="dq-stat"><div class="dq-stat-top">Average accuracy <span class="dq-stat-icon">🎯</span></div><strong id="dq-stat-accuracy">—</strong><small id="dq-stat-accuracy-note">Based on completed attempts</small></article>
-<article class="dq-stat"><div class="dq-stat-top">Questions answered <span class="dq-stat-icon">📘</span></div><strong id="dq-stat-questions">—</strong><small>Questions across completed attempts</small></article>
+<section class="dq-hero">
+<div class="dq-hero-copy"><h1>Welcome back, <span id="dq-greeting-name">Learner</span> <span class="dq-wave">👋</span></h1><p>Keep learning, keep growing with DaraQuiz AI!</p><a href="#dq-quick-actions">Explore Tools <span>→</span></a></div>
+<div class="dq-hero-art" aria-hidden="true"><span class="dq-art-orbit"></span><span class="dq-art-books">▰<br>▰<br>▰</span><span class="dq-art-cap">🎓</span><span class="dq-art-trophy">🏆</span><span class="dq-art-spark">✦　·　✦</span></div>
+</section>
+<section class="dq-stat-grid" aria-label="Learning statistics">
+<article class="dq-stat"><span class="dq-stat-icon dq-blue">▤</span><div><strong id="dq-stat-taken">—</strong><small>Quizzes Taken</small></div><span class="dq-stat-change" id="dq-stat-taken-change">↗</span></article>
+<article class="dq-stat"><span class="dq-stat-icon dq-green">◎</span><div><strong id="dq-stat-accuracy">—</strong><small>Accuracy</small></div><span class="dq-stat-change" id="dq-stat-accuracy-change">↗</span></article>
+<article class="dq-stat"><span class="dq-stat-icon dq-orange">♨</span><div><strong id="dq-stat-streak">—</strong><small>Day Streak</small></div><span class="dq-stat-change">↗</span></article>
+<article class="dq-stat"><span class="dq-stat-icon dq-purple">✓</span><div><strong id="dq-stat-questions">—</strong><small>Questions Answered</small></div><span class="dq-stat-change">↗</span></article>
+</section>
+<div class="dq-dashboard-grid">
+<section class="dq-progress-panel dq-card">
+<div class="dq-card-heading"><h2><span>▥</span> Your Learning Progress</h2><label class="dq-period-select">This Week <span>⌄</span></label></div>
+<div class="dq-chart-wrap"><div class="dq-y-labels"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div><svg id="dq-progress-chart" viewBox="0 0 700 170" role="img" aria-label="Your quiz activity over the last seven days"><defs><linearGradient id="dq-chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2457d6" stop-opacity=".25"/><stop offset="1" stop-color="#2457d6" stop-opacity="0"/></linearGradient></defs><g class="dq-chart-grid"><path d="M0 8H700 M0 46H700 M0 84H700 M0 122H700 M0 160H700"/></g><path id="dq-chart-area" d="M0 140 L116 112 L233 94 L350 72 L466 88 L583 48 L700 60 L700 160 L0 160Z" fill="url(#dq-chart-fill)"/><path id="dq-chart-line" d="M0 140 L116 112 L233 94 L350 72 L466 88 L583 48 L700 60" fill="none" stroke="#1749ed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g id="dq-chart-points"><circle cx="0" cy="140" r="5"/><circle cx="116" cy="112" r="5"/><circle cx="233" cy="94" r="5"/><circle cx="350" cy="72" r="5"/><circle cx="466" cy="88" r="5"/><circle cx="583" cy="48" r="5"/><circle cx="700" cy="60" r="5"/></g></svg><div class="dq-x-labels" id="dq-chart-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div>
+</section>
+<aside class="dq-profile-card dq-card"><div class="dq-card-heading"><h2>Your Profile</h2><a href="profile.html">View Profile <span>→</span></a></div><div class="dq-profile-info"><div class="dq-profile-photo-wrap"><img id="dq-profile-photo" alt="" hidden><span id="dq-profile-initial">D</span><i></i></div><div class="dq-profile-details"><strong id="dq-profile-name">Learner</strong><small id="dq-profile-role">DaraQuiz learner</small><div class="dq-profile-progress"><span id="dq-profile-progress-fill"></span></div><small class="dq-progress-caption"><b id="dq-profile-progress-value">—</b> learning accuracy</small></div></div><a class="dq-level-card" href="self-quiz.html"><span>⭐</span><span><b>Keep moving forward</b><small>Complete more quizzes to grow your learning progress.</small></span><i>→</i></a></aside>
+<section class="dq-quick-panel dq-card" id="dq-quick-actions"><div class="dq-card-heading"><h2><span>ϟ</span> Quick Actions</h2><a href="quiz-setup.html">Explore All <span>→</span></a></div><div class="dq-quick-grid">
+<a class="dq-quick-card quick-blue" href="quiz-setup.html"><span>♧</span><b>Create a Quiz</b><small>Build your own quiz</small><i>→</i></a>
+<a class="dq-quick-card quick-green" href="self-quiz.html"><span>▶</span><b>Self Practice</b><small>Sharpen your skills</small><i>→</i></a>
+<a class="dq-quick-card quick-purple" href="multiplayer-dashboard.html"><span>♧</span><b>Multiplayer</b><small>Play with others</small><i>→</i></a>
+<a class="dq-quick-card quick-orange" href="challenge.html"><span>♜</span><b>Challenges</b><small>Test your limits</small><i>→</i></a>
 </div></section>
-<section class="dq-section"><div class="dq-section-head"><div><h2>Performance overview</h2><p>See how consistently you have been practising.</p></div></div><div class="dq-analytics">
-<article class="dq-panel"><h3>Quiz activity · last 7 days</h3><p>Number of completed quizzes per day</p><div class="dq-bars" id="dq-week-bars"><div class="dq-chart-empty">Loading activity…</div></div></article>
-<article class="dq-panel"><h3>Accuracy tracker</h3><p>Your average score across completed quiz attempts</p><div class="dq-progress-row"><span>Average accuracy</span><strong id="dq-accuracy-label">—</strong></div><div class="dq-progress-track"><div class="dq-progress-fill" id="dq-accuracy-fill"></div></div><div class="dq-progress-row"><span>Quizzes created</span><strong id="dq-stat-created">—</strong></div><p style="margin-top:12px">Your dashboard updates when your quiz activity is recorded.</p></article>
-</div></section>
-<section class="dq-section"><div class="dq-section-head"><div><h2>All learning tools</h2><p>Every major learning feature is available from your dashboard.</p></div></div>
-<div class="dq-feature-grid">
-<a class="dq-feature" href="quiz-setup.html"><span class="dq-feature-icon">🧠</span><strong>Quiz Generator</strong><small>Create quizzes from topics and learning materials.</small></a>
-<a class="dq-feature" href="self-quiz.html"><span class="dq-feature-icon">✍️</span><strong>Self Practice</strong><small>Practise at your own pace and review answers.</small></a>
-<a class="dq-feature" href="dashboard.html"><span class="dq-feature-icon">🎤</span><strong>Host Quiz</strong><small>Create and manage hosted quiz sessions.</small></a>
-<a class="dq-feature" href="multiplayer-dashboard.html"><span class="dq-feature-icon">⚡</span><strong>Multiplayer</strong><small>Join live quiz rooms and learn together.</small></a>
-<a class="dq-feature" href="challenge.html"><span class="dq-feature-icon">🏆</span><strong>Challenge</strong><small>Take part in competitive quiz challenges.</small></a>
-<a class="dq-feature" href="studyco-meet.html"><span class="dq-feature-icon">👥</span><strong>Study Groups</strong><small>Connect and study with other learners.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">🎓</span><strong>Guided Study</strong><small>Build structured learning plans.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📝</span><strong>AI Notes</strong><small>Generate and organize study notes.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">🗂️</span><strong>Flashcards</strong><small>Review key ideas with flashcards.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📅</span><strong>Study Planner</strong><small>Organize study sessions and goals.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📊</span><strong>GPA Calculator</strong><small>Calculate and track academic results.</small></a>
-<a class="dq-feature" href="studyhub.html"><span class="dq-feature-icon">📈</span><strong>Learning Progress</strong><small>Review your StudyHub learning progress.</small></a>
-<a class="dq-feature" href="puzzle.html"><span class="dq-feature-icon">🧩</span><strong>Puzzle Battle</strong><small>Play a quick knowledge puzzle or challenge a friend.</small></a>
-<a class="dq-feature" href="ai-teacher.html"><span class="dq-feature-icon">💬</span><strong>AI Teacher</strong><small>Ask questions and understand difficult topics.</small></a>
-<a class="dq-feature" href="image-gen.html"><span class="dq-feature-icon">🎨</span><strong>AI Image Generation</strong><small>Create educational images from prompts.</small></a>
-</div></section>
-<section class="dq-section"><div class="dq-section-head"><div><h2>Recent learning activity</h2><p>Your latest completed quizzes.</p></div></div><article class="dq-panel"><div class="dq-activity" id="dq-recent-activity"><div class="dq-chart-empty">Loading recent activity…</div></div></article></section>
-<footer style="padding:16px 0;color:var(--dq-muted);font-size:.7rem;text-align:center">DaraQuiz AI · Learn smarter, every day.</footer>
+<aside class="dq-recent-panel dq-card"><div class="dq-card-heading"><h2><span>◷</span> Recent Activity</h2><a href="user-dashboard.html">View All <span>→</span></a></div><div class="dq-recent-list" id="dq-recent-activity"><p class="dq-empty">Your latest learning activity will appear here.</p></div></aside>
+<section class="dq-continue-panel dq-card"><div class="dq-card-heading"><h2><span>▤</span> Continue Learning</h2><div class="dq-carousel-controls"><button id="dq-continue-prev" type="button" disabled>‹</button><span id="dq-continue-count">1 / 1</span><button id="dq-continue-next" type="button" disabled>›</button></div></div><div class="dq-continue-content"><div class="dq-continue-thumb">🎓<span>📚</span></div><div><b id="dq-continue-title">Ready for your next quiz?</b><small id="dq-continue-description">Pick up where you left off or start a fresh practice session.</small></div><a href="self-quiz.html" id="dq-continue-link">Continue <span>→</span></a></div></section>
+<aside class="dq-ai-promo"><div class="dq-promo-art" aria-hidden="true">🚀 <span>✦</span></div><div><b>Study Smarter with AI</b><small>Get personalised study plans and AI assistance.</small><a href="ai-teacher.html">Try AI Tools <span>→</span></a></div><div class="dq-robot" aria-hidden="true">🤖</div></aside>
+</div>
+<footer class="dq-footer">DaraQuiz AI · Learn · Practise · Excel</footer>
 </main></div>
 </body></html>
