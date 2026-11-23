@@ -2074,6 +2074,7 @@ async function actionChCreate(data) {
     var playerToken = generateToken(12);
     var hostPlayer = {
         position:     0,
+        player_uid:   hostUid,
         player_name:  playerName,
         player_token: playerToken,
         character_id: (data.character_id || 'koda').trim(),
@@ -2134,6 +2135,7 @@ async function actionChJoin(data) {
     var characterId = (data.character_id || 'koda').trim();
     var playerData = {
         position:     position,
+        player_uid:   (auth.currentUser || window._aqsFirebaseUser || {}).uid || '',
         player_name:  playerName,
         player_token: playerToken,
         character_id: characterId,
