@@ -1567,9 +1567,13 @@ async function actionToggleQuizStatus(data) {
 }
 
 async function actionGetQuizActivity(data) {
+    var user = requireAuth();
     var quizId = String(data.quiz_id || '');
+    if (!quizId) throw new Error('Quiz ID is required.');
     var quizSnap = await getDoc(doc(db, 'quizzes', quizId));
-    var qData = quizSnap.exists() ? quizSnap.data() : {};
+    if (!quizSnap.exists()) throw new Error('Quiz not found.');
+    var qData = quizSnap.data();
+    if (qData.host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
     /* No orderBy — avoids composite index requirement; sort client-side */
     var attSnap2 = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', quizId)));
     var acts = attSnap2.docs.map(function(d) {
@@ -1709,16 +1713,21 @@ async function actionSubmitAttempt(data) {
     var takerEmail = (data.taker_email || '').trim();
 
     /* Save attempt */
+    var signedInParticipant = auth.currentUser || window._aqsFirebaseUser;
     var attemptDoc = {
         quiz_id:          quizId,
         quiz_token:       quizToken || quizData.quiz_token || '',
         participant_name: participantName,
+        participant_uid:  signedInParticipant && !signedInParticipant.isAnonymous ? signedInParticipant.uid : '',
         custom_form_data: typeof customData === 'string' ? customData : JSON.stringify(customData),
         score:            score,
         total:            total,
         answers:          answersMap,
         finished_at:      serverTimestamp()
     };
+    if (typeof data.duration_seconds !== 'undefined' && Number.isFinite(Number(data.duration_seconds))) {
+        attemptDoc.duration_seconds = Math.max(0, Number(data.duration_seconds));
+    }
     if (takerEmail) attemptDoc.taker_email = takerEmail;
     var attemptRef = await addDoc(collection(db, 'attempts'), attemptDoc);
 
@@ -1734,7 +1743,11 @@ async function actionSubmitAttempt(data) {
 }
 
 async function actionGetAttendance(data) {
+    var user = requireAuth();
     var quizId = String(data.quiz_id || '');
+    var ownerSnap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!ownerSnap.exists()) throw new Error('Quiz not found.');
+    if (ownerSnap.data().host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
     /* No orderBy — avoids composite index requirement; sort client-side instead */
     var attSnap3 = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', quizId)));
     var quizSnap3 = await getDoc(doc(db, 'quizzes', quizId));
@@ -1764,39 +1777,41 @@ async function actionGetAttendance(data) {
 }
 
 async function actionGetAttemptAnalysis(data) {
-    var attemptId = data.attempt_id || '';
+    var user = requireAuth();
+    var attemptId = String(data.attempt_id || '');
+    if (!attemptId) throw new Error('Attempt ID is required.');
     var snap = await getDoc(doc(db, 'attempts', attemptId));
     if (!snap.exists()) throw new Error('Attempt not found.');
     var a = snap.data();
-
-    /* Get quiz questions for analysis */
     var quizSnap = await getDoc(doc(db, 'quizzes', a.quiz_id));
-    var quizData = quizSnap.exists() ? quizSnap.data() : {};
+    if (!quizSnap.exists()) throw new Error('The original quiz is no longer available.');
+    var quizData = quizSnap.data();
+    var isOwner = quizData.host_uid === user.uid;
+    var isParticipant = a.participant_uid === user.uid;
+    if (!isOwner && !isParticipant) throw new Error('You do not have permission to view this report.');
     var questions = quizData.questions || [];
-    var answers   = a.answers || [];
-
+    var answers = a.answers || {};
     var analysis = questions.map(function(q, i) {
-        var given   = answers[i];
-        var correct = q.correct_answer_index;
+        var raw = Array.isArray(answers) ? answers[i] : (answers[i] !== undefined ? answers[i] : answers[String(i)]);
+        var written = q.type === 'short' || q.type === 'written' || q.type === 'german';
+        var given = raw === undefined || raw === null || raw === '' ? -1 : (written ? String(raw) : Number(raw));
+        var correct = written ? (q.answer || '') : Number(q.correct_answer_index);
+        var isCorrect = written
+            ? (given !== -1 && String(given).trim().toLowerCase() === String(correct).trim().toLowerCase())
+            : (given !== -1 && Number(given) === Number(correct));
         return {
-            question:     q.question,
-            options:      q.options,
-            correct:      correct,
-            given:        given !== undefined ? given : -1,
-            is_correct:   given === correct,
-            explanation:  q.explanation || ''
+            question: q.question || '', options: q.options || [], type: q.type || 'mcq',
+            correct: correct, given: given, is_correct: isCorrect,
+            answer: q.answer || '', explanation: q.explanation || '',
+            time_spent_seconds: Array.isArray(a.question_times) ? Number(a.question_times[i]) || null : null
         };
     });
-
     return {
-        attempt_id:       attemptId,
-        participant_name: a.participant_name,
-        score:            a.score,
-        total:            a.total,
-        quiz_title:       quizData.title || '',
-        subject:          quizData.subject || '',
-        analysis:         analysis,
-        finished_at:      tsToStr(a.finished_at)
+        attempt_id: attemptId, participant_name: a.participant_name || 'Anonymous',
+        score: a.score, total: a.total, quiz_title: quizData.title || '',
+        subject: quizData.subject || '', host_name: quizData.host_name || '',
+        finished_at: tsToStr(a.finished_at), duration_seconds: a.duration_seconds || null,
+        analysis: analysis
     };
 }
 
@@ -1841,10 +1856,12 @@ async function actionGetMyAttempts(data) {
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = user.displayName || profile.name || user.email || '';
 
-    /* Single where only — avoids composite index; sort + limit client-side */
-    var snap = await getDocs(
-        query(collection(db, 'attempts'), where('participant_name', '==', name))
-    );
+    /* Prefer stable account ownership; retain name matching only for legacy attempts
+       created before participant_uid was stored. */
+    var snap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
+    if (snap.empty && name) {
+        snap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
+    }
 
     var results = [];
     for (var d of snap.docs) {
