@@ -1733,8 +1733,11 @@ async function actionSubmitAttempt(data) {
     var answersMap      = {};
     var customData      = {};
 
+    var questionTimes = [];
     try { answersMap  = JSON.parse(data.answers          || '{}'); } catch(_) {}
     try { customData  = JSON.parse(data.custom_form_data || data.custom_data || '{}'); } catch(_) {}
+    try { questionTimes = JSON.parse(data.question_times || '[]'); } catch(_) {}
+    if (!Array.isArray(questionTimes)) questionTimes = [];
 
     /* Resolve quizId from token if needed */
     if (!quizId && quizToken) {
@@ -1794,6 +1797,11 @@ async function actionSubmitAttempt(data) {
     };
     if (typeof data.duration_seconds !== 'undefined' && Number.isFinite(Number(data.duration_seconds))) {
         attemptDoc.duration_seconds = Math.max(0, Number(data.duration_seconds));
+    }
+    if (questionTimes.length) {
+        attemptDoc.question_times = questionTimes.slice(0, total).map(function(v) {
+            return Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0;
+        });
     }
     if (takerEmail) attemptDoc.taker_email = takerEmail;
     var attemptRef = await addDoc(collection(db, 'attempts'), attemptDoc);
