@@ -3181,6 +3181,21 @@ async function actionGetMyStats() {
         var count = attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === dayKey; }).length;
         weeklyActivity.push({ day: day.toLocaleDateString('en', { weekday: 'short' }), count: count });
     }
+    /* Complete activity series for the dashboard's Month and Year controls. */
+    var monthlyActivity = [];
+    for (var monthOffset = 29; monthOffset >= 0; monthOffset--) {
+        var monthDay = new Date(); monthDay.setHours(0, 0, 0, 0); monthDay.setDate(monthDay.getDate() - monthOffset);
+        var monthKey = monthDay.toISOString().slice(0, 10);
+        monthlyActivity.push({ day: monthDay.getDate(), label: monthDay.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+            count: attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === monthKey; }).length });
+    }
+    var yearlyActivity = [];
+    for (var yearOffset = 11; yearOffset >= 0; yearOffset--) {
+        var monthStart = new Date(new Date().getFullYear(), new Date().getMonth() - yearOffset, 1);
+        var nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+        yearlyActivity.push({ day: monthStart.toLocaleDateString('en', { month: 'short' }),
+            count: attempts.filter(function(a) { return a._ms && new Date(a._ms) >= monthStart && new Date(a._ms) < nextMonth; }).length });
+    }
 
     return {
         display_name: displayName,
@@ -3190,7 +3205,7 @@ async function actionGetMyStats() {
         quiz_streak: quizStreak,
         total_questions_answered: totalQuestions,
         average_accuracy: totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
-        weekly_activity: weeklyActivity,
+        weekly_activity: weeklyActivity,\n        monthly_activity: monthlyActivity,\n        yearly_activity: yearlyActivity,
         app_days: appDays.slice(-120),
         app_days_count: appDays.length,
         recent_activity: recent
