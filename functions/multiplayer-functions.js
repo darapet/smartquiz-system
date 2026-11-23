@@ -133,6 +133,24 @@ const actions = {
     return { rooms };
   },
 
+  async details({ id, uid }) {
+    const room = await roomRef(id).get();
+    if (!room.exists) throw new Error('Room not found.');
+    const isHost = room.data().hostUid === uid;
+    const me = await playerRef(id, uid).get();
+    if (!isHost && !me.exists) throw new Error('You are not a member of this room.');
+    const playersSnap = await roomRef(id).collection('players').get();
+    const players = playersSnap.docs.map(p => {
+      const x = p.data();
+      return { uid: p.id, name: x.name || 'Player', avatar: Number(x.avatar || 0), score: Number(x.score || 0), answered: Number(x.answered || 0), correct: Number(x.correct || 0), wrong: Number(x.wrong || 0), totalLatency: Number(x.totalLatency || 0), ready: Boolean(x.ready) };
+    }).sort((a,b) => b.score-a.score);
+    const d = room.data();
+    return {
+      room: { roomId: id, title: d.title || 'Multiplayer room', phase: d.phase || 'unknown', questionCount: Number(d.questionCount || 0), playerCount: Number(d.playerCount || players.length), difficulty: d.difficulty || '', secondsPerQuestion: Number(d.secondsPerQuestion || 0), createdAt: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0, completedAt: d.completedAt && d.completedAt.toMillis ? d.completedAt.toMillis() : 0 },
+      players
+    };
+  },
+
   async peek({ id }) {
     const [room, claims] = await Promise.all([roomRef(id).get(), roomRef(id).collection('avatarClaims').get()]);
     if (!room.exists) throw new Error('Room not found.');
