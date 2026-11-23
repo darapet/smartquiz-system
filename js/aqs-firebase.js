@@ -1858,6 +1858,17 @@ async function actionGetAttemptAnalysis(data) {
     if (!isOwner && !isParticipant) throw new Error('You do not have permission to view this report.');
     var questions = quizData.questions || [];
     var answers = a.answers || {};
+    var participantAvatar = '', hostName = '';
+    try {
+        if (a.participant_uid) {
+            var participantProfile = await getDoc(doc(db, 'users', a.participant_uid));
+            if (participantProfile.exists()) participantAvatar = participantProfile.data().avatar || participantProfile.data().photoURL || '';
+        }
+        if (quizData.host_uid) {
+            var hostProfile = await getDoc(doc(db, 'users', quizData.host_uid));
+            if (hostProfile.exists()) hostName = hostProfile.data().name || hostProfile.data().displayName || '';
+        }
+    } catch (_) {}
     var analysis = questions.map(function(q, i) {
         var raw = Array.isArray(answers) ? answers[i] : (answers[i] !== undefined ? answers[i] : answers[String(i)]);
         var written = q.type === 'short' || q.type === 'written' || q.type === 'german';
