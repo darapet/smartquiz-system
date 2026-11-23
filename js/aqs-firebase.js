@@ -1652,6 +1652,11 @@ async function actionGetQuizActivity(data) {
             num_questions: qData.num_questions || (qData.questions || []).length,
             status:        qData.status || 'draft',
             host_status:   qData.host_status || 'active',
+            mode:          qData.mode || 'exam',
+            time_limit:    qData.time_limit || null,
+            allow_retakes: qData.allow_retakes !== undefined ? qData.allow_retakes : null,
+            quiz_note:     qData.quiz_note || '',
+            custom_form:   qData.custom_form || [],
             created_at:    tsToStr(qData.created_at)
         },
         attempts: acts
