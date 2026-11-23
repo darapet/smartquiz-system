@@ -3149,8 +3149,9 @@ async function actionGetMyQuizzes(data) {
     if (!user) return [];
     var lim = parseInt(data && data.limit) || 5;
     var snap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
-    var items = snap.docs.map(function(d) {
+    var items = await Promise.all(snap.docs.map(async function(d) {
         var q = d.data();
+        var attemptSnap = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', d.id)));
         return {
             id:            d.id,
             title:         q.title,
@@ -3161,9 +3162,10 @@ async function actionGetMyQuizzes(data) {
             mode:          q.mode,
             status:        q.status,
             quiz_url:      q.quiz_url || '',
+            attempt_count: attemptSnap.size,
             created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
         };
-    });
+    }));
     items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
     return items.slice(0, lim);
 }
