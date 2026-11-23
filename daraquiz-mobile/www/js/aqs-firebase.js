@@ -1733,8 +1733,11 @@ async function actionSubmitAttempt(data) {
     var answersMap      = {};
     var customData      = {};
 
+    var questionTimes = [];
     try { answersMap  = JSON.parse(data.answers          || '{}'); } catch(_) {}
     try { customData  = JSON.parse(data.custom_form_data || data.custom_data || '{}'); } catch(_) {}
+    try { questionTimes = JSON.parse(data.question_times || '[]'); } catch(_) {}
+    if (!Array.isArray(questionTimes)) questionTimes = [];
 
     /* Resolve quizId from token if needed */
     if (!quizId && quizToken) {
@@ -1794,6 +1797,11 @@ async function actionSubmitAttempt(data) {
     };
     if (typeof data.duration_seconds !== 'undefined' && Number.isFinite(Number(data.duration_seconds))) {
         attemptDoc.duration_seconds = Math.max(0, Number(data.duration_seconds));
+    }
+    if (questionTimes.length) {
+        attemptDoc.question_times = questionTimes.slice(0, total).map(function(v) {
+            return Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0;
+        });
     }
     if (takerEmail) attemptDoc.taker_email = takerEmail;
     var attemptRef = await addDoc(collection(db, 'attempts'), attemptDoc);
@@ -1858,6 +1866,17 @@ async function actionGetAttemptAnalysis(data) {
     if (!isOwner && !isParticipant) throw new Error('You do not have permission to view this report.');
     var questions = quizData.questions || [];
     var answers = a.answers || {};
+    var participantAvatar = '', hostName = '';
+    try {
+        if (a.participant_uid) {
+            var participantProfile = await getDoc(doc(db, 'users', a.participant_uid));
+            if (participantProfile.exists()) participantAvatar = participantProfile.data().avatar || participantProfile.data().photoURL || '';
+        }
+        if (quizData.host_uid) {
+            var hostProfile = await getDoc(doc(db, 'users', quizData.host_uid));
+            if (hostProfile.exists()) hostName = hostProfile.data().name || hostProfile.data().displayName || '';
+        }
+    } catch (_) {}
     var analysis = questions.map(function(q, i) {
         var raw = Array.isArray(answers) ? answers[i] : (answers[i] !== undefined ? answers[i] : answers[String(i)]);
         var written = q.type === 'short' || q.type === 'written' || q.type === 'german';
