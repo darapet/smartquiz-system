@@ -597,8 +597,9 @@
         var sessions = loadSessions();
         var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
-        var title = firstUser ? String(firstUser.content).slice(0, 55) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'Chat');
-        if (title.length === 55) title += '\u2026';
+        var promptTitle = firstUser ? String(firstUser.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim() : '';
+        var title = promptTitle ? promptTitle.slice(0, 44) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'New conversation');
+        if (promptTitle.length > 44) title += '…';
         var sess = { id: conversationId, title: title, messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
@@ -636,12 +637,15 @@
         if (empty) empty.style.display = 'none';
 
         sessions.forEach(function (sess) {
+            var firstPrompt = (sess.messages || []).find(function (message) { return message.role === 'user'; });
+            var displayTitle = firstPrompt ? String(firstPrompt.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim().slice(0, 44) : (sess.title || 'New conversation');
+            if (firstPrompt && String(firstPrompt.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim().length > 44) displayTitle += '…';
             var item      = document.createElement('div');
             item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
             item.dataset.id = sess.id;
             item.innerHTML =
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<span class="dts-drawer-item-title">' + escHtml(displayTitle) + '</span>' +
                 '<button class="dts-drawer-item-rename" type="button" title="Rename">Rename</button>' +
                 '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
 
@@ -1993,6 +1997,52 @@
         if (historyBtn) {
             historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
         }
+
+        var editToolsBtn = document.getElementById('dts-edit-tools-btn');
+        var editToolsMenu = document.getElementById('dts-edit-tools-menu');
+        if (editToolsBtn && editToolsMenu) {
+            editToolsBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                editToolsMenu.hidden = !editToolsMenu.hidden;
+            });
+            document.addEventListener('click', function (event) {
+                if (!editToolsMenu.contains(event.target) && event.target !== editToolsBtn) editToolsMenu.hidden = true;
+            });
+        }
+        var editPromptBtn = document.getElementById('dts-edit-last-prompt');
+        if (editPromptBtn) editPromptBtn.addEventListener('click', function () {
+            var lastPrompt = chatHistory.slice().reverse().find(function (message) { return message.role === 'user'; });
+            var composer = document.getElementById('dts-input');
+            if (!lastPrompt || !composer) { window.alert('There is no prompt to edit yet.'); return; }
+            composer.value = typeof lastPrompt.content === 'string' ? lastPrompt.content : String(lastPrompt.content || '');
+            composer.focus();
+            composer.dispatchEvent(new Event('input', { bubbles: true }));
+            editToolsMenu.hidden = true;
+        });
+        var copyResponseBtn = document.getElementById('dts-copy-last-response');
+        if (copyResponseBtn) copyResponseBtn.addEventListener('click', function () {
+            var lastResponse = chatHistory.slice().reverse().find(function (message) { return message.role === 'assistant'; });
+            var text = lastResponse && typeof lastResponse.content === 'string' ? lastResponse.content : '';
+            if (!text) { window.alert('There is no text response to copy yet.'); return; }
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ window.alert('Response copied.'); }).catch(function(){ window.alert('Could not copy this response.'); });
+            else window.alert('Clipboard access is not available in this browser.');
+            editToolsMenu.hidden = true;
+        });
+        var shareChatBtn = document.getElementById('dts-share-chat-btn');
+        if (shareChatBtn) shareChatBtn.addEventListener('click', async function () {
+            var lines = chatHistory.map(function (message) {
+                var role = message.role === 'user' ? 'You' : 'Studio AI';
+                var content = typeof message.content === 'string' ? message.content : (message.content && message.content.prompt ? '[Image: ' + message.content.prompt + ']' : '[Attachment]');
+                return role + ': ' + content;
+            });
+            if (!lines.length) { window.alert('Start a conversation before sharing it.'); return; }
+            var shareText = lines.join('\n\n');
+            try {
+                if (navigator.share) await navigator.share({ title: 'Studio AI conversation', text: shareText });
+                else if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(shareText); window.alert('Conversation copied. You can now share it.'); }
+                else window.alert('Sharing is not available in this browser.');
+            } catch (error) { if (!error || error.name !== 'AbortError') window.alert('Could not share this conversation.'); }
+        });
 
         /* ── History drawer close button ── */
         var historyClose = document.getElementById('dts-history-close');
