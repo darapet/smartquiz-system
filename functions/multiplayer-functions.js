@@ -113,6 +113,44 @@ const freshPlayer = (name, avatar, ready) => ({
 
 const actions = {
   /* Anyone signed in can look at a room before joining: title and which avatars are taken. */
+  async history({ uid }) {
+    const snap = await db.collection('multiplayerRooms').where('hostUid', '==', uid).limit(100).get();
+    const rooms = await Promise.all(snap.docs.map(async roomDoc => {
+      const d = roomDoc.data();
+      const playersSnap = await roomDoc.ref.collection('players').get();
+      const players = playersSnap.docs.map(p => {
+        const x = p.data();
+        return { name: x.name || 'Player', score: Number(x.score || 0), answered: Number(x.answered || 0), correct: Number(x.correct || 0), wrong: Number(x.wrong || 0), avatar: Number(x.avatar || 0) };
+      });
+      return {
+        roomId: roomDoc.id, title: d.title || 'Multiplayer room', phase: d.phase || 'unknown',
+        playerCount: Number(d.playerCount || players.length), questionCount: Number(d.questionCount || 0),
+        difficulty: d.difficulty || '', createdAt: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0,
+        completedAt: d.completedAt && d.completedAt.toMillis ? d.completedAt.toMillis() : 0, players
+      };
+    }));
+    rooms.sort((a,b) => b.createdAt-a.createdAt);
+    return { rooms };
+  },
+
+  async details({ id, uid }) {
+    const room = await roomRef(id).get();
+    if (!room.exists) throw new Error('Room not found.');
+    const isHost = room.data().hostUid === uid;
+    const me = await playerRef(id, uid).get();
+    if (!isHost && !me.exists) throw new Error('You are not a member of this room.');
+    const playersSnap = await roomRef(id).collection('players').get();
+    const players = playersSnap.docs.map(p => {
+      const x = p.data();
+      return { uid: p.id, name: x.name || 'Player', avatar: Number(x.avatar || 0), score: Number(x.score || 0), answered: Number(x.answered || 0), correct: Number(x.correct || 0), wrong: Number(x.wrong || 0), totalLatency: Number(x.totalLatency || 0), ready: Boolean(x.ready) };
+    }).sort((a,b) => b.score-a.score);
+    const d = room.data();
+    return {
+      room: { roomId: id, title: d.title || 'Multiplayer room', phase: d.phase || 'unknown', questionCount: Number(d.questionCount || 0), playerCount: Number(d.playerCount || players.length), difficulty: d.difficulty || '', secondsPerQuestion: Number(d.secondsPerQuestion || 0), createdAt: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0, completedAt: d.completedAt && d.completedAt.toMillis ? d.completedAt.toMillis() : 0 },
+      players
+    };
+  },
+
   async peek({ id }) {
     const [room, claims] = await Promise.all([roomRef(id).get(), roomRef(id).collection('avatarClaims').get()]);
     if (!room.exists) throw new Error('Room not found.');
@@ -353,7 +391,7 @@ exports.multiplayer = onRequest({ cors: true, region: 'us-central1', timeoutSeco
     const handler = Object.prototype.hasOwnProperty.call(actions, action) ? actions[action] : null;
     if (!handler) return res.status(400).json({ error: 'Unknown multiplayer action.' });
     let id = '';
-    if (action !== 'create' && action !== 'generate') {
+    if (action !== 'create' && action !== 'generate' && action !== 'history') {
       id = String(body.roomId || '');
       if (!ROOM_ID.test(id)) throw new Error('Invalid room id.');
     }

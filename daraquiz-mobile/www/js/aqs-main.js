@@ -1877,7 +1877,7 @@
         async function _groqCall(prompt) {
             if (typeof window.groqFetch !== 'function') throw new Error('groqFetch not available');
             var isMath = isMathSubject('', prompt);
-            var groqModel = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+            var groqModel = isMath ? 'openai/gpt-oss-120b' : 'openai/gpt-oss-20b';
             var ctrl = new AbortController();
             var tid  = setTimeout(function() { ctrl.abort(); }, 25000);
             var res  = await window.groqFetch({
@@ -2470,6 +2470,9 @@
         let timerInterval   = null;
         let secondsLeft     = 0;
         let quizSubmitted   = false;
+        let quizStartedAt   = 0;
+        let questionTimeTotals = [];
+        let questionShownAt = 0;
         let repickable      = {};  /* keys: question idx; true = answer can be changed on this question */
         let participantName = '';
         let customFormValues= {};
@@ -2697,6 +2700,9 @@
            START QUIZ
         ───────────────────────────────────────────────────── */
         function startQuiz() {
+            quizStartedAt = Date.now();
+            questionTimeTotals = [];
+            questionShownAt = 0;
             currentQuestion = 0;
             currentSection  = 0;
             userAnswers     = {};
@@ -2828,6 +2834,10 @@
            SHOW QUESTION
         ───────────────────────────────────────────────────── */
         function showQuestion(idx) {
+            if (questionShownAt && currentQuestion >= 0) {
+                questionTimeTotals[currentQuestion] = (questionTimeTotals[currentQuestion] || 0) + Math.max(0, (Date.now() - questionShownAt) / 1000);
+            }
+            questionShownAt = Date.now();
             currentQuestion = idx;
             const q   = questions[idx];
             var normalizedType = String(q.type || '').toLowerCase().replace(/[_-]/g, '');
@@ -3046,6 +3056,8 @@
                 taker_email:      takerEmail,
                 answers:          JSON.stringify(answersMap),
                 custom_form_data: JSON.stringify(customFormValues),
+                duration_seconds: Math.max(0, Math.round((Date.now() - quizStartedAt) / 1000)),
+                question_times: JSON.stringify((function(){var totals=questionTimeTotals.slice();if(questionShownAt&&currentQuestion>=0)totals[currentQuestion]=(totals[currentQuestion]||0)+Math.max(0,(Date.now()-questionShownAt)/1000);return totals.map(function(x){return Math.round(x||0);});})()),
             }, function (res) {
                 $('#aqs-ambient-bg').hide();
                 stopParticles();

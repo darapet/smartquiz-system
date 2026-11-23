@@ -698,6 +698,8 @@ async function handleAction(data) {
         case 'aqs_get_quiz_for_pdf':  return await actionGetQuizForPdf(data);
         case 'aqs_get_quiz_for_edit': return await actionGetQuizForEdit(data);
         case 'aqs_publish_quiz':      return await actionPublishQuiz(data);
+        case 'aqs_update_self_quiz_title': return await actionUpdateSelfQuizTitle(data);
+        case 'aqs_update_quiz_metadata': return await actionUpdateQuizMetadata(data);
         case 'aqs_delete_quiz':      return await actionDeleteQuiz(data);
         case 'aqs_toggle_quiz_status': return await actionToggleQuizStatus(data);
         case 'aqs_get_quiz_activity':  return await actionGetQuizActivity(data);
@@ -1482,6 +1484,54 @@ async function actionPublishQuiz(data) {
     };
 }
 
+async function actionUpdateSelfQuizTitle(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    var title = String(data.title || '').trim();
+    if (!quizId || !title || title.length > 150) throw new Error('Enter a quiz name of 1 to 150 characters.');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    var q = snap.data();
+    if (q.host_uid !== user.uid) throw new Error('Permission denied.');
+    if (q.quiz_note !== 'Created in Self Quiz Studio') throw new Error('This is not a Self Quiz Studio quiz.');
+    await updateDoc(doc(db, 'quizzes', quizId), { title: title, updated_at: serverTimestamp() });
+    return { updated: true, title: title };
+}
+
+async function actionUpdateQuizMetadata(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    if (!quizId) throw new Error('Quiz ID is required.');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    var existing = snap.data();
+    if (existing.host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
+    var update = { updated_at: serverTimestamp() };
+    ['title', 'subject', 'quiz_note'].forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) update[key] = String(data[key] || '').trim();
+    });
+    if (Object.prototype.hasOwnProperty.call(data, 'time_limit')) {
+        var limitSeconds = parseInt(data.time_limit, 10);
+        if (!Number.isFinite(limitSeconds) || limitSeconds < 1 || limitSeconds > 600) throw new Error('Time limit must be between 1 and 600 minutes.');
+        update.time_limit = limitSeconds;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'allow_retakes')) {
+        var retakes = parseInt(data.allow_retakes, 10);
+        if (![0, 1].includes(retakes)) throw new Error('Invalid retake setting.');
+        update.allow_retakes = retakes;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'show_results')) update.show_results = data.show_results === true || data.show_results === 'true';
+    if (Object.prototype.hasOwnProperty.call(data, 'expiry_datetime')) {
+        if (data.expiry_datetime) {
+            var expiry = new Date(data.expiry_datetime);
+            if (Number.isNaN(expiry.getTime())) throw new Error('Invalid expiry date.');
+            update.expires_at = Timestamp.fromDate(expiry);
+        } else update.expires_at = null;
+    }
+    await updateDoc(doc(db, 'quizzes', quizId), update);
+    return { updated: true, quiz_id: quizId, questions_unchanged: true };
+}
+
 async function actionDeleteQuiz(data) {
     var user   = requireAuth();
     var quizId = String(data.quiz_id || '');
@@ -1567,16 +1617,32 @@ async function actionToggleQuizStatus(data) {
 }
 
 async function actionGetQuizActivity(data) {
+    var user = requireAuth();
     var quizId = String(data.quiz_id || '');
+    if (!quizId) throw new Error('Quiz ID is required.');
     var quizSnap = await getDoc(doc(db, 'quizzes', quizId));
-    var qData = quizSnap.exists() ? quizSnap.data() : {};
+    if (!quizSnap.exists()) throw new Error('Quiz not found.');
+    var qData = quizSnap.data();
+    if (qData.host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
     /* No orderBy — avoids composite index requirement; sort client-side */
     var attSnap2 = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', quizId)));
-    var acts = attSnap2.docs.map(function(d) {
+    var acts = await Promise.all(attSnap2.docs.map(async function(d) {
         var a = d.data();
         var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
-        return { id: d.id, participant: a.participant_name || 'Anonymous', score: a.score, total: a.total, finished_at: tsToStr(a.finished_at), _ms: ms };
-    });
+        var avatar = '';
+        if (a.participant_uid) {
+            try {
+                var profileSnap = await getDoc(doc(db, 'users', a.participant_uid));
+                if (profileSnap.exists()) avatar = profileSnap.data().avatar || profileSnap.data().photoURL || '';
+            } catch (_) {}
+        }
+        return {
+            id: d.id, participant: a.participant_name || 'Anonymous',
+            participant_uid: a.participant_uid || '', avatar: avatar,
+            score: a.score, total: a.total, duration_seconds: a.duration_seconds || null,
+            finished_at: tsToStr(a.finished_at), _ms: ms
+        };
+    }));
     acts.sort(function(a, b) { return b._ms - a._ms; });
     return {
         quiz_id: quizId,
@@ -1586,6 +1652,11 @@ async function actionGetQuizActivity(data) {
             num_questions: qData.num_questions || (qData.questions || []).length,
             status:        qData.status || 'draft',
             host_status:   qData.host_status || 'active',
+            mode:          qData.mode || 'exam',
+            time_limit:    qData.time_limit || null,
+            allow_retakes: qData.allow_retakes !== undefined ? qData.allow_retakes : null,
+            quiz_note:     qData.quiz_note || '',
+            custom_form:   qData.custom_form || [],
             created_at:    tsToStr(qData.created_at)
         },
         attempts: acts
@@ -1662,8 +1733,11 @@ async function actionSubmitAttempt(data) {
     var answersMap      = {};
     var customData      = {};
 
+    var questionTimes = [];
     try { answersMap  = JSON.parse(data.answers          || '{}'); } catch(_) {}
     try { customData  = JSON.parse(data.custom_form_data || data.custom_data || '{}'); } catch(_) {}
+    try { questionTimes = JSON.parse(data.question_times || '[]'); } catch(_) {}
+    if (!Array.isArray(questionTimes)) questionTimes = [];
 
     /* Resolve quizId from token if needed */
     if (!quizId && quizToken) {
@@ -1709,16 +1783,26 @@ async function actionSubmitAttempt(data) {
     var takerEmail = (data.taker_email || '').trim();
 
     /* Save attempt */
+    var signedInParticipant = auth.currentUser || window._aqsFirebaseUser;
     var attemptDoc = {
         quiz_id:          quizId,
         quiz_token:       quizToken || quizData.quiz_token || '',
         participant_name: participantName,
+        participant_uid:  signedInParticipant && !signedInParticipant.isAnonymous ? signedInParticipant.uid : '',
         custom_form_data: typeof customData === 'string' ? customData : JSON.stringify(customData),
         score:            score,
         total:            total,
         answers:          answersMap,
         finished_at:      serverTimestamp()
     };
+    if (typeof data.duration_seconds !== 'undefined' && Number.isFinite(Number(data.duration_seconds))) {
+        attemptDoc.duration_seconds = Math.max(0, Number(data.duration_seconds));
+    }
+    if (questionTimes.length) {
+        attemptDoc.question_times = questionTimes.slice(0, total).map(function(v) {
+            return Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0;
+        });
+    }
     if (takerEmail) attemptDoc.taker_email = takerEmail;
     var attemptRef = await addDoc(collection(db, 'attempts'), attemptDoc);
 
@@ -1734,7 +1818,11 @@ async function actionSubmitAttempt(data) {
 }
 
 async function actionGetAttendance(data) {
+    var user = requireAuth();
     var quizId = String(data.quiz_id || '');
+    var ownerSnap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!ownerSnap.exists()) throw new Error('Quiz not found.');
+    if (ownerSnap.data().host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
     /* No orderBy — avoids composite index requirement; sort client-side instead */
     var attSnap3 = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', quizId)));
     var quizSnap3 = await getDoc(doc(db, 'quizzes', quizId));
@@ -1764,39 +1852,52 @@ async function actionGetAttendance(data) {
 }
 
 async function actionGetAttemptAnalysis(data) {
-    var attemptId = data.attempt_id || '';
+    var user = requireAuth();
+    var attemptId = String(data.attempt_id || '');
+    if (!attemptId) throw new Error('Attempt ID is required.');
     var snap = await getDoc(doc(db, 'attempts', attemptId));
     if (!snap.exists()) throw new Error('Attempt not found.');
     var a = snap.data();
-
-    /* Get quiz questions for analysis */
     var quizSnap = await getDoc(doc(db, 'quizzes', a.quiz_id));
-    var quizData = quizSnap.exists() ? quizSnap.data() : {};
+    if (!quizSnap.exists()) throw new Error('The original quiz is no longer available.');
+    var quizData = quizSnap.data();
+    var isOwner = quizData.host_uid === user.uid;
+    var isParticipant = a.participant_uid === user.uid;
+    if (!isOwner && !isParticipant) throw new Error('You do not have permission to view this report.');
     var questions = quizData.questions || [];
-    var answers   = a.answers || [];
-
+    var answers = a.answers || {};
+    var participantAvatar = '', hostName = '';
+    try {
+        if (a.participant_uid) {
+            var participantProfile = await getDoc(doc(db, 'users', a.participant_uid));
+            if (participantProfile.exists()) participantAvatar = participantProfile.data().avatar || participantProfile.data().photoURL || '';
+        }
+        if (quizData.host_uid) {
+            var hostProfile = await getDoc(doc(db, 'users', quizData.host_uid));
+            if (hostProfile.exists()) hostName = hostProfile.data().name || hostProfile.data().displayName || '';
+        }
+    } catch (_) {}
     var analysis = questions.map(function(q, i) {
-        var given   = answers[i];
-        var correct = q.correct_answer_index;
+        var raw = Array.isArray(answers) ? answers[i] : (answers[i] !== undefined ? answers[i] : answers[String(i)]);
+        var written = q.type === 'short' || q.type === 'written' || q.type === 'german';
+        var given = raw === undefined || raw === null || raw === '' ? -1 : (written ? String(raw) : Number(raw));
+        var correct = written ? (q.answer || '') : Number(q.correct_answer_index);
+        var isCorrect = written
+            ? (given !== -1 && String(given).trim().toLowerCase() === String(correct).trim().toLowerCase())
+            : (given !== -1 && Number(given) === Number(correct));
         return {
-            question:     q.question,
-            options:      q.options,
-            correct:      correct,
-            given:        given !== undefined ? given : -1,
-            is_correct:   given === correct,
-            explanation:  q.explanation || ''
+            question: q.question || '', options: q.options || [], type: q.type || 'mcq',
+            correct: correct, given: given, is_correct: isCorrect,
+            answer: q.answer || '', explanation: q.explanation || '',
+            time_spent_seconds: Array.isArray(a.question_times) ? Number(a.question_times[i]) || null : null
         };
     });
-
     return {
-        attempt_id:       attemptId,
-        participant_name: a.participant_name,
-        score:            a.score,
-        total:            a.total,
-        quiz_title:       quizData.title || '',
-        subject:          quizData.subject || '',
-        analysis:         analysis,
-        finished_at:      tsToStr(a.finished_at)
+        attempt_id: attemptId, participant_name: a.participant_name || 'Anonymous',
+        score: a.score, total: a.total, quiz_title: quizData.title || '',
+        subject: quizData.subject || '', host_name: quizData.host_name || '',
+        finished_at: tsToStr(a.finished_at), duration_seconds: a.duration_seconds || null,
+        analysis: analysis
     };
 }
 
@@ -1841,10 +1942,12 @@ async function actionGetMyAttempts(data) {
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = user.displayName || profile.name || user.email || '';
 
-    /* Single where only — avoids composite index; sort + limit client-side */
-    var snap = await getDocs(
-        query(collection(db, 'attempts'), where('participant_name', '==', name))
-    );
+    /* Prefer stable account ownership; retain name matching only for legacy attempts
+       created before participant_uid was stored. */
+    var snap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
+    if (snap.empty && name) {
+        snap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
+    }
 
     var results = [];
     for (var d of snap.docs) {
@@ -1971,6 +2074,7 @@ async function actionChCreate(data) {
     var playerToken = generateToken(12);
     var hostPlayer = {
         position:     0,
+        player_uid:   hostUid,
         player_name:  playerName,
         player_token: playerToken,
         character_id: (data.character_id || 'koda').trim(),
@@ -2031,6 +2135,7 @@ async function actionChJoin(data) {
     var characterId = (data.character_id || 'koda').trim();
     var playerData = {
         position:     position,
+        player_uid:   (auth.currentUser || window._aqsFirebaseUser || {}).uid || '',
         player_name:  playerName,
         player_token: playerToken,
         character_id: characterId,
@@ -3097,8 +3202,9 @@ async function actionGetMyQuizzes(data) {
     if (!user) return [];
     var lim = parseInt(data && data.limit) || 5;
     var snap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
-    var items = snap.docs.map(function(d) {
+    var items = await Promise.all(snap.docs.map(async function(d) {
         var q = d.data();
+        var attemptSnap = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', d.id)));
         return {
             id:            d.id,
             title:         q.title,
@@ -3109,9 +3215,10 @@ async function actionGetMyQuizzes(data) {
             mode:          q.mode,
             status:        q.status,
             quiz_url:      q.quiz_url || '',
+            attempt_count: attemptSnap.size,
             created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
         };
-    });
+    }));
     items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
     return items.slice(0, lim);
 }
