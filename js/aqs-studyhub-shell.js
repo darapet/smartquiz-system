@@ -17,7 +17,7 @@ var NAV=[['overview','🏠','Home'],['guided','🎓','Guided Study'],['notes','�
 var TOOLS=[['guided','🎓','Guided Study','AI learning plans and lessons','c1'],['notes','📝','AI Notes','Structured notes on any topic','c2'],['flashcards','🗂️','Flashcards','Decks and spaced recall','c3'],['gpa','📊','GPA Calculator','5.0 scale GPA','c4'],['planner','📅','Planner','Goals and deadlines','c5'],['progress','📈','Progress','Streak, stats, activity','c6']];
 var WORK=['guided','notes','flashcards','gpa','planner'];
 function build(){
- if(document.body.classList.contains('shs')||!$('sh-panel-guided'))return;
+ if(document.body.classList.contains('shs')||!$('sh-panel-guided')||$('sh-panel-overview'))return;
  document.body.classList.add('shs');touch();
  var main=$('sh-panel-guided').parentNode;
  var side=el('aside','shs-side');var br=el('div','shs-brand','📚 StudyHub');br.append(el('small','','AI study companion'));side.append(br);
