@@ -597,9 +597,9 @@
         var sessions = loadSessions();
         var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
-        var promptTitle = firstUser ? String(firstUser.content).replace(/\\s+/g, ' ').trim().split(/[.!?\\n]/)[0].trim() : '';
+        var promptTitle = firstUser ? String(firstUser.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim() : '';
         var title = promptTitle ? promptTitle.slice(0, 44) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'New conversation');
-        if (promptTitle.length > 44) title += '\\u2026';
+        if (promptTitle.length > 44) title += '…';
         var sess = { id: conversationId, title: title, messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
@@ -2033,7 +2033,7 @@
                 return role + ': ' + content;
             });
             if (!lines.length) { window.alert('Start a conversation before sharing it.'); return; }
-            var shareText = lines.join('\\n\\n');
+            var shareText = lines.join('\n\n');
             try {
                 if (navigator.share) await navigator.share({ title: 'Studio AI conversation', text: shareText });
                 else if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(shareText); window.alert('Conversation copied. You can now share it.'); }
