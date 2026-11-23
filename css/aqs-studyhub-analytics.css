@@ -96,3 +96,6 @@ body.sh-analytics-on .sh-workspace-back{margin-bottom:14px}
 .shd-shell{display:block!important;min-height:100vh}
 .shd-main{margin-left:248px}
 @media(max-width:820px){.shd-global-sidebar{position:relative!important;width:100%;height:auto;min-height:0}.shd-main{margin-left:0}}
+
+body.sh-analytics-on .sh-panel:not(#sh-panel-overview){margin-left:248px!important;padding:28px clamp(18px,3vw,42px)!important;max-width:none!important}
+@media(max-width:820px){body.sh-analytics-on .sh-panel:not(#sh-panel-overview){margin-left:0!important;padding:18px 14px 32px!important}}
