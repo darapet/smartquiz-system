@@ -698,6 +698,7 @@ async function handleAction(data) {
         case 'aqs_get_quiz_for_pdf':  return await actionGetQuizForPdf(data);
         case 'aqs_get_quiz_for_edit': return await actionGetQuizForEdit(data);
         case 'aqs_publish_quiz':      return await actionPublishQuiz(data);
+        case 'aqs_update_self_quiz_title': return await actionUpdateSelfQuizTitle(data);
         case 'aqs_update_quiz_metadata': return await actionUpdateQuizMetadata(data);
         case 'aqs_delete_quiz':      return await actionDeleteQuiz(data);
         case 'aqs_toggle_quiz_status': return await actionToggleQuizStatus(data);
@@ -1481,6 +1482,20 @@ async function actionPublishQuiz(data) {
         expires_at:    updateData.expires_at ? updateData.expires_at.toDate().toISOString().replace('T',' ').substring(0,19) : null,
         print_quiz:    { title: q.title, subject: q.subject, mode: q.mode, questions: q.questions || [] }
     };
+}
+
+async function actionUpdateSelfQuizTitle(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    var title = String(data.title || '').trim();
+    if (!quizId || !title || title.length > 150) throw new Error('Enter a quiz name of 1 to 150 characters.');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    var q = snap.data();
+    if (q.host_uid !== user.uid) throw new Error('Permission denied.');
+    if (q.quiz_note !== 'Created in Self Quiz Studio') throw new Error('This is not a Self Quiz Studio quiz.');
+    await updateDoc(doc(db, 'quizzes', quizId), { title: title, updated_at: serverTimestamp() });
+    return { updated: true, title: title };
 }
 
 async function actionUpdateQuizMetadata(data) {
