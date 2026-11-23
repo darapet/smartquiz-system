@@ -637,12 +637,15 @@
         if (empty) empty.style.display = 'none';
 
         sessions.forEach(function (sess) {
+            var firstPrompt = (sess.messages || []).find(function (message) { return message.role === 'user'; });
+            var displayTitle = firstPrompt ? String(firstPrompt.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim().slice(0, 44) : (sess.title || 'New conversation');
+            if (firstPrompt && String(firstPrompt.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim().length > 44) displayTitle += '…';
             var item      = document.createElement('div');
             item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
             item.dataset.id = sess.id;
             item.innerHTML =
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<span class="dts-drawer-item-title">' + escHtml(displayTitle) + '</span>' +
                 '<button class="dts-drawer-item-rename" type="button" title="Rename">Rename</button>' +
                 '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
 
