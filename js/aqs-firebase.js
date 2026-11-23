@@ -698,6 +698,7 @@ async function handleAction(data) {
         case 'aqs_get_quiz_for_pdf':  return await actionGetQuizForPdf(data);
         case 'aqs_get_quiz_for_edit': return await actionGetQuizForEdit(data);
         case 'aqs_publish_quiz':      return await actionPublishQuiz(data);
+        case 'aqs_update_quiz_metadata': return await actionUpdateQuizMetadata(data);
         case 'aqs_delete_quiz':      return await actionDeleteQuiz(data);
         case 'aqs_toggle_quiz_status': return await actionToggleQuizStatus(data);
         case 'aqs_get_quiz_activity':  return await actionGetQuizActivity(data);
@@ -1480,6 +1481,40 @@ async function actionPublishQuiz(data) {
         expires_at:    updateData.expires_at ? updateData.expires_at.toDate().toISOString().replace('T',' ').substring(0,19) : null,
         print_quiz:    { title: q.title, subject: q.subject, mode: q.mode, questions: q.questions || [] }
     };
+}
+
+async function actionUpdateQuizMetadata(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    if (!quizId) throw new Error('Quiz ID is required.');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    var existing = snap.data();
+    if (existing.host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
+    var update = { updated_at: serverTimestamp() };
+    ['title', 'subject', 'quiz_note'].forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) update[key] = String(data[key] || '').trim();
+    });
+    if (Object.prototype.hasOwnProperty.call(data, 'time_limit')) {
+        var limitSeconds = parseInt(data.time_limit, 10);
+        if (!Number.isFinite(limitSeconds) || limitSeconds < 1 || limitSeconds > 600) throw new Error('Time limit must be between 1 and 600 minutes.');
+        update.time_limit = limitSeconds;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'allow_retakes')) {
+        var retakes = parseInt(data.allow_retakes, 10);
+        if (![0, 1].includes(retakes)) throw new Error('Invalid retake setting.');
+        update.allow_retakes = retakes;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'show_results')) update.show_results = data.show_results === true || data.show_results === 'true';
+    if (Object.prototype.hasOwnProperty.call(data, 'expiry_datetime')) {
+        if (data.expiry_datetime) {
+            var expiry = new Date(data.expiry_datetime);
+            if (Number.isNaN(expiry.getTime())) throw new Error('Invalid expiry date.');
+            update.expires_at = Timestamp.fromDate(expiry);
+        } else update.expires_at = null;
+    }
+    await updateDoc(doc(db, 'quizzes', quizId), update);
+    return { updated: true, quiz_id: quizId, questions_unchanged: true };
 }
 
 async function actionDeleteQuiz(data) {
