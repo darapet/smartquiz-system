@@ -2470,6 +2470,7 @@
         let timerInterval   = null;
         let secondsLeft     = 0;
         let quizSubmitted   = false;
+        let quizStartedAt   = 0;
         let repickable      = {};  /* keys: question idx; true = answer can be changed on this question */
         let participantName = '';
         let customFormValues= {};
@@ -2697,6 +2698,7 @@
            START QUIZ
         ───────────────────────────────────────────────────── */
         function startQuiz() {
+            quizStartedAt = Date.now();
             currentQuestion = 0;
             currentSection  = 0;
             userAnswers     = {};
@@ -3046,6 +3048,7 @@
                 taker_email:      takerEmail,
                 answers:          JSON.stringify(answersMap),
                 custom_form_data: JSON.stringify(customFormValues),
+                duration_seconds: Math.max(0, Math.round((Date.now() - quizStartedAt) / 1000)),
             }, function (res) {
                 $('#aqs-ambient-bg').hide();
                 stopParticles();
