@@ -163,3 +163,56 @@ body[data-aqs-page="take-quiz"] .aqs-leaderboard-section td{border-bottom-color:
 @media(prefers-reduced-motion:reduce){
  body[data-aqs-page="take-quiz"],body[data-aqs-page="take-quiz"] *{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+
+/* Unified quiz workflow polish — applied to learner quiz creation, taking,
+   result review and management screens without changing quiz logic. */
+body.aqs-full-page-body .aqs-phase2-page-header{min-height:48px;padding:10px clamp(14px,3vw,32px);display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.94);border-bottom:1px solid #e4eaf3;box-shadow:0 2px 12px rgba(23,32,51,.035)}
+body.aqs-full-page-body .aqs-phase2-page-title{font-weight:750;letter-spacing:-.02em}
+body.aqs-full-page-body .aqs-phase2-back{font-weight:700;text-decoration:none}
+body.aqs-full-page-body .aqs-site-header{position:sticky;top:0;z-index:30}
+body.aqs-full-page-body .aqs-site-header-inner{min-height:66px;max-width:1440px;padding-inline:clamp(14px,3vw,30px)}
+body.aqs-full-page-body .aqs-site-nav-link{font-weight:650;transition:color .16s ease,background .16s ease}
+body.aqs-full-page-body .aqs-page-main{padding-top:clamp(24px,4vw,48px);padding-bottom:64px}
+body.aqs-full-page-body .aqs-btn{min-height:43px;border-radius:11px;font-weight:750;letter-spacing:.005em;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
+body.aqs-full-page-body .aqs-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 7px 17px rgba(18,48,74,.12)}
+body.aqs-full-page-body .aqs-btn:focus-visible,
+body.aqs-full-page-body a:focus-visible,
+body.aqs-full-page-body button:focus-visible,
+body.aqs-full-page-body input:focus-visible,
+body.aqs-full-page-body select:focus-visible,
+body.aqs-full-page-body textarea:focus-visible{outline:3px solid rgba(45,111,218,.28);outline-offset:2px}
+body.aqs-full-page-body input:not([type=checkbox]):not([type=radio]),
+body.aqs-full-page-body select,body.aqs-full-page-body textarea{border-radius:11px;transition:border-color .16s ease,box-shadow .16s ease}
+body.aqs-full-page-body input:not([type=checkbox]):not([type=radio]):focus,
+body.aqs-full-page-body select:focus,body.aqs-full-page-body textarea:focus{border-color:#3979e7;box-shadow:0 0 0 3px rgba(57,121,231,.12);outline:0}
+body.aqs-full-page-body .aqs-create-wrap,
+body.aqs-full-page-body .self-quiz-card,
+body.aqs-full-page-body .section-card,
+body.aqs-full-page-body .aqs-card{border-radius:18px;background:#fff;box-shadow:0 8px 26px rgba(25,45,80,.055)}
+body.aqs-full-page-body .aqs-card-header{border-radius:16px 16px 0 0}
+body.aqs-full-page-body .aqs-notice-banner{border-radius:14px}
+body.aqs-full-page-body .aqs-format-card{border-radius:14px;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+body.aqs-full-page-body .aqs-format-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(25,45,80,.08)}
+body.aqs-full-page-body .aqs-source-tab{border-radius:10px;font-weight:700}
+body.aqs-full-page-body .aqs-upload-zone{border-radius:15px;background:#f8faff;border:1.5px dashed #b9c8df;transition:border-color .16s ease,background .16s ease}
+body.aqs-full-page-body .aqs-upload-zone:hover{border-color:#3979e7;background:#f1f6ff}
+body.aqs-full-page-body .aqs-progress-wrap{border-radius:20px;overflow:hidden}
+body.aqs-full-page-body .aqs-spinner{border-color:#e7edf6;border-top-color:#2468df}
+body.aqs-full-page-body .aqs-results-header{border-radius:20px}
+body.aqs-full-page-body .aqs-review-section{margin-top:22px}
+body.aqs-full-page-body .aqs-review-item{border-radius:14px;margin:12px 0;padding:17px}
+body.aqs-full-page-body .aqs-review-item .aqs-explanation{border-radius:10px;padding:12px;background:#f2f6ff}
+body.aqs-full-page-body .aqs-table-wrap{border:1px solid #e5eaf2;border-radius:14px;overflow:auto;background:#fff}
+body.aqs-full-page-body table{border-collapse:collapse}
+body.aqs-full-page-body th{font-weight:750}
+body.aqs-full-page-body td,body.aqs-full-page-body th{padding:12px 14px}
+@media(max-width:700px){
+ body.aqs-full-page-body .aqs-page-main{padding-top:20px;padding-bottom:40px}
+ body.aqs-full-page-body .aqs-phase2-page-title{font-size:.88rem}
+ body.aqs-full-page-body .aqs-site-header-inner{min-height:58px}
+ body.aqs-full-page-body .aqs-btn{min-height:42px}
+}
+@media(prefers-reduced-motion:reduce){
+ body.aqs-full-page-body *,body.aqs-full-page-body *::before,body.aqs-full-page-body *::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
