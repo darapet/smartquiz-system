@@ -1626,11 +1626,23 @@ async function actionGetQuizActivity(data) {
     if (qData.host_uid !== user.uid) throw new Error('Permission denied — you do not own this quiz.');
     /* No orderBy — avoids composite index requirement; sort client-side */
     var attSnap2 = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', quizId)));
-    var acts = attSnap2.docs.map(function(d) {
+    var acts = await Promise.all(attSnap2.docs.map(async function(d) {
         var a = d.data();
         var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
-        return { id: d.id, participant: a.participant_name || 'Anonymous', score: a.score, total: a.total, finished_at: tsToStr(a.finished_at), _ms: ms };
-    });
+        var avatar = '';
+        if (a.participant_uid) {
+            try {
+                var profileSnap = await getDoc(doc(db, 'users', a.participant_uid));
+                if (profileSnap.exists()) avatar = profileSnap.data().avatar || profileSnap.data().photoURL || '';
+            } catch (_) {}
+        }
+        return {
+            id: d.id, participant: a.participant_name || 'Anonymous',
+            participant_uid: a.participant_uid || '', avatar: avatar,
+            score: a.score, total: a.total, duration_seconds: a.duration_seconds || null,
+            finished_at: tsToStr(a.finished_at), _ms: ms
+        };
+    }));
     acts.sort(function(a, b) { return b._ms - a._ms; });
     return {
         quiz_id: quizId,
