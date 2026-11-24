@@ -287,6 +287,23 @@
 }
 @media(prefers-reduced-motion:reduce){.dts-inline-image-spinner,.dts-inline-image-progress span{animation:none}}
 </style>
+<style id="dts-studio-history-redesign">
+body[data-aqs-page="studio"] .dts-history-search{display:flex;align-items:center;gap:9px;margin:0 16px 13px;padding:0 12px;min-height:44px;border:1px solid #dce7f8;border-radius:13px;background:#f7faff;color:#6680a8;flex-shrink:0}
+body[data-aqs-page="studio"] .dts-history-search svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+body[data-aqs-page="studio"] .dts-history-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#12366f;font:500 13px Inter,sans-serif}
+body[data-aqs-page="studio"] .dts-history-search input::placeholder{color:#8295b3}
+body[data-aqs-page="studio"] #dts-history-count{font-size:11px;color:#7890b5;white-space:nowrap}
+body[data-aqs-page="studio"] .dts-history-group-label{padding:13px 7px 7px;color:#8295b3;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+body[data-aqs-page="studio"] .dts-drawer-item{position:relative;min-height:66px!important;align-items:flex-start!important;padding:11px 10px!important}
+body[data-aqs-page="studio"] .dts-drawer-item>svg{margin-top:3px}
+body[data-aqs-page="studio"] .dts-drawer-item-title{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
+body[data-aqs-page="studio"] .dts-drawer-item-meta{display:block;margin-top:4px;color:#8295b3;font-size:10px;font-weight:500}
+body[data-aqs-page="studio"] .dts-drawer-item-rename,body[data-aqs-page="studio"] .dts-drawer-item-del{align-self:center!important;opacity:.45!important;color:#31558e!important}
+body[data-aqs-page="studio"] .dts-drawer-item-rename:hover,body[data-aqs-page="studio"] .dts-drawer-item-del:hover{opacity:1!important}
+body[data-aqs-page="studio"] .dts-drawer-list{scrollbar-width:thin;scrollbar-color:#c7d8f4 transparent}
+@media(max-width:768px){body[data-aqs-page="studio"] .dts-history-search{margin-left:13px;margin-right:13px}body[data-aqs-page="studio"] .dts-drawer-item{min-height:62px!important}}
+</style>
+
 </head>
 <body class="dts-body aqs-full-page-body" data-aqs-page="studio" data-aqs-page-group="studio AI">
 
@@ -574,7 +591,8 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
     <span>History</span>
   </div>
-  <div class="dts-drawer-list" id="dts-history-list">
+  <label class="dts-history-search" for="dts-history-search-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="dts-history-search-input" type="search" placeholder="Search conversations…" autocomplete="off"><span id="dts-history-count"></span></label>
+   <div class="dts-drawer-list" id="dts-history-list">
     <div class="dts-drawer-empty" id="dts-history-empty">Your conversations will appear here.</div>
   </div>
   <button class="dts-drawer-new" id="dts-new-chat" type="button">

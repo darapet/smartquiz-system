@@ -595,11 +595,14 @@
     function saveSession() {
         if (!conversationId || (!chatHistory.length && !attachedFiles.length && !attachedImages.length)) return;
         var sessions = loadSessions();
-        var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
+        var idx = sessions.findIndex(function (s) { return s.id === conversationId; });
+        var existing = idx >= 0 ? sessions[idx] : null;
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
-        var title = firstUser ? String(firstUser.content).slice(0, 55) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'Chat');
-        if (title.length === 55) title += '\u2026';
-        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
+        var promptTitle = firstUser ? String(firstUser.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim() : '';
+        var autoTitle = promptTitle ? promptTitle.slice(0, 44) : (attachedFiles.length || attachedImages.length ? 'Chat with attachments' : 'New conversation');
+        if (promptTitle.length > 44) autoTitle += '…';
+        var title = existing && existing.customTitle && existing.title ? existing.title : autoTitle;
+        var sess = { id: conversationId, title: title, customTitle: !!(existing && existing.customTitle), messages: chatHistory.slice(), attachments: attachedFiles.concat(attachedImages).map(function (file) { return { id: file.id, name: file.name, kind: file.kind, type: file.type, size: file.size }; }), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
@@ -620,58 +623,99 @@
     }
 
     function renderHistoryList() {
-        var list  = document.getElementById('dts-history-list');
+        var list = document.getElementById('dts-history-list');
         var empty = document.getElementById('dts-history-empty');
+        var searchInput = document.getElementById('dts-history-search-input');
+        var count = document.getElementById('dts-history-count');
         if (!list) return;
 
-        list.querySelectorAll('.dts-drawer-item').forEach(function (el) {
+        list.querySelectorAll('.dts-drawer-item,.dts-history-group-label').forEach(function (el) {
             el.parentNode.removeChild(el);
         });
 
         var sessions = loadSessions();
-        if (!sessions.length) {
-            if (empty) empty.style.display = '';
-            return;
-        }
-        if (empty) empty.style.display = 'none';
+        var query = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';
+        var filtered = sessions.filter(function (sess) {
+            if (!query) return true;
+            var title = String(sess.title || '').toLowerCase();
+            var body = (sess.messages || []).map(function (message) {
+                var value = message && message.content;
+                return typeof value === 'string' ? value : (value && value.prompt ? value.prompt : '');
+            }).join(' ').toLowerCase();
+            return title.indexOf(query) !== -1 || body.indexOf(query) !== -1;
+        });
 
-        sessions.forEach(function (sess) {
-            var item      = document.createElement('div');
+        if (count) count.textContent = query ? filtered.length + '/' + sessions.length : String(sessions.length);
+        if (empty) {
+            empty.style.display = filtered.length ? 'none' : '';
+            empty.textContent = query ? 'No conversations match your search.' : 'Your conversations will appear here.';
+        }
+        if (!filtered.length) return;
+
+        function groupFor(timestamp) {
+            var date = new Date(Number(timestamp) || 0);
+            if (!Number(timestamp) || isNaN(date.getTime())) return 'Older';
+            var now = new Date();
+            var today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            var day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+            var age = Math.floor((today - day) / 86400000);
+            if (age <= 0) return 'Today';
+            if (age === 1) return 'Yesterday';
+            if (age <= 7) return 'Previous 7 days';
+            return 'Older';
+        }
+
+        var currentGroup = '';
+        filtered.forEach(function (sess) {
+            var group = groupFor(sess.ts);
+            if (group !== currentGroup) {
+                currentGroup = group;
+                var heading = document.createElement('div');
+                heading.className = 'dts-history-group-label';
+                heading.textContent = group;
+                list.insertBefore(heading, empty || null);
+            }
+            var firstPrompt = (sess.messages || []).find(function (message) { return message.role === 'user'; });
+            var promptTitle = firstPrompt ? String(firstPrompt.content).replace(/\s+/g, ' ').trim().split(/[.!?\n]/)[0].trim() : '';
+            var displayTitle = sess.customTitle && sess.title ? sess.title : (promptTitle || sess.title || 'New conversation');
+            if (!sess.customTitle && promptTitle.length > 44) displayTitle = displayTitle.slice(0, 44) + '…';
+            var item = document.createElement('div');
             item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
             item.dataset.id = sess.id;
             item.innerHTML =
-                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
-                '<button class="dts-drawer-item-rename" type="button" title="Rename">Rename</button>' +
-                '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
-
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.55"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<span class="dts-drawer-item-title-wrap" style="flex:1;min-width:0"><span class="dts-drawer-item-title"></span><small class="dts-drawer-item-meta"></small></span>' +
+                '<button class="dts-drawer-item-rename" type="button" title="Rename conversation" aria-label="Rename conversation">Rename</button>' +
+                '<button class="dts-drawer-item-del" type="button" title="Delete conversation" aria-label="Delete conversation">×</button>';
+            item.querySelector('.dts-drawer-item-title').textContent = displayTitle;
+            item.querySelector('.dts-drawer-item-meta').textContent = (sess.messages || []).length + ' messages · ' + new Date(Number(sess.ts) || Date.now()).toLocaleDateString();
             item.querySelector('.dts-drawer-item-rename').addEventListener('click', function (e) {
                 e.stopPropagation();
-                var nextTitle = window.prompt('Rename this conversation', sess.title);
+                var nextTitle = window.prompt('Rename this conversation', sess.title || displayTitle);
                 if (!nextTitle || !nextTitle.trim()) return;
                 var allSessions = loadSessions();
                 var target = allSessions.find(function (entry) { return entry.id === sess.id; });
                 if (target) {
                     target.title = nextTitle.trim().slice(0, 80);
+                    target.customTitle = true;
                     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions)); } catch (saveError) {}
                     renderHistoryList();
                 }
             });
-
             item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
                 deleteSession(sess.id);
-                if (sess.id === conversationId) {
-                    startNewChat();
-                } else {
-                    renderHistoryList();
-                }
+                if (sess.id === conversationId) startNewChat();
+                else renderHistoryList();
             });
-
             item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
             list.insertBefore(item, empty || null);
         });
     }
+
+    document.addEventListener('input', function (event) {
+        if (event.target && event.target.id === 'dts-history-search-input') renderHistoryList();
+    });
 
     function loadSessionById(id) {
         var sessions = loadSessions();
