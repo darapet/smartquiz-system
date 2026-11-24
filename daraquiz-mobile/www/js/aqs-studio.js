@@ -1966,16 +1966,33 @@
         var deepBtn = document.getElementById('dts-deep-search');
         if (deepBtn) deepBtn.addEventListener('click', function(){ deepSearchEnabled=!deepSearchEnabled; deepBtn.setAttribute('aria-pressed',String(deepSearchEnabled)); deepBtn.textContent=deepSearchEnabled?'Deep search: On':'Deep search: Off'; });
 
-        /* ── Send button ── */
-        var sendBtn = document.getElementById('dts-send');
-        if (sendBtn) {
-            sendBtn.addEventListener('click', function () { doSend(); });
-        }
-
+        /* ── Reliable send action: delegated so taps on the icon/SVG also work. ── */
         function doSend() {
             var val = inputEl ? inputEl.value : '';
-            sendMessage(val);
+            var hasAttachments = !!(attachedFileText || attachedImageData ||
+                (attachedFiles && attachedFiles.length) || (attachedImages && attachedImages.length));
+            if (!String(val || '').trim() && !hasAttachments) {
+                if (inputEl) inputEl.focus();
+                return;
+            }
+            Promise.resolve().then(function () { return sendMessage(val); }).catch(function (error) {
+                console.error('Studio send failed:', error);
+                showTyping(false);
+                appendMessage('assistant', 'I could not send that message. Please try again. ' +
+                    (error && error.message ? error.message : ''));
+                isSending = false;
+                setSendState(false);
+            });
         }
+
+        document.addEventListener('click', function (event) {
+            var sendButton = event.target && event.target.closest
+                ? event.target.closest('#dts-send') : null;
+            if (!sendButton) return;
+            event.preventDefault();
+            event.stopPropagation();
+            doSend();
+        }, true);
 
         /* ── Suggestion buttons ── */
         document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
