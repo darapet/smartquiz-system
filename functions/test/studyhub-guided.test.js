@@ -43,3 +43,15 @@ test('guided study implements lessons, tutor questions, objective quizzes and sa
   assert.match(guided, /Complete the previous topic quiz before moving ahead/);
   assert.match(guided, /Math\.max\(2,\s*Math\.min\(5/);
 });
+
+test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', () => {
+  const dashboard = read('studyhub-guided-dashboard.html');
+  const androidDashboard = read('daraquiz-mobile/www/studyhub-guided-dashboard.html');
+  const studyhub = read('studyhub.html');
+  assert.equal(dashboard, androidDashboard);
+  assert.match(dashboard, /id="gs-create-modal"/);
+  assert.match(dashboard, /id="sg-workspace"/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-3/);
+  assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
+  assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
+});
