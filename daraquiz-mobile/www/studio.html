@@ -354,10 +354,22 @@
 
 <div class="aqs-sidebar-body" id="aqs-sidebar-body">
 <div id="dts-app">
-    <div id="dts-hist-topbar">
-      <button id="dts-hist-open-btn" type="button" aria-label="Open chat history" title="Chat history">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <div id="dts-hist-topbar" aria-label="Studio controls">
+      <button id="dts-hist-open-btn" type="button" aria-label="Open navigation and chat history" title="Menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
+      <div class="dts-top-actions">
+        <button id="dts-edit-tools-btn" type="button" aria-label="Editing tools" title="Editing tools">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+        </button>
+        <button id="dts-share-chat-btn" type="button" aria-label="Share chat" title="Share chat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="dts-edit-tools-menu" class="dts-tools-menu" hidden>
+      <button type="button" id="dts-edit-last-prompt">Edit last prompt</button>
+      <button type="button" id="dts-copy-last-response">Copy last response</button>
     </div>
     <main id="dts-main" class="dts-main">
         <div id="dts-messages" class="dts-messages"></div>
@@ -400,7 +412,7 @@
         <button id="dts-voice-btn" class="dts-voice-btn" title="Start voice conversation">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         </button>
-        <button id="dts-send" class="dts-send-btn" title="Send">
+        <button type="button" id="dts-send" class="dts-send-btn" title="Send" aria-label="Send message">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
     </div>
@@ -542,24 +554,31 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 
 <!-- HISTORY DRAWER -->
 <div id="dts-history-overlay"></div>
-<div id="dts-history-drawer">
+<aside id="dts-history-drawer" aria-label="Studio navigation and history">
   <div class="dts-drawer-head">
-    <div class="dts-drawer-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e8912d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Chat History
-    </div>
-    <button class="dts-drawer-close" id="dts-history-close" title="Close">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <span class="dts-drawer-title">Menu</span>
+    <button class="dts-drawer-close" id="dts-history-close" type="button" aria-label="Close menu" title="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
     </button>
   </div>
-  <button class="dts-drawer-new" id="dts-new-chat">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  <nav class="dts-drawer-navigation" aria-label="Main navigation">
+    <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+    <a href="studyco-meet.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20v-1.5A5.5 5.5 0 0 1 8 13h2a5.5 5.5 0 0 1 5.5 5.5V20zM16 14h1a4.5 4.5 0 0 1 4.5 4.5V20H18"/></svg><span>Social</span></a>
+    <a href="quiz-dashboard.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22zM4 4.5V22M8 6h8M8 10h8"/></svg><span>Quiz</span></a>
+  </nav>
+  <div class="dts-drawer-divider"></div>
+  <div class="dts-history-heading">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+    <span>History</span>
+  </div>
+  <div class="dts-drawer-list" id="dts-history-list">
+    <div class="dts-drawer-empty" id="dts-history-empty">Your conversations will appear here.</div>
+  </div>
+  <button class="dts-drawer-new" id="dts-new-chat" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     New Chat
   </button>
-  <div class="dts-drawer-list" id="dts-history-list">
-    <div class="dts-drawer-empty" id="dts-history-empty">No conversations yet</div>
-  </div>
-</div>
+</aside>
 
 
 <style id="dts-final-studio-polish">
@@ -573,6 +592,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 .dts-inline-image-progress>span{display:block;width:35%;height:100%;border-radius:8px;background:linear-gradient(90deg,#e8912d,#8b5cf6,#22c1c3);animation:dts-progress-slide 1.4s ease-in-out infinite}
 @keyframes dts-progress-slide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
 </style>
+<style id="dts-studio-send-hitarea-fix">body[data-aqs-page="studio"] .dts-footer{z-index:1200!important;pointer-events:auto!important}body[data-aqs-page="studio"] .dts-input-wrap{position:relative!important;z-index:1201!important;pointer-events:auto!important}body[data-aqs-page="studio"] #dts-send{position:relative!important;z-index:1202!important;pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important}body[data-aqs-page="studio"] #dts-send:disabled{pointer-events:none!important}</style>
 </body>
 <script src="js/median-bridge.js"></script>
 </html>
