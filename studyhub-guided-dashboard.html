@@ -86,6 +86,30 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 .gs-toast{position:fixed;right:18px;bottom:18px;z-index:1200;padding:12px 16px;border-radius:11px;background:#132b55;color:#fff;font:600 12px Inter,Arial,sans-serif;box-shadow:0 10px 30px #0b173633;max-width:min(420px,calc(100vw - 36px))}
 @media(max-width:850px){.gs-learning-grid{grid-template-columns:1fr}.gs-topic-sidebar{position:static}.gs-topic-list{grid-template-columns:repeat(2,minmax(0,1fr))}.gs-topic-sidebar{padding:13px}.gs-learning-body{padding:15px}.gs-topic-main{min-width:0}}
 @media(max-width:560px){.gs-modal{padding:8px}.gs-modal-panel{padding:17px;border-radius:17px;max-height:96vh}.gs-form-grid{grid-template-columns:1fr}.gs-form-grid .wide{grid-column:auto}.gs-learning-header{padding:0 12px;height:58px}.gs-learning-brand{font-size:9px}.gs-topic-list{grid-template-columns:1fr}.gs-ask-row{display:grid}.gs-secondary{width:100%}.gs-lesson-card{padding:14px}.gs-lesson-card>h2{font-size:19px}}
+.sg-loading{display:flex;align-items:center;gap:10px;padding:18px;border-radius:12px;background:#f5f8ff;color:var(--gs-muted);font-size:12px;line-height:1.6}
+.sg-spinner{width:19px;height:19px;flex:0 0 auto;border:3px solid #dce7fb;border-top-color:var(--gs-blue);border-radius:50%;animation:gs-spin .8s linear infinite}
+@keyframes gs-spin{to{transform:rotate(360deg)}}
+.sg-empty{padding:15px;border:1px solid #e1e7f5;border-radius:12px;background:#f8faff;color:var(--gs-muted);font-size:12px;line-height:1.6}
+.sg-empty strong{display:block;color:var(--gs-ink);margin-bottom:5px}
+.sg-progress-note{margin-top:13px;padding:12px;border-radius:11px;background:#f3f7ff;color:var(--gs-muted);font-size:11px;line-height:1.6}
+.sg-progress-note ul{padding-left:18px;margin:7px 0 0}
+.sg-lesson-content{font-size:13px;line-height:1.8;overflow-wrap:anywhere}
+.sg-lesson-content h1,.sg-lesson-content h2,.sg-lesson-content h3{margin:1.15em 0 .45em;line-height:1.35}
+.sg-lesson-content h2{font-size:17px;border-bottom:1px solid var(--gs-line);padding-bottom:7px}
+.sg-lesson-content h3{font-size:14px}
+.sg-lesson-content ul,.sg-lesson-content ol{padding-left:22px}
+.sg-lesson-content blockquote{margin:12px 0;padding:10px 13px;border-left:3px solid var(--gs-blue);background:#f4f7ff;color:var(--gs-muted)}
+.sg-lesson-content code{padding:2px 5px;border-radius:5px;background:#eef3ff;color:#234d9a}
+.sg-question{padding:13px;border:1px solid var(--gs-line);border-radius:11px;margin:10px 0}
+.sg-question strong{display:block;font-size:12px;line-height:1.6;color:var(--gs-ink)}
+.sg-option input{accent-color:var(--gs-blue);margin-top:3px}
+.sg-quiz-feedback{margin-top:12px;padding:14px;border:1px solid #cfe8d9;border-radius:12px;background:#f1faf4}
+.sg-quiz-feedback h4{margin:0 0 7px;color:#16834a}
+.sg-review-item{margin-top:10px;padding:12px;border:1px solid var(--gs-line);border-radius:10px;background:#fff}
+.sg-review-item p,.sg-review-item small{font-size:11px;line-height:1.6}
+.sg-review-item p.is-correct{color:#16834a;font-weight:800}
+.sg-review-item p.is-wrong{color:#b42318;font-weight:800}
+@media(prefers-reduced-motion:reduce){.sg-spinner{animation:none}}
 </style>
 </head>
 <body class="dq-feature-page gs-page">
