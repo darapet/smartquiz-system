@@ -101,7 +101,8 @@ $('dq-history-delete').addEventListener('click',async()=>{
  try{await call('aqs_delete_my_attempt',{attempt_id:id,print_confirmed:true});attempts=attempts.filter(a=>a.attempt_id!==id);printedAttemptIds.delete(id);closeAttempt();renderSelf(attempts);renderOverview();$('dq-status').textContent='Attempt deleted from active history. A private archive was retained.';}
  catch(e){$('dq-history-print-note').textContent=e.message||'Could not delete this attempt.';}
 });
-document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));activityRange=b.dataset.range;renderOverview();}));\ndocument.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('self-panel').hidden=b.dataset.tab!=='self';$('hosted-panel').hidden=b.dataset.tab!=='hosted';}));
+document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));activityRange=b.dataset.range;renderOverview();}));
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('self-panel').hidden=b.dataset.tab!=='self';$('hosted-panel').hidden=b.dataset.tab!=='hosted';}));
 $('dq-search').addEventListener('input',e=>{const q=e.target.value.toLowerCase();renderSelf(attempts.filter(a=>(a.quiz_title+' '+a.subject).toLowerCase().includes(q)));renderOverview();renderHosted(hosted.filter(a=>(a.title+' '+a.subject).toLowerCase().includes(q)));});
 $('dq-menu').addEventListener('click',()=>$('dq-sidebar').classList.toggle('open'));
 $('dq-logout').addEventListener('click',async e=>{e.preventDefault();try{await call('aqs_logout');}finally{location.href='login.html';}});
