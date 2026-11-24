@@ -4,6 +4,8 @@
   var IMAGE_GEN_URL = 'image-gen.html';
 
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
+  // Studio AI has its own hamburger navigation; do not inject the shared Social/Workspace bar.
+  if (file === 'studio.html') return;
   var mobile = !!document.querySelector('script[src*="capacitor-bridge.js"]');
   var isSocial = file === 'social.html' || file === 'studyco-meet.html';
   if (isSocial || document.getElementById('dara-category-nav')) return;
