@@ -1469,6 +1469,9 @@
         voiceRestartTimer = null;
         setVoiceState('idle');
         voiceActive = true;
+        /* The microphone button is the explicit user gesture: begin listening
+           immediately rather than requiring a second tap inside the modal. */
+        startVoiceListening();
     }
 
     function closeVoiceModal() {
@@ -1580,15 +1583,16 @@
             }
         };
 
-        setTimeout(function () {
+        /* Start synchronously from the user's microphone-button gesture so
+           browsers can correctly associate the request with user activation. */
+        try {
+            rec.start();
+        } catch (e) {
             if (!isCurrentRecognition()) return;
-            try { rec.start(); } catch (e) {
-                if (!isCurrentRecognition()) return;
-                voiceRecognition = null;
-                setVoiceState('error');
-                setVoiceTranscript('Could not access microphone: ' + e.message);
-            }
-        }, 120);
+            voiceRecognition = null;
+            setVoiceState('error');
+            setVoiceTranscript('Could not access microphone: ' + e.message);
+        }
     }
 
     async function handleVoiceInput(text, sessionId) {
@@ -1982,14 +1986,17 @@
             });
         }
 
-        document.addEventListener('click', function (event) {
-            var sendButton = event.target && event.target.closest
-                ? event.target.closest('#dts-send') : null;
-            if (!sendButton) return;
-            event.preventDefault();
-            event.stopPropagation();
-            doSend();
-        }, true);
+        /* Bind directly to the web send control. This avoids missed delegated
+           clicks when another page-level listener or overlay handles the event. */
+        var sendButton = document.getElementById('dts-send');
+        if (sendButton) {
+            sendButton.type = 'button';
+            sendButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                doSend();
+            });
+        }
 
         /* ── Suggestion buttons ── */
         document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
