@@ -219,3 +219,6 @@ body.sh-analytics-on>#sh-nav-dropdown{display:none!important}
 body.sh-analytics-on #sh-panel-overview>.sh-hist-stack{display:none}
 body.sh-analytics-on #sh-panel-overview.shd-history-expanded>.sh-hist-stack{display:grid}
 body.sh-analytics-on #sh-panel-overview .shd-main{min-width:0}
+
+body.sh-analytics-on .dara-category-nav,
+body.sh-analytics-on .aqs-bottom-nav{display:none!important}
