@@ -142,9 +142,14 @@
     });
     return state.saveQueue;
   }
-  function openPlan(id) {
-    var plan = state.plans.find(function (item) { return item.id === id; }); if (!plan) return;
-    state.activePlan = plan; state.activeId = id; byId('sg-list-view').classList.add('sg-hidden'); byId('sg-workspace').style.display = 'block'; renderWorkspace(); if (activeTopic() && !activeTopic().lesson) generateLesson();
+  async function openPlan(id) {
+    var plan = state.plans.find(function (item) { return item.id === id; });
+    if (!plan) { await loadPlans(); plan = state.plans.find(function (item) { return item.id === id; }); }
+    if (!plan) { if (window.shToast) window.shToast('That study plan could not be found. Refresh your plans and try again.'); return; }
+    state.activePlan = plan; state.activeId = id;
+    if (window.shGuidedCloseCreateModal) window.shGuidedCloseCreateModal();
+    byId('sg-list-view').classList.add('sg-hidden'); byId('sg-workspace').style.display = 'block'; renderWorkspace();
+    if (activeTopic() && !activeTopic().lesson) generateLesson();
   }
   function backToPlans() {
     state.activePlan = null; state.activeId = null; byId('sg-workspace').style.display = 'none'; byId('sg-list-view').classList.remove('sg-hidden'); renderPlans();
