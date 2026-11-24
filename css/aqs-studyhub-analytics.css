@@ -294,3 +294,21 @@ body.sh-analytics-on .aqs-bottom-nav{display:none!important}
 @media(prefers-reduced-motion:reduce){
   .shd-nav button,.shd-nav a,.shd-sidebar-promo button,.shd-bell,.shd-tool{transition:none}
 }
+
+/* StudyHub sidebar: one consistent solid background on desktop and mobile */
+.shd-global-sidebar,
+.shd-sidebar{
+  background:#151d3c!important;
+  background-image:none!important;
+}
+.shd-sidebar-promo{
+  background:#151d3c!important;
+  background-image:none!important;
+}
+@media(max-width:820px){
+  .shd-global-sidebar,
+  .shd-sidebar{
+    background:#151d3c!important;
+    background-image:none!important;
+  }
+}
