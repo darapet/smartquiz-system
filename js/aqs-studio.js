@@ -713,8 +713,9 @@
         });
     }
 
-    var historySearchInput = document.getElementById('dts-history-search-input');
-    if (historySearchInput) historySearchInput.addEventListener('input', renderHistoryList);
+    document.addEventListener('input', function (event) {
+        if (event.target && event.target.id === 'dts-history-search-input') renderHistoryList();
+    });
 
     function loadSessionById(id) {
         var sessions = loadSessions();
