@@ -1935,16 +1935,9 @@
 
     function initStudioControls() {
 
-        /* Restore the last active conversation instead of silently starting a blank chat. */
-        var savedActiveId = null;
-        try { savedActiveId = localStorage.getItem(ACTIVE_KEY); } catch (restoreError) {}
-        var savedSessions = loadSessions();
-        if (savedActiveId && savedSessions.some(function (session) { return session.id === savedActiveId; })) {
-            loadSessionById(savedActiveId);
-        } else {
-            newSession();
-        }
-        renderHistoryList();
+        /* Always open Studio AI on a fresh chat.
+           Previous conversations remain saved and accessible from History. */
+        startNewChat();
 
         /* ── Auto-resize textarea ── */
         var inputEl = document.getElementById('dts-input');
