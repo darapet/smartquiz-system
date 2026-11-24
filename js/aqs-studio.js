@@ -770,6 +770,67 @@
         }
         if (role === 'assistant' && !isSavedImage) applyMathAndHighlight(wrap);
         if (role === 'assistant' && !isSavedImage) addDocumentExportActions(wrap.querySelector('.dts-msg-content'), content);
+        if (role === 'user') {
+            var userMsgContent = wrap.querySelector('.dts-msg-content');
+            if (userMsgContent) {
+                var userActions = document.createElement('div');
+                userActions.className = 'dts-user-actions';
+                var userCopyBtn = document.createElement('button');
+                userCopyBtn.type = 'button';
+                userCopyBtn.className = 'dts-user-action-btn';
+                userCopyBtn.setAttribute('aria-label', 'Copy message');
+                userCopyBtn.title = 'Copy';
+                userCopyBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg><span>Copy</span>';
+                userCopyBtn.addEventListener('click', function () {
+                    var value = String(content || '');
+                    function fallbackUserCopy() {
+                        var ta = document.createElement('textarea');
+                        ta.value = value;
+                        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                        document.body.appendChild(ta); ta.focus(); ta.select();
+                        try { document.execCommand('copy'); userCopyBtn.querySelector('span').textContent = 'Copied'; }
+                        catch (copyError) { userCopyBtn.querySelector('span').textContent = 'Failed'; }
+                        document.body.removeChild(ta);
+                        setTimeout(function () { userCopyBtn.querySelector('span').textContent = 'Copy'; }, 1600);
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(value).then(function () {
+                            userCopyBtn.querySelector('span').textContent = 'Copied';
+                            setTimeout(function () { userCopyBtn.querySelector('span').textContent = 'Copy'; }, 1600);
+                        }).catch(fallbackUserCopy);
+                    } else fallbackUserCopy();
+                });
+                var userEditBtn = document.createElement('button');
+                userEditBtn.type = 'button';
+                userEditBtn.className = 'dts-user-action-btn';
+                userEditBtn.setAttribute('aria-label', 'Edit and resend prompt');
+                userEditBtn.title = 'Edit prompt';
+                userEditBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span>Edit</span>';
+                userEditBtn.addEventListener('click', function () {
+                    var input = document.getElementById('dts-input');
+                    if (!input) return;
+                    input.value = String(content || '');
+                    input.style.height = 'auto';
+                    input.style.height = Math.min(input.scrollHeight, 190) + 'px';
+                    input.focus();
+                    input.setSelectionRange(input.value.length, input.value.length);
+                });
+                var userRetryBtn = document.createElement('button');
+                userRetryBtn.type = 'button';
+                userRetryBtn.className = 'dts-user-action-btn';
+                userRetryBtn.setAttribute('aria-label', 'Retry this prompt');
+                userRetryBtn.title = 'Retry';
+                userRetryBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4.9 9a8 8 0 0 1 13.2-2L20 12M4 17v-5h5"/><path d="M19.1 15a8 8 0 0 1-13.2 2L4 12"/></svg><span>Retry</span>';
+                userRetryBtn.addEventListener('click', function () {
+                    if (isSending) return;
+                    sendMessage(String(content || ''));
+                });
+                userActions.appendChild(userCopyBtn);
+                userActions.appendChild(userEditBtn);
+                userActions.appendChild(userRetryBtn);
+                userMsgContent.appendChild(userActions);
+            }
+        }
         if (role === 'assistant') {
             var msgContent = wrap.querySelector('.dts-msg-content');
             if (msgContent) {
