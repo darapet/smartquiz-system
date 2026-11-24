@@ -1,1 +1,136 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guided Study Dashboard — DaraQuiz AI</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/daraquiz-feature-dashboard.css"></head><body class="dq-feature-page"><aside class="dq-feature-sidebar"><a class="dq-feature-brand" href="index.html"><span class="dq-feature-avatar">D</span><span><strong>DaraQuiz AI</strong><small>STUDYHUB</small></span></a><nav class="dq-feature-nav"><a href="studyhub-dashboard.html">▣ &nbsp; StudyHub Overview</a><a href="studyhub-guided-dashboard.html">🎓 &nbsp; Guided Study</a><a href="studyhub-notes-dashboard.html">📄 &nbsp; AI Study Notes</a><a href="studyhub-flashcards-dashboard.html">🗂️ &nbsp; Flashcards</a><a href="studyhub-gpa-dashboard.html">📊 &nbsp; GPA Calculator</a></nav></aside><div class="dq-feature-main"><header class="dq-feature-topbar"><a class="dq-feature-button" href="studyhub-dashboard.html">← StudyHub Overview</a></header><main class="dq-feature-content"><section class="dq-feature-heading"><span class="dq-feature-heading-icon">🎓</span><div><h1>Guided Study</h1><p>AI tutor and saved learning plans</p></div><div class="dq-feature-heading-actions"><a class="dq-feature-button primary" href="studyhub.html#sh-panel-guided">Continue Guided Study</a></div></section><section class="dq-feature-stats"><article class="dq-feature-stat"><span class="dq-feature-stat-icon">◷</span><div><strong>In tool</strong><span>Existing activity</span></div></article><article class="dq-feature-stat"><span class="dq-feature-stat-icon" style="background:#e5f8ed;color:#20a65b">✓</span><div><strong>Saved data</strong><span>Where supported by this feature</span></div></article><article class="dq-feature-stat"><span class="dq-feature-stat-icon" style="background:#eee8ff;color:#7944df">＋</span><div><strong>Create</strong><span>Start a new activity</span></div></article><article class="dq-feature-stat"><span class="dq-feature-stat-icon" style="background:#fff1df;color:#f29a36">↗</span><div><strong>Continue</strong><span>Open the existing tool</span></div></article></section><section class="dq-feature-card"><h2>Guided Study workspace</h2><p class="dq-feature-muted">Organise course material into saved study plans, learn one topic at a time and continue progress.</p><p class="dq-feature-muted">Your existing StudyHub feature remains the source of truth for its saved work and progress. This dashboard does not invent historical records that the feature has not stored.</p><a class="dq-feature-button primary" href="studyhub.html#sh-panel-guided">Continue Guided Study →</a></section></main></div><script id="DARA_FEATURE_HISTORY">(function(){var root=document.querySelector('.dq-feature-content');if(!root)return;var section=document.createElement('section');section.className='dq-feature-card dq-feature-section';section.innerHTML='<div class="dq-feature-card-head"><h2>Saved study plans</h2><a class="dq-feature-button" href="studyhub.html#sh-panel-guided">Open feature</a></div><div id="feature-history-list" class="dq-feature-muted">Loading saved items…</div>';root.appendChild(section);var items=[];try{items=JSON.parse(localStorage.getItem('aqs_sh_guided_seen')||'[]');if(!Array.isArray(items))items=[];}catch(_){}items.sort(function(a,b){return Number(b.at||0)-Number(a.at||0);});var host=section.querySelector('#feature-history-list');if(!items.length){host.textContent='No saved items are recorded on this device yet.';return;}host.innerHTML=items.slice(0,20).map(function(x){var title=String(x.subject||'Saved item').replace(/[&<>"]/g,function(ch){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]);});var meta='';meta=(x.topics||[]).length+' topics';return '<article style="padding:12px 0;border-bottom:1px solid #edf0f7"><strong>'+title+'</strong><p class="dq-feature-muted" style="margin:5px 0">'+meta+'</p><a class="dq-feature-pill" href="studyhub.html#sh-panel-guided">Open in StudyHub →</a></article>';}).join('');})();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f9ff">
+<title>Guided Study Dashboard — DaraQuiz AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/daraquiz-feature-dashboard.css?v=studyhub-guided-refresh-1">
+<style>
+:root{--gs-blue:#1764e8;--gs-purple:#7944df;--gs-green:#20a65b;--gs-orange:#f29a36;--gs-ink:#111a50;--gs-muted:#56617f;--gs-line:#e1e7f5;--gs-bg:#f7f9ff}
+body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
+.gs-wrap{max-width:1500px;margin:0 auto;padding:25px 24px 50px}
+.gs-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.gs-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#e6f0ff;color:var(--gs-blue);display:grid;place-items:center;font-weight:900;font-size:20px;overflow:hidden;flex-shrink:0}
+.gs-head-copy{min-width:0}.gs-head-copy h1{font-size:27px;letter-spacing:-.8px;margin:0}.gs-head-copy p{color:var(--gs-muted);font-size:13px;margin:5px 0 0}
+.gs-subject{margin-left:auto;padding:9px 13px;border:1px solid #dce6fb;background:#fff;border-radius:12px;font-size:12px;color:var(--gs-muted);white-space:nowrap}
+.gs-subject strong{color:var(--gs-blue)}
+.gs-streak{position:relative;overflow:hidden;border-radius:18px;padding:19px 21px;margin-bottom:17px;background:linear-gradient(110deg,#123d82,#1764e8 72%,#397ff0);color:#fff;box-shadow:0 8px 22px #1764e826}
+.gs-streak-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.gs-streak-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}.gs-streak-count{font-size:25px;font-weight:900;letter-spacing:-.6px}.gs-streak-count small{font-size:12px;font-weight:600;color:#dbe8ff}
+.gs-streak-days{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:15px}
+.gs-streak-days:before,.gs-streak-progress{content:"";position:absolute;left:7%;right:7%;top:16px;height:3px;border-radius:8px;background:#ffffff35}
+.gs-streak-progress{right:auto;width:0;background:linear-gradient(90deg,#72e4ff,#b8f5ff);box-shadow:0 0 9px #a7efff;transform-origin:left;animation:gs-draw-line 1.5s cubic-bezier(.2,.8,.2,1) .25s forwards}
+@keyframes gs-draw-line{to{width:86%}}
+.gs-day{position:relative;z-index:1;display:flex;align-items:center;flex-direction:column;gap:6px;font-size:10px;color:#dce9ff}
+.gs-day-dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid #ffffff70;background:#174b9b;color:#fff;font-size:13px;box-shadow:0 0 0 3px #2463bd}
+.gs-day.done .gs-day-dot{background:#fff;border-color:#fff;color:#1764e8;animation:gs-pop .45s ease both}
+.gs-day.today .gs-day-dot{border-color:#a8f0ff;box-shadow:0 0 0 4px #8be8ff40,0 0 15px #9beaff}
+@keyframes gs-pop{0%{transform:scale(.65);opacity:.5}75%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.gs-streak-fire{display:inline-block;filter:drop-shadow(0 0 7px #ffcf72);animation:gs-fire 1.25s ease-in-out infinite alternate}
+@keyframes gs-fire{from{transform:translateY(1px) scale(.96)}to{transform:translateY(-2px) scale(1.08)}}
+.gs-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:17px}
+.gs-stat{display:flex;align-items:center;gap:13px;min-height:93px;padding:15px;border:1px solid var(--gs-line);border-radius:17px;background:#fff}
+.gs-stat-icon{width:47px;height:47px;border-radius:14px;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.gs-stat:nth-child(1) .gs-stat-icon{background:#eaf2ff;color:#1764e8}.gs-stat:nth-child(2) .gs-stat-icon{background:#f3edff;color:#7944df}.gs-stat:nth-child(3) .gs-stat-icon{background:#eaf8ef;color:#20a65b}.gs-stat:nth-child(4) .gs-stat-icon{background:#fff3e6;color:#e38a24}
+.gs-stat strong{display:block;font-size:22px;line-height:1.2;letter-spacing:-.5px}.gs-stat span{display:block;margin-top:4px;font-size:11px;color:var(--gs-muted)}
+.gs-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr);gap:15px;margin-bottom:18px}
+.gs-card{background:#fff;border:1px solid var(--gs-line);border-radius:17px;padding:18px;min-width:0;box-shadow:0 2px 8px #263d7108}
+.gs-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.gs-card-head h2{font-size:16px;margin:0;letter-spacing:-.3px}.gs-muted{color:var(--gs-muted);font-size:12px}
+.gs-chart{width:100%;height:auto;display:block;overflow:visible}.gs-chart path.line{fill:none;stroke:#1764e8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:600;stroke-dashoffset:600;animation:gs-chart-draw 1.5s ease .2s forwards}.gs-chart .area{fill:#1764e8;opacity:.09}.gs-chart circle{fill:#1764e8;stroke:#fff;stroke-width:2}
+@keyframes gs-chart-draw{to{stroke-dashoffset:0}}
+.gs-chart-labels{display:flex;justify-content:space-between;color:#77829c;font-size:10px;margin-top:4px}
+.gs-create{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 21px;border-radius:17px;background:linear-gradient(110deg,#1764e8,#397ff0);color:#fff;text-decoration:none;box-shadow:0 7px 18px #1764e826;min-height:100%}
+.gs-create h2{font-size:17px;margin:0 0 5px}.gs-create p{font-size:12px;color:#e6efff;line-height:1.5;margin:0}.gs-create-icon{font-size:28px;flex-shrink:0}
+.gs-plans{margin-top:5px}
+.gs-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gs-tab{border:1px solid var(--gs-line);background:#fff;color:var(--gs-muted);padding:8px 13px;border-radius:20px;font:700 11px Inter,Arial,sans-serif;cursor:pointer}
+.gs-tab.active{background:var(--gs-blue);border-color:var(--gs-blue);color:#fff}
+.gs-plan-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.gs-plan{border:1px solid var(--gs-line);background:#fff;border-radius:16px;padding:16px;min-width:0;transition:transform .18s,box-shadow .18s}
+.gs-plan:hover{transform:translateY(-2px);box-shadow:0 8px 20px #1b3d7412}
+.gs-plan-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.gs-plan h3{font-size:14px;margin:0;line-height:1.4;overflow-wrap:anywhere}.gs-plan-meta{font-size:10px;color:var(--gs-muted);margin-top:5px}
+.gs-plan-badge{padding:5px 8px;border-radius:20px;background:#eaf2ff;color:#1764e8;font-size:9px;font-weight:800;white-space:nowrap}
+.gs-plan-badge.finished{background:#eaf8ef;color:#16834a}
+.gs-progress{height:8px;background:#edf1fa;border-radius:20px;overflow:hidden;margin:15px 0 7px}
+.gs-progress span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#1764e8,#7944df);width:0;transition:width .8s ease}
+.gs-plan-foot{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--gs-muted)}
+.gs-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.gs-action{min-height:35px;padding:0 11px;border-radius:9px;border:1px solid #b9cdf4;background:#fff;color:#1764e8;font:700 10px Inter,Arial,sans-serif;cursor:pointer}
+.gs-action.primary{background:#1764e8;color:#fff;border-color:#1764e8}.gs-action.danger{color:#b42318;border-color:#f1c7c7}
+.gs-empty{grid-column:1/-1;text-align:center;padding:28px 15px;border:1px dashed #ccd7eb;border-radius:14px;color:var(--gs-muted);font-size:12px;background:#fbfcff}
+.gs-notice{font-size:12px;color:var(--gs-muted);padding:12px 14px;background:#f0f4ff;border-radius:11px;margin-bottom:13px;display:none}
+@media(max-width:900px){.gs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gs-grid{grid-template-columns:1fr}.gs-plan-list{grid-template-columns:1fr}}
+@media(max-width:560px){.gs-wrap{padding:17px 12px 35px}.gs-head{align-items:flex-start}.gs-head-copy h1{font-size:22px}.gs-subject{display:none}.gs-streak{padding:16px 13px}.gs-streak-days{gap:3px}.gs-day-dot{width:29px;height:29px;font-size:11px}.gs-streak-days:before,.gs-streak-progress{top:14px}.gs-day{font-size:9px}.gs-stats{gap:8px}.gs-stat{padding:11px;gap:8px;min-height:78px}.gs-stat-icon{width:37px;height:37px;font-size:17px}.gs-stat strong{font-size:18px}.gs-stat span{font-size:10px}.gs-card{padding:14px}.gs-create{padding:17px}}
+@media(prefers-reduced-motion:reduce){.gs-progress span,.gs-chart path.line,.gs-streak-progress,.gs-day.done .gs-day-dot,.gs-streak-fire{animation:none!important;transition:none!important}.gs-streak-progress{width:86%}}
+</style>
+</head>
+<body class="dq-feature-page gs-page">
+<main class="gs-wrap">
+<header class="gs-head">
+<div class="gs-avatar" id="gs-avatar">D</div>
+<div class="gs-head-copy"><h1 id="gs-greeting">Your Guided Study</h1><p>Build a steady learning routine, one topic at a time.</p></div>
+<div class="gs-subject">Current subject: <strong id="gs-subject">No active subject</strong></div>
+</header>
+<section class="gs-streak" aria-label="Learning streak">
+<div class="gs-streak-top"><div class="gs-streak-title"><span class="gs-streak-fire">🔥</span> Learning streak</div><div class="gs-streak-count"><span id="gs-streak-count">0</span> <small>day streak</small></div></div>
+<div class="gs-streak-days" id="gs-streak-days"><div class="gs-streak-progress" id="gs-streak-progress"></div></div>
+</section>
+<section class="gs-stats">
+<article class="gs-stat"><div class="gs-stat-icon">▤</div><div><strong id="gs-total-plans">0</strong><span>Total study plans</span></div></article>
+<article class="gs-stat"><div class="gs-stat-icon">◷</div><div><strong id="gs-study-time">—</strong><span>Total study time</span></div></article>
+<article class="gs-stat"><div class="gs-stat-icon">◎</div><div><strong id="gs-current-count">0</strong><span>Current study plans</span></div></article>
+<article class="gs-stat"><div class="gs-stat-icon">✓</div><div><strong id="gs-finished-count">0</strong><span>Finished study plans</span></div></article>
+</section>
+<section class="gs-grid">
+<article class="gs-card">
+<div class="gs-card-head"><h2>Study activity</h2><span class="gs-muted">Last 7 days</span></div>
+<svg class="gs-chart" viewBox="0 0 600 190" role="img" aria-label="Study activity line chart">
+<path d="M25 25H580 M25 65H580 M25 105H580 M25 145H580" stroke="#e9edf4" fill="none"/>
+<path id="gs-chart-area" class="area" d="M25 145 L25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145 Z"/>
+<path id="gs-chart-line" class="line" d="M25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145"/>
+<g id="gs-chart-points"></g>
+</svg>
+<div class="gs-chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+</article>
+<a class="gs-create" href="studyhub.html#sh-panel-guided"><div><h2>Create a study plan</h2><p>Turn your course material into a guided, topic-by-topic learning plan.</p></div><span class="gs-create-icon">＋</span></a>
+</section>
+<section class="gs-plans">
+<div class="gs-card-head"><h2>My study plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div>
+<div class="gs-notice" id="gs-notice" role="status"></div>
+<div class="gs-plan-list" id="gs-plan-list"><div class="gs-empty">Loading your study plans…</div></div>
+</section>
+</main>
+<script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)},plans=[],filter='current';
+function read(key){try{var v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch(_){return[]}}
+function safe(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function progress(p){var total=(p.topics||[]).length,done=(p.completedTopics||[]).length;return{total:total,done:done,pct:total?Math.round(done/total*100):0}}
+function finished(p){return p.status==='completed'||(p.topics||[]).length>0&&progress(p).pct>=100}
+function showNotice(msg){var n=$('gs-notice');n.textContent=msg;n.style.display='block';}
+function dayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function activity(){return read('aqs_sh_act_log_v1').filter(function(x){return x&&Number(x.at)>0})}
+function streakCount(events){var set={};events.forEach(function(x){set[dayKey(new Date(x.at))]=1});var d=new Date(),n=0;if(!set[dayKey(d)])d.setDate(d.getDate()-1);while(set[dayKey(d)]){n++;d.setDate(d.getDate()-1)}return n}
+function renderStreak(events){var n=streakCount(events),days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],now=new Date(),monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));var set={};events.forEach(function(x){set[dayKey(new Date(x.at))]=1});$('gs-streak-count').textContent=n;var host=$('gs-streak-days');host.innerHTML='<div class="gs-streak-progress"></div>';for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(monday.getDate()+i);var cls='gs-day'+(set[dayKey(d)]?' done':'')+(dayKey(d)===dayKey(now)?' today':'');host.insertAdjacentHTML('beforeend','<div class="'+cls+'"><span class="gs-day-dot">'+(set[dayKey(d)]?'✓':'·')+'</span><span>'+days[i]+'</span></div>')}}
+function renderChart(events){var now=new Date(),offset=(now.getDay()+6)%7,monday=new Date(now);monday.setDate(now.getDate()-offset);monday.setHours(0,0,0,0);var vals=[];for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(monday.getDate()+i);var next=new Date(d);next.setDate(d.getDate()+1);vals.push(events.filter(function(e){return e.at>=d.getTime()&&e.at<next.getTime()}).length)}var max=Math.max(1,...vals),pts=vals.map(function(v,i){return(25+i*92.5)+','+(145-v/max*105)}),line='M'+pts.join(' L'),area=line+' L580 145 L25 145 Z';$('gs-chart-line').setAttribute('d',line);$('gs-chart-area').setAttribute('d',area);$('gs-chart-points').innerHTML=pts.map(function(p){var a=p.split(',');return'<circle cx="'+a[0]+'" cy="'+a[1]+'" r="5"/>'}).join('')}
+function renderHeader(){var u=window._aqsFirebaseUser||null,name=u&&(u.displayName||u.email)||'Student';$('gs-greeting').textContent='Welcome back, '+String(name).split('@')[0];if(u&&u.photoURL){$('gs-avatar').innerHTML='<img src="'+safe(u.photoURL)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'}else $('gs-avatar').textContent=String(name).charAt(0).toUpperCase()}
+function renderStats(events){var active=plans.filter(function(p){return!finished(p)}),done=plans.filter(finished);$('gs-total-plans').textContent=plans.length;$('gs-current-count').textContent=active.length;$('gs-finished-count').textContent=done.length;$('gs-study-time').textContent='Not tracked';var current=active[0];$('gs-subject').textContent=current?current.subject||'Study plan':'No active subject';}
+function downloadPlan(p){var data=JSON.stringify(p,null,2),blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(p.subject||'study-plan').replace(/[^a-z0-9-_]+/gi,'-').toLowerCase()+'-details.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+async function removePlan(id){if(!confirm('Delete this study plan permanently?'))return;try{if(!window.aqsStudyPlanStore)throw new Error('Study plan storage is not ready.');await window.aqsStudyPlanStore.remove(id);plans=plans.filter(function(p){return p.id!==id});renderAll();showNotice('Study plan deleted.')}catch(e){showNotice(e.message||'Could not delete this plan.');}}
+async function restartPlan(p){try{if(!window.aqsStudyPlanStore)throw new Error('Study plan storage is not ready.');var copy={subject:p.subject,courseCode:p.courseCode||'',sourceMaterial:p.sourceMaterial||'',sourceName:p.sourceName||'',topics:(p.topics||[]).map(function(t){return Object.assign({},t,{status:'not_started',lesson:'',discussion:[],quiz:null,attempts:[]})}),currentTopicIndex:0,completedTopics:[],status:'in_progress'};var id=await window.aqsStudyPlanStore.create(copy);copy.id=id;copy.createdAt=Date.now();copy.updatedAt=Date.now();plans.unshift(copy);filter='current';renderAll();showNotice('A new copy was added to Current plans. The finished plan is still saved.')}catch(e){showNotice(e.message||'Could not start this plan again.');}}
+function sharePlan(p){var url=location.origin+location.pathname+'?plan='+encodeURIComponent(p.id);var text='My Guided Study plan: '+(p.subject||'Study plan')+' — '+url;if(navigator.share){navigator.share({title:p.subject||'Guided Study plan',text:text,url:url}).catch(function(){})}else if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){showNotice('Study plan link copied.')} ).catch(function(){showNotice('Could not copy the share link.');})}else showNotice('Sharing is not available in this browser.')}
+function card(p){var pr=progress(p),done=finished(p),badge=done?'<span class="gs-plan-badge finished">Finished</span>':'<span class="gs-plan-badge">In progress</span>',meta=(p.courseCode?safe(p.courseCode)+' · ':'')+pr.total+' topics';var actions=done?'<button class="gs-action" data-download="'+safe(p.id)+'">Download details</button><button class="gs-action primary" data-restart="'+safe(p.id)+'">Start again</button>':'<a class="gs-action primary" href="studyhub.html#sh-panel-guided">Continue</a><button class="gs-action" data-share="'+safe(p.id)+'">Share</button><button class="gs-action danger" data-delete="'+safe(p.id)+'">Delete</button>';return'<article class="gs-plan"><div class="gs-plan-top"><div><h3>'+safe(p.subject||'Untitled study plan')+'</h3><div class="gs-plan-meta">'+meta+'</div></div>'+badge+'</div><div class="gs-progress"><span style="width:'+pr.pct+'%"></span></div><div class="gs-plan-foot"><span>'+pr.done+' of '+pr.total+' topics completed</span><strong>'+pr.pct+'%</strong></div><div class="gs-actions">'+actions+'</div></article>'}
+function renderPlans(){var host=$('gs-plan-list'),items=plans.filter(function(p){return filter==='finished'?finished(p):!finished(p)});if(!items.length){host.innerHTML='<div class="gs-empty">'+(filter==='finished'?'Finished study plans will appear here when you complete a plan.':'No current study plans yet. Create your first plan to get started.')+'</div>';return}host.innerHTML=items.map(card).join('');host.querySelectorAll('[data-delete]').forEach(function(b){b.addEventListener('click',function(){removePlan(b.dataset.delete)})});host.querySelectorAll('[data-restart]').forEach(function(b){b.addEventListener('click',function(){var p=plans.find(function(x){return x.id===b.dataset.restart});if(p)restartPlan(p)})});host.querySelectorAll('[data-download]').forEach(function(b){b.addEventListener('click',function(){var p=plans.find(function(x){return x.id===b.dataset.download});if(p)downloadPlan(p)})});host.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var p=plans.find(function(x){return x.id===b.dataset.share});if(p)sharePlan(p)})})}
+function renderAll(){var ev=activity();renderHeader();renderStreak(ev);renderChart(ev);renderStats(ev);renderPlans()}
+async function loadPlans(){if(!window.aqsStudyPlanStore){showNotice('Your study plan service is still loading.');return}try{plans=await window.aqsStudyPlanStore.list();renderAll()}catch(e){$('gs-plan-list').innerHTML='<div class="gs-empty">Sign in to load your saved study plans. '+safe(e.message||'')+'</div>';renderHeader()}}
+document.querySelectorAll('[data-filter]').forEach(function(b){b.addEventListener('click',function(){filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(function(x){x.classList.toggle('active',x===b)});renderPlans()})});
+window.addEventListener('aqs:authchange',function(e){if(e.detail&&e.detail.user&&!e.detail.user.isAnonymous)loadPlans();else{$('gs-plan-list').innerHTML='<div class="gs-empty">Sign in to view your saved study plans.</div>';plans=[];renderAll()}});
+window.addEventListener('load',function(){renderAll();var tries=0;var timer=setInterval(function(){tries++;if(window.aqsStudyPlanStore){clearInterval(timer);loadPlans()}else if(tries>=20){clearInterval(timer);$('gs-plan-list').innerHTML='<div class="gs-empty">Study plan storage could not be loaded. Please refresh and try again.</div>'}},250)});
+})();
+</script>
+</body></html>
