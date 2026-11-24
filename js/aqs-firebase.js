@@ -1979,26 +1979,20 @@ async function actionDeleteMyAttempt(data) {
     var attemptSnap = await getDoc(attemptRef);
     if (!attemptSnap.exists()) throw new Error('Attempt not found.');
     var attempt = attemptSnap.data();
-    var ownsAttempt = attempt.participant_uid === user.uid;
-    if (!ownsAttempt && !attempt.participant_uid) {
-        var profileSnap = await getDoc(doc(db, 'users', user.uid));
-        var profile = profileSnap.exists() ? profileSnap.data() : {};
-        var names = [user.displayName, user.email, profile.name].map(function(v) { return String(v || '').trim().toLowerCase(); }).filter(Boolean);
-        ownsAttempt = names.indexOf(String(attempt.participant_name || '').trim().toLowerCase()) >= 0;
-    }
-    if (!ownsAttempt) throw new Error('You can only delete your own quiz attempts.');
-    var quizSnap = await getDoc(doc(db, 'quizzes', String(attempt.quiz_id || '')));
-    var quizData = quizSnap.exists() ? quizSnap.data() : {};
-    /* Preserve the complete record before removing it from the active history. */
-    await addDoc(collection(db, 'deleted_attempts'), {
-        original_id: attemptId,
-        deleted_by: user.uid,
-        deleted_at: serverTimestamp(),
-        quiz_title: quizData.title || 'Quiz',
-        subject: quizData.subject || '',
-        attempt: attempt
+    if (attempt.participant_uid !== user.uid) throw new Error('Only attempts linked to your signed-in account can be deleted.');
+    var quizId = String(attempt.quiz_id || '').trim();
+    var quizSnap = quizId ? await getDoc(doc(db, 'quizzes', quizId)) : null;
+    var quizData = quizSnap && quizSnap.exists() ? quizSnap.data() : {};
+    /* Archive and remove atomically. The Firestore rules require this matching archive. */
+    var archiveRef = doc(db, 'deleted_attempts', attemptId);
+    var batch = writeBatch(db);
+    batch.set(archiveRef, {
+        original_id: attemptId, deleted_by: user.uid, deleted_at: serverTimestamp(),
+        print_confirmed: true, quiz_title: quizData.title || 'Quiz',
+        subject: quizData.subject || '', attempt: attempt
     });
-    await deleteDoc(attemptRef);
+    batch.delete(attemptRef);
+    await batch.commit();
     return { deleted: true, archived: true };
 }
 
