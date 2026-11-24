@@ -138,7 +138,7 @@
     var payload = { subject: plan.subject, courseCode: plan.courseCode || '', sourceMaterial: plan.sourceMaterial || '', sourceName: plan.sourceName || '',
       topics: plan.topics || [], currentTopicIndex: plan.currentTopicIndex || 0, completedTopics: plan.completedTopics || [], status: plan.status || 'in_progress' };
     state.saveQueue = state.saveQueue.catch(function () {}).then(function () { return window.aqsStudyPlanStore.update(plan.id, payload); }).then(function () {
-      plan.updatedAt = Date.now(); var index = state.plans.findIndex(function (item) { return item.id === plan.id; }); if (index >= 0) state.plans[index] = plan; return true;
+      plan.updatedAt = Date.now(); var index = state.plans.findIndex(function (item) { return item.id === plan.id; }); if (index >= 0) state.plans[index] = plan; if (window.shGuidedSnapshot) window.shGuidedSnapshot(state.plans); return true;
     });
     return state.saveQueue;
   }
