@@ -204,5 +204,5 @@ window.shGuidedSnapshot=function(items){var old=[];try{old=JSON.parse(localStora
 window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-create-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}};
 (function(){var m=document.getElementById('gs-create-modal');var open=document.getElementById('gs-open-create');if(open)open.addEventListener('click',function(){m.classList.add('open');m.setAttribute('aria-hidden','false')});document.querySelectorAll('[data-close-create]').forEach(function(b){b.addEventListener('click',window.shGuidedCloseCreateModal)});document.addEventListener('keydown',function(e){if(e.key==='Escape')window.shGuidedCloseCreateModal()});})();
 </script>
-<script src="js/aqs-study-plan.js?v=guided-rebuild-2"></script>
+<script src="js/aqs-study-plan.js?v=guided-rebuild-3"></script>
 </body></html>
