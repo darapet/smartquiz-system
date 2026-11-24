@@ -41,7 +41,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 .gs-chart{width:100%;height:auto;display:block;overflow:visible}.gs-chart path.line{fill:none;stroke:#1764e8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:600;stroke-dashoffset:600;animation:gs-chart-draw 1.5s ease .2s forwards}.gs-chart .area{fill:#1764e8;opacity:.09}.gs-chart circle{fill:#1764e8;stroke:#fff;stroke-width:2}
 @keyframes gs-chart-draw{to{stroke-dashoffset:0}}
 .gs-chart-labels{display:flex;justify-content:space-between;color:#77829c;font-size:10px;margin-top:4px}
-.gs-create{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 21px;border-radius:17px;background:linear-gradient(110deg,#1764e8,#397ff0);color:#fff;text-decoration:none;box-shadow:0 7px 18px #1764e826;min-height:100%}
+.gs-create{display:inline-flex;align-items:center;justify-content:center;gap:9px;align-self:center;justify-self:end;width:max-content;min-height:0;padding:11px 17px;border-radius:11px;background:linear-gradient(110deg,#1764e8,#397ff0);color:#fff;text-decoration:none;box-shadow:0 5px 13px #1764e826;transition:transform .18s,box-shadow .18s}.gs-create:hover{transform:translateY(-2px);box-shadow:0 8px 17px #1764e833}.gs-create h2{font-size:12px;font-weight:800;margin:0;white-space:nowrap}.gs-create-icon{font-size:17px;line-height:1;font-weight:700;flex-shrink:0}
 .gs-create h2{font-size:17px;margin:0 0 5px}.gs-create p{font-size:12px;color:#e6efff;line-height:1.5;margin:0}.gs-create-icon{font-size:28px;flex-shrink:0}
 .gs-plans{margin-top:5px}
 .gs-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -63,7 +63,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 .gs-empty{grid-column:1/-1;text-align:center;padding:28px 15px;border:1px dashed #ccd7eb;border-radius:14px;color:var(--gs-muted);font-size:12px;background:#fbfcff}
 .gs-notice{font-size:12px;color:var(--gs-muted);padding:12px 14px;background:#f0f4ff;border-radius:11px;margin-bottom:13px;display:none}
 @media(max-width:900px){.gs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gs-grid{grid-template-columns:1fr}.gs-plan-list{grid-template-columns:1fr}}
-@media(max-width:560px){.gs-wrap{padding:17px 12px 35px}.gs-head{align-items:flex-start}.gs-head-copy h1{font-size:22px}.gs-subject{display:none}.gs-streak{padding:16px 13px}.gs-streak-days{gap:3px}.gs-day-dot{width:29px;height:29px;font-size:11px}.gs-streak-days:before,.gs-streak-progress{top:14px}.gs-day{font-size:9px}.gs-stats{gap:8px}.gs-stat{padding:11px;gap:8px;min-height:78px}.gs-stat-icon{width:37px;height:37px;font-size:17px}.gs-stat strong{font-size:18px}.gs-stat span{font-size:10px}.gs-card{padding:14px}.gs-create{padding:17px}}
+@media(max-width:560px){.gs-wrap{padding:17px 12px 35px}.gs-head{align-items:flex-start}.gs-head-copy h1{font-size:22px}.gs-subject{display:none}.gs-streak{padding:16px 13px}.gs-streak-days{gap:3px}.gs-day-dot{width:29px;height:29px;font-size:11px}.gs-streak-days:before,.gs-streak-progress{top:14px}.gs-day{font-size:9px}.gs-stats{gap:8px}.gs-stat{padding:11px;gap:8px;min-height:78px}.gs-stat-icon{width:37px;height:37px;font-size:17px}.gs-stat strong{font-size:18px}.gs-stat span{font-size:10px}.gs-card{padding:14px}.gs-create{padding:10px 14px;justify-self:start}}
 @media(prefers-reduced-motion:reduce){.gs-progress span,.gs-chart path.line,.gs-streak-progress,.gs-day.done .gs-day-dot,.gs-streak-fire{animation:none!important;transition:none!important}.gs-streak-progress{width:86%}}
 </style>
 </head>
@@ -95,7 +95,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 </svg>
 <div class="gs-chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
 </article>
-<a class="gs-create" href="studyhub.html#sh-panel-guided"><div><h2>Create a study plan</h2><p>Turn your course material into a guided, topic-by-topic learning plan.</p></div><span class="gs-create-icon">＋</span></a>
+<a class="gs-create" href="studyhub.html#sh-panel-guided" aria-label="Create new study plan"><span class="gs-create-icon">＋</span><h2>Create new</h2></a>
 </section>
 <section class="gs-plans">
 <div class="gs-card-head"><h2>My study plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div>
