@@ -52,8 +52,32 @@ service cloud.firestore {
     // ─── Attempts ───────────────────────────────────────────────────
     match /attempts/{attemptId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin()
+      allow read: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid)
+          || (isSignedIn() && resource.data.participant_uid == request.auth.uid);
+      allow update: if isAdmin()
           || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid)
+          || (isSignedIn()
+              && resource.data.participant_uid == request.auth.uid
+              && existsAfter(/databases/$(database)/documents/deleted_attempts/$(attemptId))
+              && getAfter(/databases/$(database)/documents/deleted_attempts/$(attemptId)).data.original_id == attemptId
+              && getAfter(/databases/$(database)/documents/deleted_attempts/$(attemptId)).data.deleted_by == request.auth.uid);
+    }
+
+    // Learners can create and read only their own archived attempt records.
+    match /deleted_attempts/{attemptId} {
+      allow create: if isSignedIn()
+          && request.resource.data.original_id == attemptId
+          && request.resource.data.deleted_by == request.auth.uid
+          && request.resource.data.print_confirmed == true
+          && request.resource.data.attempt.participant_uid == request.auth.uid
+          && exists(/databases/$(database)/documents/attempts/$(attemptId))
+          && get(/databases/$(database)/documents/attempts/$(attemptId)).data.participant_uid == request.auth.uid;
+      allow read: if isAdmin()
+          || (isSignedIn() && resource.data.deleted_by == request.auth.uid);
+      allow update, delete: if false;
     }
 
     // ─── Users ──────────────────────────────────────────────────────
