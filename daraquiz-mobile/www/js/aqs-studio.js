@@ -2011,6 +2011,52 @@
             historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
         }
 
+        var editToolsBtn = document.getElementById('dts-edit-tools-btn');
+        var editToolsMenu = document.getElementById('dts-edit-tools-menu');
+        if (editToolsBtn && editToolsMenu) {
+            editToolsBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                editToolsMenu.hidden = !editToolsMenu.hidden;
+            });
+            document.addEventListener('click', function (event) {
+                if (!editToolsMenu.contains(event.target) && event.target !== editToolsBtn) editToolsMenu.hidden = true;
+            });
+        }
+        var editPromptBtn = document.getElementById('dts-edit-last-prompt');
+        if (editPromptBtn) editPromptBtn.addEventListener('click', function () {
+            var lastPrompt = chatHistory.slice().reverse().find(function (message) { return message.role === 'user'; });
+            var composer = document.getElementById('dts-input');
+            if (!lastPrompt || !composer) { window.alert('There is no prompt to edit yet.'); return; }
+            composer.value = typeof lastPrompt.content === 'string' ? lastPrompt.content : String(lastPrompt.content || '');
+            composer.focus();
+            composer.dispatchEvent(new Event('input', { bubbles: true }));
+            editToolsMenu.hidden = true;
+        });
+        var copyResponseBtn = document.getElementById('dts-copy-last-response');
+        if (copyResponseBtn) copyResponseBtn.addEventListener('click', function () {
+            var lastResponse = chatHistory.slice().reverse().find(function (message) { return message.role === 'assistant'; });
+            var text = lastResponse && typeof lastResponse.content === 'string' ? lastResponse.content : '';
+            if (!text) { window.alert('There is no text response to copy yet.'); return; }
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ window.alert('Response copied.'); }).catch(function(){ window.alert('Could not copy this response.'); });
+            else window.alert('Clipboard access is not available in this browser.');
+            editToolsMenu.hidden = true;
+        });
+        var shareChatBtn = document.getElementById('dts-share-chat-btn');
+        if (shareChatBtn) shareChatBtn.addEventListener('click', async function () {
+            var lines = chatHistory.map(function (message) {
+                var role = message.role === 'user' ? 'You' : 'Studio AI';
+                var content = typeof message.content === 'string' ? message.content : (message.content && message.content.prompt ? '[Image: ' + message.content.prompt + ']' : '[Attachment]');
+                return role + ': ' + content;
+            });
+            if (!lines.length) { window.alert('Start a conversation before sharing it.'); return; }
+            var shareText = lines.join('\n\n');
+            try {
+                if (navigator.share) await navigator.share({ title: 'Studio AI conversation', text: shareText });
+                else if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(shareText); window.alert('Conversation copied. You can now share it.'); }
+                else window.alert('Sharing is not available in this browser.');
+            } catch (error) { if (!error || error.name !== 'AbortError') window.alert('Could not share this conversation.'); }
+        });
+
         /* ── History drawer close button ── */
         var historyClose = document.getElementById('dts-history-close');
         if (historyClose) {
