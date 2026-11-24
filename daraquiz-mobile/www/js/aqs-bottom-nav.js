@@ -3,6 +3,9 @@
 
   var path = window.location.pathname || '';
   var page = path.split('/').pop() || 'index.html';
+
+  // Studio AI uses its own navigation and must not show the shared bottom menu.
+  if (page === 'studio.html') return;
   var isMobileBundle = path.indexOf('/daraquiz-mobile/www/') !== -1;
   var isSocial = page === 'social.html' || page === 'studyco-meet.html';
   var socialHref = isMobileBundle ? 'social.html' : 'studyco-meet.html';

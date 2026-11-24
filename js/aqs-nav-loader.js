@@ -47,7 +47,7 @@
   /* ── Inject styles ─────────────────────────────────────────────────── */
   (function loadAqsBottomNav() {
     var navScript = document.createElement('script');
-    navScript.src = 'js/aqs-bottom-nav.js';
+    navScript.src = 'js/aqs-bottom-nav.js?v=20261124-studio-no-bottom-nav';
     navScript.defer = true;
     document.head.appendChild(navScript);
   })();
