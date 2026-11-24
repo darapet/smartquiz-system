@@ -1937,7 +1937,7 @@
         document.body.style.overflow = '';
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
+    function initStudioControls() {
 
         /* Restore the last active conversation instead of silently starting a blank chat. */
         var savedActiveId = null;
@@ -2174,6 +2174,14 @@
             }
         } catch (e) {}
 
-    }); /* end DOMContentLoaded */
+    } /* end initStudioControls */
+
+    /* The script can be loaded after DOMContentLoaded in cached/PWA navigation.
+       Initialise immediately in that case so every Studio control receives its handler. */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initStudioControls, { once: true });
+    } else {
+        initStudioControls();
+    }
 
 })();
