@@ -2,6 +2,8 @@
 (function () {
   'use strict';  var IMAGE_GEN_URL = 'image-gen.html';
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
+  // Studio AI has its own hamburger navigation; do not inject the shared Social/Workspace bar.
+  if (file === 'studio.html') return;
   var isSocial = file === 'social.html' || file === 'studyco-meet.html' || file === 'profile.html';
   if (isSocial || document.getElementById('dara-category-nav')) return;
   var eduPages = ['dara-edu.html','create-quiz.html','self-quiz.html','take-quiz.html','quiz-results.html','quiz-manage.html','quiz-leaderboard.html','studyhub.html','ai-teacher.html','challenge.html','puzzle.html','library.html','library-upload.html','library-read.html','library-host-profile.html','library-host-view.html','user-dashboard.html'];
