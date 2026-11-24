@@ -712,6 +712,7 @@ async function handleAction(data) {
         case 'aqs_get_attempt_analysis': return await actionGetAttemptAnalysis(data);
         case 'aqs_get_leaderboard':  return await actionGetLeaderboard(data);
         case 'aqs_get_my_attempts':  return await actionGetMyAttempts(data);
+        case 'aqs_delete_my_attempt': return await actionDeleteMyAttempt(data);
         case 'aqs_get_user_dashboard': return await actionGetUserDashboard(data);
 
         /* ── PROFILE ── */
@@ -1942,12 +1943,8 @@ async function actionGetMyAttempts(data) {
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = user.displayName || profile.name || user.email || '';
 
-    /* Prefer stable account ownership; retain name matching only for legacy attempts
-       created before participant_uid was stored. */
+    /* Account-owned attempts only; do not expose history through name matching. */
     var snap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
-    if (snap.empty && name) {
-        snap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
-    }
 
     var results = [];
     for (var d of snap.docs) {
@@ -1967,6 +1964,31 @@ async function actionGetMyAttempts(data) {
     /* Sort newest first, keep last 30 */
     results.sort(function(a, b) { return b.finished_at_ms - a.finished_at_ms; });
     return results.slice(0, 30);
+}
+
+async function actionDeleteMyAttempt(data) {
+    var user = requireAuth();
+    var attemptId = String(data && data.attempt_id || '').trim();
+    if (!attemptId) throw new Error('Attempt ID is required.');
+    if (data.print_confirmed !== true) throw new Error('Print or save the full report before deleting this attempt.');
+    var attemptRef = doc(db, 'attempts', attemptId);
+    var attemptSnap = await getDoc(attemptRef);
+    if (!attemptSnap.exists()) throw new Error('Attempt not found.');
+    var attempt = attemptSnap.data();
+    if (attempt.participant_uid !== user.uid) throw new Error('Only attempts linked to your signed-in account can be deleted.');
+    var quizId = String(attempt.quiz_id || '').trim();
+    var quizSnap = quizId ? await getDoc(doc(db, 'quizzes', quizId)) : null;
+    var quizData = quizSnap && quizSnap.exists() ? quizSnap.data() : {};
+    var archiveRef = doc(db, 'deleted_attempts', attemptId);
+    var batch = writeBatch(db);
+    batch.set(archiveRef, {
+        original_id: attemptId, deleted_by: user.uid, deleted_at: serverTimestamp(),
+        print_confirmed: true, quiz_title: quizData.title || 'Quiz',
+        subject: quizData.subject || '', attempt: attempt
+    });
+    batch.delete(attemptRef);
+    await batch.commit();
+    return { deleted: true, archived: true };
 }
 
 async function actionGetUserDashboard(data) {
@@ -3138,19 +3160,13 @@ async function actionGetMyStats() {
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
     var quizzesCreated = createdSnap.size;
 
-    /* Keep historical attempts when a learner changes their display name. */
-    var participantNames = Array.from(new Set([profile.name, user.displayName, user.email]
-        .map(function(value) { return String(value || '').trim(); }).filter(Boolean)));
-    var attemptMap = {};
-    for (var nameIndex = 0; nameIndex < participantNames.length; nameIndex++) {
-        var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', participantNames[nameIndex])));
-        attSnap.docs.forEach(function(d) {
-            var a = d.data();
-            var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
-            attemptMap[d.id] = { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
-        });
-    }
-    var attempts = Object.keys(attemptMap).map(function(id) { return attemptMap[id]; });
+    /* Use stable account ownership so private attempt reads match Firestore rules. */
+    var attemptSnap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
+    var attempts = attemptSnap.docs.map(function(d) {
+        var a = d.data();
+        var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
+        return { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
+    });
     attempts.sort(function(a, b) { return b._ms - a._ms; });
 
     /* Quiz streak counts days with completed quiz attempts, not app visits. */
