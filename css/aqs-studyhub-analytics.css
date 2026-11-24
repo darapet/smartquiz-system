@@ -210,3 +210,12 @@ body.sh-analytics-on{background:#f5f6fa;color:#111a35}
 @media(max-width:520px){.shd-heading h1{font-size:1.3rem}.shd-heading p{font-size:.67rem}.shd-date-filter{font-size:.62rem;padding:7px}.shd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.shd-kpi{min-height:106px;padding:12px 9px}.shd-kpi-icon{left:9px;top:10px;width:35px;height:37px;font-size:1.05rem}.shd-kpi-label,.shd-kpi-value,.shd-kpi-note{margin-left:48px}.shd-kpi-label{font-size:.59rem}.shd-kpi-value{font-size:1.05rem}.shd-kpi-note{font-size:.52rem}.shd-spark{width:54px;opacity:.5}.shd-dist{gap:12px}.shd-donut{width:112px;height:112px}.shd-donut-center{width:67px;height:67px}.shd-legend{min-width:0;gap:9px}.shd-legend-row{font-size:.59rem}.shd-legend-row b{font-size:.65rem}.shd-tools-grid{gap:7px}.shd-tool{padding:10px;min-height:140px}.shd-tool-desc{font-size:.58rem}.shd-user-name{display:none}.shd-search{min-width:0;width:65%}.shd-top-actions{gap:5px}}
 
 .shd-bell i{width:7px;height:7px;right:5px;top:4px}
+
+/* Remove legacy chrome from the reference dashboard view */
+body.sh-analytics-on>.aqs-phase2-page-header,
+body.sh-analytics-on>.sh-hdr,
+body.sh-analytics-on>.sh-tabbar,
+body.sh-analytics-on>#sh-nav-dropdown{display:none!important}
+body.sh-analytics-on #sh-panel-overview>.sh-hist-stack{display:none}
+body.sh-analytics-on #sh-panel-overview.shd-history-expanded>.sh-hist-stack{display:grid}
+body.sh-analytics-on #sh-panel-overview .shd-main{min-width:0}
