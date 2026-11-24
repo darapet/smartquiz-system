@@ -712,6 +712,7 @@ async function handleAction(data) {
         case 'aqs_get_attempt_analysis': return await actionGetAttemptAnalysis(data);
         case 'aqs_get_leaderboard':  return await actionGetLeaderboard(data);
         case 'aqs_get_my_attempts':  return await actionGetMyAttempts(data);
+        case 'aqs_delete_my_attempt': return await actionDeleteMyAttempt(data);
         case 'aqs_get_user_dashboard': return await actionGetUserDashboard(data);
 
         /* ── PROFILE ── */
@@ -1967,6 +1968,33 @@ async function actionGetMyAttempts(data) {
     /* Sort newest first, keep last 30 */
     results.sort(function(a, b) { return b.finished_at_ms - a.finished_at_ms; });
     return results.slice(0, 30);
+}
+
+async function actionDeleteMyAttempt(data) {
+    var user = requireAuth();
+    var attemptId = String(data && data.attempt_id || '').trim();
+    if (!attemptId) throw new Error('Attempt ID is required.');
+    if (data.print_confirmed !== true) throw new Error('Print or save the full report before deleting this attempt.');
+    var attemptRef = doc(db, 'attempts', attemptId);
+    var attemptSnap = await getDoc(attemptRef);
+    if (!attemptSnap.exists()) throw new Error('Attempt not found.');
+    var attempt = attemptSnap.data();
+    var ownsAttempt = attempt.participant_uid === user.uid;
+    if (!ownsAttempt && !attempt.participant_uid) {
+        var profileSnap = await getDoc(doc(db, 'users', user.uid));
+        var profile = profileSnap.exists() ? profileSnap.data() : {};
+        var names = [user.displayName, user.email, profile.name].map(function(v) { return String(v || '').trim().toLowerCase(); }).filter(Boolean);
+        ownsAttempt = names.indexOf(String(attempt.participant_name || '').trim().toLowerCase()) >= 0;
+    }
+    if (!ownsAttempt) throw new Error('You can only delete your own quiz attempts.');
+    var quizSnap = await getDoc(doc(db, 'quizzes', String(attempt.quiz_id || '')));
+    var quizData = quizSnap.exists() ? quizSnap.data() : {};
+    await addDoc(collection(db, 'deleted_attempts'), {
+        original_id: attemptId, deleted_by: user.uid, deleted_at: serverTimestamp(),
+        quiz_title: quizData.title || 'Quiz', subject: quizData.subject || '', attempt: attempt
+    });
+    await deleteDoc(attemptRef);
+    return { deleted: true, archived: true };
 }
 
 async function actionGetUserDashboard(data) {
