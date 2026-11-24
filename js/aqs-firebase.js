@@ -1943,12 +1943,8 @@ async function actionGetMyAttempts(data) {
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = user.displayName || profile.name || user.email || '';
 
-    /* Prefer stable account ownership; retain name matching only for legacy attempts
-       created before participant_uid was stored. */
+    /* Account-owned attempts only; do not expose history through name matching. */
     var snap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
-    if (snap.empty && name) {
-        snap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
-    }
 
     var results = [];
     for (var d of snap.docs) {
@@ -3165,19 +3161,13 @@ async function actionGetMyStats() {
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
     var quizzesCreated = createdSnap.size;
 
-    /* Keep historical attempts when a learner changes their display name. */
-    var participantNames = Array.from(new Set([profile.name, user.displayName, user.email]
-        .map(function(value) { return String(value || '').trim(); }).filter(Boolean)));
-    var attemptMap = {};
-    for (var nameIndex = 0; nameIndex < participantNames.length; nameIndex++) {
-        var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', participantNames[nameIndex])));
-        attSnap.docs.forEach(function(d) {
-            var a = d.data();
-            var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
-            attemptMap[d.id] = { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
-        });
-    }
-    var attempts = Object.keys(attemptMap).map(function(id) { return attemptMap[id]; });
+    /* Use stable account ownership so private attempt reads match Firestore rules. */
+    var attemptSnap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
+    var attempts = attemptSnap.docs.map(function(d) {
+        var a = d.data();
+        var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
+        return { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
+    });
     attempts.sort(function(a, b) { return b._ms - a._ms; });
 
     /* Quiz streak counts days with completed quiz attempts, not app visits. */
