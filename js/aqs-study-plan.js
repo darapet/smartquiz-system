@@ -232,6 +232,24 @@
     }catch(error){if(window.shToast)window.shToast(error.message||'The tutor could not answer just now.');}
     finally{button.disabled=false;button.textContent='Ask tutor';}
   }
+  async function recapConversation(){
+    var topic=activeTopic(),plan=state.activePlan;
+    if(!topic||!plan)return;
+    var history=state.conversation||[];
+    if(!history.length){if(window.shToast)window.shToast('There is no saved discussion to recap yet. Ask your tutor a question first.');return;}
+    var button=byId('sg-recap-btn');if(button){button.disabled=true;button.textContent='Preparing recap…';}
+    try{
+      var memory=state.learningMemory||{};
+      var transcript=history.slice(-18).map(function(item,index){return (index+1)+'. Student: '+String(item.question||'').slice(0,900)+'\nTutor: '+String(item.answer||'').slice(0,1800);}).join('\n\n');
+      var recap=await window.shAI('You are the learner’s study tutor. Create a useful recap of the conversation below. Organise it into: main ideas explained, questions the learner asked, misunderstandings corrected, concepts that appear understood, and points to revisit. Do not invent progress or claim mastery without evidence. End with 2 short revision prompts. Use clear headings and concise language. Course: '+plan.subject+'. Topic: '+topic.title+'. Existing learner memory: '+String(memory.summary||'').slice(0,1800)+'\n\nCONVERSATION:\n'+transcript,1300);
+      var entry={question:'Please recap our conversation so far.',answer:recap,createdAt:Date.now()};
+      topic.discussion=topic.discussion||[];topic.discussion.push(entry);topic.discussion=topic.discussion.slice(-8);state.conversation.push(entry);renderDiscussion(topic);
+      if(window.aqsStudyPlanStore.appendConversation)await window.aqsStudyPlanStore.appendConversation(plan.id,{topicId:topic.id,question:entry.question,answer:entry.answer});
+      await updateLearningMemory(topic,entry.question,recap);
+      if(window.shToast)window.shToast('Your conversation recap has been saved.');
+    }catch(error){if(window.shToast)window.shToast(error.message||'Could not prepare the conversation recap.');}
+    finally{if(button){button.disabled=false;button.textContent='↻ Recap conversation';}}
+  }
   async function generateQuiz(){
     var topic=activeTopic(),plan=state.activePlan;if(!topic||!plan)return;
     var count=Math.max(3,Math.min(5,parseInt(byId('sg-quiz-count')&&byId('sg-quiz-count').value,10)||5));
@@ -436,7 +454,7 @@
     if (state.initialized) return; state.initialized = true;
     var file=byId('sg-material-file');if(file)file.addEventListener('change',handleFileChange);var addFiles=byId('sg-add-files');if(addFiles&&file)addFiles.addEventListener('click',function(){var picker=document.createElement('input');picker.type='file';picker.multiple=true;picker.accept=file.accept;picker.onchange=function(){if(!picker.files||!picker.files.length)return;try{var transfer=new DataTransfer();Array.prototype.forEach.call(file.files,function(f){transfer.items.add(f);});Array.prototype.forEach.call(picker.files,function(f){transfer.items.add(f);});if(transfer.files.length>10){if(window.shToast)window.shToast('You can add up to 10 files per programme.');return;}file.files=transfer.files;handleFileChange();}catch(error){if(window.shToast)window.shToast('Your browser cannot append files this way. Choose all files together instead.');}};picker.click();});var category=byId('sg-category'),level=byId('sg-level');if(category&&level)category.addEventListener('change',function(){var choices={'Primary School':['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6'],'Secondary School':['JSS 1','JSS 2','JSS 3','SS 1','SS 2','SS 3'],'Undergraduate':['100 Level','200 Level','300 Level','400 Level','500 Level','600 Level'],'Postgraduate':['PGD','Master’s','PhD']};level.innerHTML='<option value="">Select level</option>'+(choices[category.value]||[]).map(function(v){return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>';}).join('');});var mt=byId('sg-mode-text'),mu=byId('sg-mode-upload');if(mt&&mu){mt.addEventListener('click',function(){byId('sg-text-mode').hidden=false;byId('sg-upload-mode').hidden=true;mt.classList.add('active');mu.classList.remove('active');});mu.addEventListener('click',function(){byId('sg-text-mode').hidden=true;byId('sg-upload-mode').hidden=false;mu.classList.add('active');mt.classList.remove('active');});}initVoiceTutor();
     var form = byId('sg-create-form'); if (form) form.addEventListener('submit', function (event) { event.preventDefault(); createPlan(); });
-    var ask = byId('sg-ask-btn'); if (ask) ask.addEventListener('click', askMore);
+    var ask = byId('sg-ask-btn'); if (ask) ask.addEventListener('click', askMore);var recap=byId('sg-recap-btn');if(recap)recap.addEventListener('click',recapConversation);var askInput=byId('sg-ask-input');if(askInput)askInput.addEventListener('keydown',function(event){if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();askMore();}});
     var back = byId('sg-back-plans'); if (back) back.addEventListener('click', backToPlans);
     var next = byId('sg-next-topic'); if (next) next.addEventListener('click', nextTopic);
     document.addEventListener('aqs:authchange', function (event) {
