@@ -400,7 +400,7 @@ window.aqsStudyPlanStore = {
             updatedAt: serverTimestamp()
         };
         var created = await addDoc(collection(db, 'users', user.uid, 'studyPlans'), payload);
-        var chunks = Array.isArray(sourceChunks) ? sourceChunks : [];
+        var chunks = Array.isArray(sourceChunks) ? sourceChunks : [], savedCount = 0;
         try {
             for (var offset = 0; offset < chunks.length; offset += 100) {
                 var batch = writeBatch(db);
@@ -415,13 +415,15 @@ window.aqsStudyPlanStore = {
                     });
                 });
                 await batch.commit();
+                savedCount += Math.min(100, chunks.length - offset);
             }
         } catch (error) {
             try {
-                var partial = await getDocs(collection(db, 'users', user.uid, 'studyPlans', created.id, 'sourceChunks'));
-                for (var pOffset = 0; pOffset < partial.docs.length; pOffset += 400) {
+                for (var pOffset = 0; pOffset < savedCount; pOffset += 400) {
                     var cleanup = writeBatch(db);
-                    partial.docs.slice(pOffset, pOffset + 400).forEach(function(item) { cleanup.delete(item.ref); });
+                    for (var cleanIndex = pOffset; cleanIndex < Math.min(savedCount, pOffset + 400); cleanIndex++) {
+                        cleanup.delete(doc(db, 'users', user.uid, 'studyPlans', created.id, 'sourceChunks', String(cleanIndex).padStart(6, '0')));
+                    }
                     await cleanup.commit();
                 }
                 await deleteDoc(created.ref);
@@ -511,12 +513,15 @@ window.aqsStudyPlanStore = {
         var user = _aqsStudyPlanUser();
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
         var base = doc(db, 'users', user.uid, 'studyPlans', id);
+        var parent = await getDoc(base);
+        var sourceCount = parent.exists() ? Math.max(0, Number(parent.data().sourceChunkCount || 0)) : 0;
         var conversations = await getDocs(collection(db, 'users', user.uid, 'studyPlans', id, 'conversations'));
-        var sourceChunks = await getDocs(collection(db, 'users', user.uid, 'studyPlans', id, 'sourceChunks'));
         await Promise.all(conversations.docs.map(function(item) { return deleteDoc(item.ref); }));
-        for (var offset = 0; offset < sourceChunks.docs.length; offset += 400) {
+        for (var offset = 0; offset < sourceCount; offset += 400) {
             var batch = writeBatch(db);
-            sourceChunks.docs.slice(offset, offset + 400).forEach(function(item) { batch.delete(item.ref); });
+            for (var index = offset; index < Math.min(sourceCount, offset + 400); index++) {
+                batch.delete(doc(db, 'users', user.uid, 'studyPlans', id, 'sourceChunks', String(index).padStart(6, '0')));
+            }
             await batch.commit();
         }
         await deleteDoc(doc(db, 'users', user.uid, 'studyPlans', id, 'memory', 'state'));
