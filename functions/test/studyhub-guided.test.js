@@ -60,6 +60,9 @@ test('Guided Study reads long documents in full and stores source sections separ
   assert.match(guided, /compressSourceSummaries/);
   assert.match(guided, /getTopicSource\(plan,topic/);
   assert.match(firebase, /getSourceChunks: async function/);
+  assert.match(firebase, /create: async function\(data, sourceChunks\)/);
+  assert.match(firebase, /offset \+= 100/);
+  assert.match(guided, /Some saved source sections could not be loaded/);
   assert.match(firebase, /'sourceChunks'/);
   assert.match(firebase, /sourceCharacterCount/);
   assert.match(firebase, /learningInstructions/);
@@ -102,7 +105,7 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   const androidGroq = read('daraquiz-mobile/www/js/aqs-groq-key.js');
   assert.match(groq, /extraOpts\.signal\.aborted\) throw e/);
   assert.match(androidGroq, /extraOpts\.signal\.aborted\) throw e/);
-  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-13/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-14/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
 });
