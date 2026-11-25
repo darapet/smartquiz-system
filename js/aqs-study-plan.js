@@ -214,74 +214,113 @@
     } catch (error) { if (window.shToast) window.shToast(error.message || 'The tutor could not answer just now.'); }
     finally { button.disabled = false; button.textContent = 'Ask tutor'; }
   }
-  async function generateQuiz() {
-    var topic = activeTopic(), plan = state.activePlan; if (!topic || !plan) return;
-    var count = Math.max(2, Math.min(5, parseInt(byId('sg-quiz-count').value, 10) || 3));
-    var button = byId('sg-quiz-generate'); button.disabled = true; button.textContent = 'Preparing questions…';
-    byId('sg-quiz-area').innerHTML = '<div class="sg-loading"><span class="sg-spinner"></span> Your tutor is preparing ' + count + ' objective questions…</div>';
-    try {
-      var raw = await window.shAI('Create exactly ' + count + ' fair multiple-choice objective questions about this lesson. Each question must have four options and one correct answer. Base them on the lesson and supplied source. Return ONLY JSON: {"questions":[{"question":"Question","options":["A","B","C","D"],"correctIndex":0,"explanation":"Why the answer is correct"}]}. Course: ' + plan.subject + '. Topic: ' + topic.title + '.\n\nLESSON:\n' + String(topic.lesson || '').slice(0, 12000) + '\n\nSOURCE:\n' + String(plan.sourceMaterial || '').slice(0, 9000), 1800);
-      var data = parseObject(raw);
-      if (!Array.isArray(data.questions)) throw new Error('The AI did not return a usable question set.');
-      var questions = data.questions.slice(0, count).map(function (q) {
-        var options = Array.isArray(q.options) ? q.options.slice(0, 4).map(String) : [], correct = parseInt(q.correctIndex, 10);
-        if (!q.question || options.length !== 4 || correct < 0 || correct > 3) return null;
-        return { question: String(q.question).slice(0, 700), options: options, correctIndex: correct, explanation: String(q.explanation || '').slice(0, 700) };
-      }).filter(Boolean);
-      if (questions.length < 2) throw new Error('The AI returned fewer than two valid questions. Please generate the quiz again.');
-      topic.quiz = { questions: questions, lastResult: null, createdAt: Date.now() }; await savePlan(); renderQuiz(topic);
-    } catch (error) { byId('sg-quiz-area').innerHTML = '<div class="sg-empty"><strong>Could not prepare the quiz</strong>' + escapeHtml(error.message || 'Try again.') + '<p><button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-retry">Try again</button></p></div>'; var retry = byId('sg-quiz-retry'); if (retry) retry.addEventListener('click', function () { renderQuiz(topic); }); }
-    finally { button.disabled = false; button.textContent = 'Generate objective quiz'; }
+  async function generateQuiz(){
+    var topic=activeTopic(),plan=state.activePlan;if(!topic||!plan)return;
+    var count=Math.max(3,Math.min(5,parseInt(byId('sg-quiz-count')&&byId('sg-quiz-count').value,10)||5));
+    var attempts=topic.attempts||[],last=attempts.length?attempts[attempts.length-1]:null;
+    var difficulty=!last?'moderate':last.percent>=88?'advanced':last.percent>=70?'difficult':attempts.length>=2?'easy':'moderate';
+    var button=byId('sg-quiz-generate');button.disabled=true;button.textContent='Preparing adaptive assessment…';
+    byId('sg-quiz-area').innerHTML='<div class="sg-loading"><span class="sg-spinner"></span> Building a mixed assessment at '+difficulty+' difficulty…</div>';
+    try{
+      var prompt='Create exactly '+count+' fair assessment questions for this lesson at '+difficulty+' difficulty. Select suitable question types from mcq, true_false, short_answer, theory, problem_solving. Use at least three different types when count permits. Adapt to the learner academic level. Include application questions where appropriate. Do not ask ambiguous questions. Every question is worth 10 points. Return ONLY JSON: {"questions":[{"type":"mcq","difficulty":"moderate","question":"...","options":["A","B","C","D"],"correctIndex":0,"correctAnswer":"...","expectedAnswer":"...","rubric":"...","explanation":"...","points":10}]}. For true_false use correctAnswer exactly True or False. For open questions provide expectedAnswer, rubric and model explanation. Course: '+plan.subject+'. Level: '+(plan.academicCategory||'')+' '+(plan.academicLevel||'')+'. Topic: '+topic.title+'. Objectives: '+(topic.objectives||[]).join('; ')+'.\n\nLESSON:\n'+String(topic.lesson||'').slice(0,11000)+'\n\nSOURCE:\n'+String(plan.sourceMaterial||'').slice(0,7000);
+      var data=parseObject(await window.shAI(prompt,2600));
+      if(!Array.isArray(data.questions))throw new Error('The AI did not return a usable assessment.');
+      var questions=data.questions.slice(0,count).map(function(q){
+        var type=String(q.type||'mcq').toLowerCase().replace(/[- ]/g,'_');
+        if(['multiple_choice','multiplechoice'].indexOf(type)>=0)type='mcq';
+        if(['short','shortanswer'].indexOf(type)>=0)type='short_answer';
+        if(['theory_question','essay'].indexOf(type)>=0)type='theory';
+        if(['problem','worked_problem'].indexOf(type)>=0)type='problem_solving';
+        if(['mcq','true_false','short_answer','theory','problem_solving'].indexOf(type)<0)return null;
+        var options=Array.isArray(q.options)?q.options.slice(0,4).map(String):[];
+        var correct=parseInt(q.correctIndex,10);
+        if(type==='mcq'&&(options.length!==4||correct<0||correct>3))return null;
+        if(type==='true_false'){options=['True','False'];var truth=String(q.correctAnswer||'').toLowerCase();correct=truth==='true'?0:truth==='false'?1:-1;if(correct<0)return null;}
+        return {type:type,difficulty:String(q.difficulty||difficulty).slice(0,20),question:String(q.question||'').slice(0,700),options:options,correctIndex:correct,correctAnswer:String(q.correctAnswer||(options[correct]||'')).slice(0,800),expectedAnswer:String(q.expectedAnswer||q.correctAnswer||'').slice(0,1400),rubric:String(q.rubric||'').slice(0,1000),explanation:String(q.explanation||'').slice(0,1000),points:10};
+      }).filter(function(q){return q&&q.question;});
+      if(questions.length<3)throw new Error('The AI returned too few valid questions. Please generate the assessment again.');
+      topic.quiz={questions:questions,lastResult:null,difficulty:difficulty,createdAt:Date.now()};
+      await savePlan();renderQuiz(topic);
+    }catch(error){byId('sg-quiz-area').innerHTML='<div class="sg-empty"><strong>Could not prepare the assessment</strong>'+escapeHtml(error.message||'Try again.')+'<p><button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-retry">Try again</button></p></div>';var retry=byId('sg-quiz-retry');if(retry)retry.addEventListener('click',generateQuiz);}
+    finally{if(button){button.disabled=false;button.textContent='Generate adaptive assessment';}}
   }
-  function renderQuiz(topic) {
-    var area = byId('sg-quiz-area'); if (!area) return;
-    if (!topic.quiz || !Array.isArray(topic.quiz.questions)) {
-      area.innerHTML = '<p>Check your understanding with a short objective assessment at the end of this lesson.</p><div class="sg-quiz-start"><label for="sg-quiz-count" style="font-size:.75rem;font-weight:800;color:#526579">Number of questions</label><select id="sg-quiz-count" class="sh-select" style="max-width:130px;margin:7px 0 12px"><option value="2">2 questions</option><option value="3" selected>3 questions</option><option value="4">4 questions</option><option value="5">5 questions</option></select><br><button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-generate">Generate objective quiz</button></div>';
-      byId('sg-quiz-generate').addEventListener('click', generateQuiz); return;
+  function renderQuiz(topic){
+    var area=byId('sg-quiz-area');if(!area)return;
+    if(!topic.quiz||!Array.isArray(topic.quiz.questions)){
+      area.innerHTML='<p>Your tutor will choose a mix of question styles based on this topic and your previous results.</p><div class="sg-quiz-start"><label for="sg-quiz-count" style="font-size:.75rem;font-weight:800;color:#526579">Assessment length</label><select id="sg-quiz-count" class="sh-select" style="max-width:150px;margin:7px 0 12px"><option value="3">3 questions</option><option value="4">4 questions</option><option value="5" selected>5 questions</option></select><br><button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-generate">Generate adaptive assessment</button></div>';
+      byId('sg-quiz-generate').addEventListener('click',generateQuiz);return;
     }
-    if (topic.quiz.lastResult) {
-      var result = topic.quiz.lastResult;
+    if(topic.quiz.lastResult){
+      var result=topic.quiz.lastResult;
       if(typeof result.passed!=='boolean')result.passed=(state.activePlan.completedTopics||[]).indexOf(topic.id)>=0||Number(result.percent||0)>=PASS_MARK;
-      var reviewHtml = (result.review || []).map(function (item, index) {
-        return '<div class="sg-review-item"><strong>' + (index + 1) + '. ' + escapeHtml(item.question) + '</strong><p class="' + (item.correct ? 'is-correct' : 'is-wrong') + '">' + (item.correct ? 'Correct' : 'Not quite') + ' · Your answer: ' + escapeHtml(item.selected) + '</p><p><b>Correct answer:</b> ' + escapeHtml(item.correctAnswer) + '</p><small>' + escapeHtml(item.explanation || '') + '</small></div>';
+      var reviewHtml=(result.review||[]).map(function(item,index){
+        return '<div class="sg-review-item"><strong>'+(index+1)+'. '+escapeHtml(item.question)+'</strong><p class="'+(item.correct?'is-correct':'is-wrong')+'">'+(item.correct?'Strong answer':'Needs more work')+' · '+escapeHtml(item.score)+' / 10 points</p><p><b>Your response:</b> '+escapeHtml(item.selected||'—')+'</p><p><b>Expected answer:</b> '+escapeHtml(item.correctAnswer||'Review the model answer below')+'</p><small>'+escapeHtml(item.explanation||'')+'</small></div>';
       }).join('');
-      area.innerHTML = '<div class="sg-quiz-feedback"><h4>Assessment result: '+result.score+'/'+result.total+' ('+result.percent+'%)</h4><p><strong>'+(result.passed?'Passed — next topic unlocked.':'Not passed — revise and try again. The next topic remains locked.')+'</strong></p><p>'+escapeHtml(result.remark||'Review the feedback and continue learning.')+'</p>'+reviewHtml+'<button type="button" class="sh-btn sh-btn-ghost" id="sg-quiz-retake">'+(result.passed?'Retake for practice':'Try again')+'</button> '+(result.passed?(state.activePlan.currentTopicIndex<state.activePlan.topics.length-1?'<button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-next">Next topic →</button>':'<span>Programme complete.</span>'):'<button type="button" class="sh-btn sh-btn-ghost" id="sg-pro-bypass">Continue without passing · Pro</button>')+'</div>';
-      byId('sg-quiz-retake').addEventListener('click', function () { topic.quiz.lastResult = null; renderQuiz(topic); });
-      var next=byId('sg-quiz-next');if(next)next.addEventListener('click',nextTopic);var bypass=byId('sg-pro-bypass');if(bypass)bypass.addEventListener('click',bypassTopic);return;
+      var alreadyPassed=(state.activePlan.completedTopics||[]).indexOf(topic.id)>=0;
+      area.innerHTML='<div class="sg-quiz-feedback"><h4>Assessment result: '+result.score+'/'+result.total+' points ('+result.percent+'%)</h4><p><strong>'+(result.passed?'Passed — next topic unlocked.':(alreadyPassed?'This topic was previously passed. This practice attempt did not pass.':'Not passed — revise and try again. The next topic remains locked.'))+'</strong></p><p>'+escapeHtml(result.remark||'Review the feedback and continue learning.')+'</p>'+reviewHtml+(result.passed?'<button type="button" class="sh-btn sh-btn-ghost" id="sg-quiz-retake">Practise again</button> '+(state.activePlan.currentTopicIndex<state.activePlan.topics.length-1?'<button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-next">Next topic →</button>':'<span>Programme complete.</span>'):'<button type="button" class="sh-btn sh-btn-primary" id="sg-revision-btn">Teach me the weak areas</button> <button type="button" class="sh-btn sh-btn-ghost" id="sg-quiz-retake">Try another assessment</button> <button type="button" class="sh-btn sh-btn-ghost" id="sg-pro-bypass">Continue without passing · Pro</button>')+'</div>';
+      byId('sg-quiz-retake').addEventListener('click',function(){topic.quiz.lastResult=null;topic.quiz.questions=null;renderQuiz(topic);});
+      var next=byId('sg-quiz-next');if(next)next.addEventListener('click',nextTopic);
+      var bypass=byId('sg-pro-bypass');if(bypass)bypass.addEventListener('click',bypassTopic);
+      var revision=byId('sg-revision-btn');if(revision)revision.addEventListener('click',generateRevision);
+      return;
     }
-    area.innerHTML = '<p>Choose one answer for every question, then submit once you are ready.</p>' +
-      topic.quiz.questions.map(function (q, index) {
-        return '<div class="sg-question"><strong>' + (index + 1) + '. ' + escapeHtml(q.question) + '</strong>' +
-          q.options.map(function (option, optionIndex) { return '<label class="sg-option"><input type="radio" name="sg-answer-' + index + '" value="' + optionIndex + '"><span>' + escapeHtml(option) + '</span></label>'; }).join('') + '</div>';
-      }).join('') + '<button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-submit">Submit answers</button>';
-    byId('sg-quiz-submit').addEventListener('click', submitQuiz);
+    var typeNames={mcq:'Multiple choice',true_false:'True or false',short_answer:'Short answer',theory:'Theory',problem_solving:'Problem solving'};
+    area.innerHTML='<p>Answer every question. Open responses are assessed against a topic-specific marking guide.</p><div class="sg-assessment-meta">Difficulty: <strong>'+escapeHtml(topic.quiz.difficulty||'moderate')+'</strong> · '+topic.quiz.questions.length+' questions · Pass mark '+PASS_MARK+'%</div>'+
+      topic.quiz.questions.map(function(q,index){
+        var type=typeNames[q.type]||'Question';
+        var control=(q.type==='mcq'||q.type==='true_false')?q.options.map(function(option,optionIndex){return '<label class="sg-option"><input type="radio" name="sg-answer-'+index+'" value="'+optionIndex+'"><span>'+escapeHtml(option)+'</span></label>';}).join(''):'<textarea class="sg-answer-text" id="sg-answer-'+index+'" rows="'+(q.type==='short_answer'?2:4)+'" maxlength="2200" placeholder="'+(q.type==='problem_solving'?'Show your working and final answer…':'Write your answer here…')+'"></textarea>';
+        return '<div class="sg-question"><div class="sg-question-type">'+escapeHtml(type)+' · '+escapeHtml(q.difficulty||topic.quiz.difficulty||'moderate')+'</div><strong>'+(index+1)+'. '+escapeHtml(q.question)+'</strong>'+control+'</div>';
+      }).join('')+'<button type="button" class="sh-btn sh-btn-primary" id="sg-quiz-submit">Submit assessment</button>';
+    byId('sg-quiz-submit').addEventListener('click',submitQuiz);
   }
-  async function submitQuiz() {
-    var topic = activeTopic(), plan = state.activePlan; if (!topic || !topic.quiz) return;
-    var answers = [];
-    for (var i = 0; i < topic.quiz.questions.length; i++) {
-      var selected = document.querySelector('input[name="sg-answer-' + i + '"]:checked');
-      if (!selected) { if (window.shToast) window.shToast('Please answer every question before submitting.'); return; }
-      answers.push(parseInt(selected.value, 10));
+  async function submitQuiz(){
+    var topic=activeTopic(),plan=state.activePlan;if(!topic||!topic.quiz)return;
+    var questions=topic.quiz.questions,answers=[],open=[];
+    for(var i=0;i<questions.length;i++){
+      var q=questions[i],answer='';
+      if(q.type==='mcq'||q.type==='true_false'){var selected=document.querySelector('input[name="sg-answer-'+i+'"]:checked');if(!selected){if(window.shToast)window.shToast('Please answer every question before submitting.');return;}answer=q.options[parseInt(selected.value,10)];}
+      else{var field=byId('sg-answer-'+i);answer=(field&&field.value||'').trim();if(!answer){if(window.shToast)window.shToast('Please answer every question before submitting.');if(field)field.focus();return;}open.push({index:i,question:q.question,expectedAnswer:q.expectedAnswer,rubric:q.rubric,studentAnswer:answer,maxPoints:10});}
+      answers.push(answer);
     }
-    var questions = topic.quiz.questions, score = 0;
-    var report = questions.map(function (q, index) {
-      var correct = answers[index] === q.correctIndex; if (correct) score++;
-      return { question: q.question, selected: q.options[answers[index]], correctAnswer: q.options[q.correctIndex], correct: correct, explanation: q.explanation };
-    });
-    var result={score:score,total:questions.length,percent:Math.round(score/questions.length*100),passed:Math.round(score/questions.length*100)>=PASS_MARK,remark:'',answers:answers,review:report,submittedAt:Date.now()};
-    topic.quiz.lastResult = result; topic.attempts = topic.attempts || [];
-    topic.attempts.push({ score: result.score, total: result.total, percent: result.percent, submittedAt: result.submittedAt });
-    topic.attempts = topic.attempts.slice(-30);
-    plan.completedTopics=plan.completedTopics||[];if(result.passed){topic.status='completed';if(plan.completedTopics.indexOf(topic.id)<0)plan.completedTopics.push(topic.id);if(plan.completedTopics.length>=plan.topics.length)plan.status='completed';}else{topic.status='in_progress';plan.status='in_progress';}
-    renderWorkspace();
-    try { await savePlan(); } catch (error) { if (window.shToast) window.shToast('Your result is shown, but saving failed. Check your connection and try again.'); }
-    try {
-      result.remark = await window.shAI('You are an encouraging but honest tutor. Review this student’s objective quiz. Give a brief personalised remark (3-5 sentences), mention what they understood, identify the weak area, and give one practical revision suggestion. Do not shame the learner. Score: ' + result.score + '/' + result.total + '. Answers: ' + JSON.stringify(report), 450);
-    } catch (_) {
-      result.remark = result.percent >= 70 ? 'Good work. Review the explanations and strengthen the areas you missed before moving on.' : 'Keep practising. Revisit the lesson, focus on the missed concepts and try the assessment again.';
-    }
-    topic.quiz.lastResult = result; try { await savePlan(); } catch (_) {} renderQuiz(topic);
+    var submit=byId('sg-quiz-submit');submit.disabled=true;submit.textContent='Marking your answers…';
+    try{
+      var grades={};
+      if(open.length){
+        var gradingPrompt='Grade these learner responses fairly using the expected answer and rubric. Accept equivalent wording and valid alternative methods. Do not award full marks for an unsupported guess. Return ONLY JSON: {"graded":[{"index":0,"score":0,"feedback":"...","modelAnswer":"..."}]}. score must be a number from 0 to 10. Questions: '+JSON.stringify(open);
+        var graded=parseObject(await window.shAI(gradingPrompt,1600));
+        if(!Array.isArray(graded.graded))throw new Error('The AI marker did not return a valid marking result. Please submit again.');
+        graded.graded.forEach(function(item){var index=parseInt(item.index,10),score=Math.max(0,Math.min(10,Number(item.score)));if(open.some(function(x){return x.index===index;})&&Number.isFinite(score))grades[index]={score:score,feedback:String(item.feedback||'').slice(0,900),modelAnswer:String(item.modelAnswer||'').slice(0,1200)};});
+        if(open.some(function(x){return !grades[x.index];}))throw new Error('The AI marker could not mark every written answer. Please try submitting again.');
+      }
+      var earned=0,maximum=questions.length*10;
+      var report=questions.map(function(q,index){
+        var score,correctAnswer,explanation;
+        if(q.type==='mcq'||q.type==='true_false'){score=answers[index]===q.options[q.correctIndex]?10:0;correctAnswer=q.options[q.correctIndex];explanation=q.explanation;}
+        else{score=grades[index].score;correctAnswer=grades[index].modelAnswer||q.expectedAnswer;explanation=grades[index].feedback||q.rubric;}
+        earned+=score;return{question:q.question,selected:answers[index],correctAnswer:correctAnswer,score:Math.round(score*10)/10,correct:score>=7,explanation:explanation};
+      });
+      var percent=Math.round(earned/maximum*100),result={score:Math.round(earned*10)/10,total:maximum,percent:percent,passed:percent>=PASS_MARK,remark:'',answers:answers,review:report,submittedAt:Date.now(),difficulty:topic.quiz.difficulty||'moderate'};
+      topic.quiz.lastResult=result;topic.attempts=topic.attempts||[];topic.attempts.push({score:result.score,total:result.total,percent:result.percent,passed:result.passed,difficulty:result.difficulty,submittedAt:result.submittedAt});topic.attempts=topic.attempts.slice(-30);
+      plan.completedTopics=plan.completedTopics||[];
+      if(result.passed){topic.status='completed';if(plan.completedTopics.indexOf(topic.id)<0)plan.completedTopics.push(topic.id);if(plan.completedTopics.length>=plan.topics.length)plan.status='completed';}
+      else if(plan.completedTopics.indexOf(topic.id)<0){topic.status='in_progress';plan.status='in_progress';}
+      renderWorkspace();await savePlan();
+      try{result.remark=await window.shAI('Give this learner a short, supportive assessment review. Identify the strongest area and the main skill to practise next. Score '+result.score+'/'+result.total+' ('+result.percent+'%). Feedback: '+JSON.stringify(report).slice(0,4000),450);}catch(_){result.remark=result.passed?'Good work. Read the feedback and strengthen any small gaps.':'Use the revision lesson to work on the missed concepts, then try another assessment.';}
+      topic.quiz.lastResult=result;
+      if(!result.passed){var weak=report.filter(function(item){return item.score<7;}).map(function(item){return item.question;});var memory=state.learningMemory||{summary:'',strengths:[],weakAreas:[],keyQuestions:[]};memory.weakAreas=(memory.weakAreas||[]).concat(weak).slice(-8);state.learningMemory=memory;if(window.aqsStudyPlanStore.saveMemory)await window.aqsStudyPlanStore.saveMemory(plan.id,memory);}
+      await savePlan();renderQuiz(topic);
+    }catch(error){if(window.shToast)window.shToast(error.message||'Could not mark this assessment. Your answers have not been recorded.');}
+    finally{var current=byId('sg-quiz-submit');if(current){current.disabled=false;current.textContent='Submit assessment';}}
+  }
+  async function generateRevision(){
+    var topic=activeTopic(),plan=state.activePlan;if(!topic||!topic.quiz||!topic.quiz.lastResult)return;
+    var button=byId('sg-revision-btn');if(button){button.disabled=true;button.textContent='Preparing your revision…';}
+    try{
+      var weak=(topic.quiz.lastResult.review||[]).filter(function(item){return item.score<7;});
+      topic.revisionNotes=await window.shAI('Act as a patient tutor. Create a focused revision mini-lesson for the student using their actual weak answers. Explain the concepts from first principles, correct misconceptions gently, give a fresh worked example where relevant, and finish with three quick self-check prompts (do not reveal their answers). Adapt to '+(plan.academicCategory||'self-directed')+' '+(plan.academicLevel||'')+'. Topic: '+topic.title+'. Weak responses: '+JSON.stringify(weak).slice(0,5000)+'\n\nOriginal lesson: '+String(topic.lesson||'').slice(0,7000)+'\n\nSource: '+String(plan.sourceMaterial||'').slice(0,5000),1500);
+      await savePlan();renderTopic();if(window.shToast)window.shToast('Your personalised revision lesson is ready.');
+    }catch(error){if(window.shToast)window.shToast(error.message||'Could not prepare revision.');}
+    finally{if(button){button.disabled=false;button.textContent='Teach me the weak areas';}}
   }
   async function bypassTopic(){var plan=state.activePlan,topic=activeTopic();if(!plan||!topic)return;if(!(window.aqsEntitlements&&window.aqsEntitlements.guidedQuizBypass===true)){if(window.shToast)window.shToast('Quiz bypass is a Pro feature. Your account does not currently have the Pro entitlement.');return;}if(!window.confirm('Proceed without passing? Confirm that you understand this topic and want to continue without a pass. This decision is saved as a Pro bypass, not a passing score.'))return;plan.bypassedTopics=plan.bypassedTopics||[];if(plan.bypassedTopics.indexOf(topic.id)<0)plan.bypassedTopics.push(topic.id);topic.bypassRecord={confirmedAt:Date.now(),assessmentPercent:topic.quiz&&topic.quiz.lastResult?topic.quiz.lastResult.percent:null,status:'bypassed_not_passed'};await savePlan();await nextTopic();}
   async function nextTopic() {
