@@ -374,7 +374,7 @@ window.aqsStudyPlanStore = {
             return Object.assign({ id: item.id }, item.data());
         });
     },
-    create: async function(data) {
+    create: async function(data, sourceChunks) {
         var user = _aqsStudyPlanUser();
         _aqsValidateStudyPlan(data);
         var payload = {
