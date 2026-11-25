@@ -79,6 +79,36 @@
     list.querySelectorAll('[data-sg-open]').forEach(function (button) { button.addEventListener('click', function () { openPlan(button.getAttribute('data-sg-open')); }); });
     list.querySelectorAll('[data-sg-delete]').forEach(function (button) { button.addEventListener('click', function () { deletePlan(button.getAttribute('data-sg-delete')); }); });
   }
+  var wizardStep=1;
+  function updateWizardReview(){
+    var value=function(id){var el=byId(id);return el&&el.value?el.value.trim():'—';};
+    if(byId('sg-review-title'))byId('sg-review-title').textContent=value('sg-title');
+    if(byId('sg-review-subject'))byId('sg-review-subject').textContent=value('sg-subject');
+    if(byId('sg-review-level'))byId('sg-review-level').textContent=[value('sg-category'),value('sg-level'),value('sg-programme')].filter(function(x){return x&&x!=='—';}).join(' · ')||'—';
+    var material=(byId('sg-material')&&byId('sg-material').value||'').trim();
+    if(byId('sg-review-material'))byId('sg-review-material').textContent=material.length.toLocaleString()+' characters · '+(byId('sg-upload-name')&&byId('sg-upload-name').textContent||'Pasted material');
+  }
+  function setWizardStep(step){
+    wizardStep=Math.max(1,Math.min(3,Number(step)||1));
+    document.querySelectorAll('[data-wizard-step]').forEach(function(section){section.hidden=Number(section.getAttribute('data-wizard-step'))!==wizardStep;});
+    document.querySelectorAll('[data-wizard-indicator]').forEach(function(item){var n=Number(item.getAttribute('data-wizard-indicator'));item.classList.toggle('active',n===wizardStep);item.classList.toggle('complete',n<wizardStep);});
+    if(wizardStep===3)updateWizardReview();
+    var panel=document.querySelector('.gs-modal-panel');if(panel)panel.scrollTop=0;
+  }
+  function validateProgrammeStep(){
+    var title=(byId('sg-title').value||'').trim(),subject=(byId('sg-subject').value||'').trim(),category=(byId('sg-category').value||'').trim(),level=(byId('sg-level').value||'').trim();
+    if(!title){setStatus('Add a learning title so you can identify this programme later.',true);byId('sg-title').focus();return false;}
+    if(!subject){setStatus('Enter the course or subject title.',true);byId('sg-subject').focus();return false;}
+    if(!category){setStatus('Choose your academic category.',true);byId('sg-category').focus();return false;}
+    if(category!=='Self-directed'&&!level){setStatus('Choose your academic level.',true);byId('sg-level').focus();return false;}
+    setStatus('Programme details saved for this session.');return true;
+  }
+  function validateMaterialStep(){
+    var material=(byId('sg-material').value||'').trim();
+    if(material.length<80){setStatus('Add your learning material before continuing. You can paste notes or upload files.',true);return false;}
+    setStatus('Your material is ready for review.');return true;
+  }
+  function resetWizard(){setWizardStep(1);setStatus('');var progress=byId('sg-read-progress');if(progress)progress.hidden=true;}
   function updateReadProgress(percent,label){
     var wrap=byId('sg-read-progress'),fill=byId('sg-read-progress-fill'),caption=byId('sg-read-progress-label');
     var value=Math.max(0,Math.min(100,Math.round(Number(percent)||0)));
@@ -95,7 +125,7 @@
       if(piece)out.push({text:piece,summary:''});
       if(end>=text.length)break;
       start=Math.max(start+1,end-overlap);
-      if(out.length>5000)throw new Error('This upload contains more than 5,000 document sections. Please split it into smaller source files.');
+      if(out.length>MAX_SOURCE_CHUNKS)throw new Error('This upload contains too many document sections. Please split it into smaller source files.');
     }
     return out;
   }
@@ -643,8 +673,13 @@
   }
   function init() {
     if (state.initialized) return; state.initialized = true;
-    var file=byId('sg-material-file');if(file)file.addEventListener('change',handleFileChange);var addFiles=byId('sg-add-files');if(addFiles&&file)addFiles.addEventListener('click',function(){var picker=document.createElement('input');picker.type='file';picker.multiple=true;picker.accept=file.accept;picker.onchange=function(){if(!picker.files||!picker.files.length)return;try{var transfer=new DataTransfer();Array.prototype.forEach.call(file.files,function(f){transfer.items.add(f);});Array.prototype.forEach.call(picker.files,function(f){transfer.items.add(f);});if(transfer.files.length>10){if(window.shToast)window.shToast('You can add up to 10 files per programme.');return;}file.files=transfer.files;handleFileChange();}catch(error){if(window.shToast)window.shToast('Your browser cannot append files this way. Choose all files together instead.');}};picker.click();});var category=byId('sg-category'),level=byId('sg-level');if(category&&level)category.addEventListener('change',function(){var choices={'Primary School':['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6'],'Secondary School':['JSS 1','JSS 2','JSS 3','SS 1','SS 2','SS 3'],'Undergraduate':['100 Level','200 Level','300 Level','400 Level','500 Level','600 Level'],'Postgraduate':['PGD','Master’s','PhD']};level.innerHTML='<option value="">Select level</option>'+(choices[category.value]||[]).map(function(v){return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>';}).join('');});var mt=byId('sg-mode-text'),mu=byId('sg-mode-upload');if(mt&&mu){mt.addEventListener('click',function(){byId('sg-text-mode').hidden=false;byId('sg-upload-mode').hidden=true;mt.classList.add('active');mu.classList.remove('active');});mu.addEventListener('click',function(){byId('sg-text-mode').hidden=true;byId('sg-upload-mode').hidden=false;mu.classList.add('active');mt.classList.remove('active');});}initVoiceTutor();
-    var form = byId('sg-create-form'); if (form) form.addEventListener('submit', function (event) { event.preventDefault(); createPlan(); });
+    var file=byId('sg-material-file');if(file)file.addEventListener('change',handleFileChange);var addFiles=byId('sg-add-files');if(addFiles&&file)addFiles.addEventListener('click',function(){var picker=document.createElement('input');picker.type='file';picker.multiple=true;picker.accept=file.accept;picker.onchange=function(){if(!picker.files||!picker.files.length)return;try{var transfer=new DataTransfer();Array.prototype.forEach.call(file.files,function(f){transfer.items.add(f);});Array.prototype.forEach.call(picker.files,function(f){transfer.items.add(f);});if(transfer.files.length>10){if(window.shToast)window.shToast('You can add up to 10 files per programme.');return;}file.files=transfer.files;handleFileChange();}catch(error){if(window.shToast)window.shToast('Your browser cannot append files this way. Choose all files together instead.');}};picker.click();});var category=byId('sg-category'),level=byId('sg-level');if(category&&level)category.addEventListener('change',function(){var choices={'Primary School':['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6'],'Secondary School':['JSS 1','JSS 2','JSS 3','SS 1','SS 2','SS 3'],'Undergraduate':['100 Level','200 Level','300 Level','400 Level','500 Level','600 Level'],'Postgraduate':['PGD','Master’s','PhD']};level.innerHTML='<option value="">Select level</option>'+(choices[category.value]||[]).map(function(v){return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>';}).join('');level.required=category.value!=='Self-directed';});var mt=byId('sg-mode-text'),mu=byId('sg-mode-upload');if(mt&&mu){mt.addEventListener('click',function(){byId('sg-text-mode').hidden=false;byId('sg-upload-mode').hidden=true;mt.classList.add('active');mu.classList.remove('active');});mu.addEventListener('click',function(){byId('sg-text-mode').hidden=true;byId('sg-upload-mode').hidden=false;mu.classList.add('active');mt.classList.remove('active');});}initVoiceTutor();
+    var form=byId('sg-create-form');if(form)form.addEventListener('submit',function(event){event.preventDefault();if(wizardStep!==3){if(wizardStep===1&&validateProgrammeStep())setWizardStep(2);else if(wizardStep===2&&validateMaterialStep())setWizardStep(3);return;}createPlan();});
+    var stepNext1=byId('sg-step-next-1');if(stepNext1)stepNext1.addEventListener('click',function(){if(validateProgrammeStep())setWizardStep(2);});
+    var stepNext2=byId('sg-step-next-2');if(stepNext2)stepNext2.addEventListener('click',function(){if(validateMaterialStep())setWizardStep(3);});
+    var stepBack2=byId('sg-step-back-2');if(stepBack2)stepBack2.addEventListener('click',function(){setWizardStep(1);});
+    var stepBack3=byId('sg-step-back-3');if(stepBack3)stepBack3.addEventListener('click',function(){setWizardStep(2);});
+    window.shGuidedWizardReset=resetWizard;resetWizard();
     var ask = byId('sg-ask-btn'); if (ask) ask.addEventListener('click', askMore);var recap=byId('sg-recap-btn');if(recap)recap.addEventListener('click',recapConversation);var askInput=byId('sg-ask-input');if(askInput)askInput.addEventListener('keydown',function(event){if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();askMore();}});
     var back = byId('sg-back-plans'); if (back) back.addEventListener('click', backToPlans);
     var next = byId('sg-next-topic'); if (next) next.addEventListener('click', nextTopic);
