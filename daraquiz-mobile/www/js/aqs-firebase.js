@@ -435,11 +435,11 @@ window.aqsStudyPlanStore = {
     listConversation: async function(id, topicId) {
         var user = _aqsStudyPlanUser();
         var ref = collection(db, 'users', user.uid, 'studyPlans', id, 'conversations');
-        var snapshot = await getDocs(query(ref, where('topicId', '==', String(topicId || '')), orderBy('createdAt', 'asc')));
+        var snapshot = await getDocs(ref);
         return snapshot.docs.map(function(item) {
             var data = item.data();
             return Object.assign({ id: item.id }, data, { createdAt: data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : Date.now() });
-        });
+        }).filter(function(item) { return item.topicId === String(topicId || ''); }).sort(function(a, b) { return a.createdAt - b.createdAt; });
     },
     getMemory: async function(id) {
         var user = _aqsStudyPlanUser();
