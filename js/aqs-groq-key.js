@@ -761,11 +761,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
             },
             keyCount: function() { return slots.length; },
             fetch: async function(bodyObj, extraOpts) {
+                if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw new DOMException('The request was interrupted.', 'AbortError');
                 /* Firebase settings load asynchronously. Wait once before
                    concluding that the dedicated slots are empty. */
                 if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
                     await window._aqsKeysReady;
                 }
+                if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw new DOMException('The request was interrupted.', 'AbortError');
                 var request = Object.assign({
                     model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
                 }, bodyObj || {});
@@ -799,9 +801,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             }
                             _setIdx(at + 1);
                             return res;
-                        } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
+                        } catch(e) { if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw e; console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
+                if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw new DOMException('The request was interrupted.', 'AbortError');
                 /* Dedicated quiz Groq slots are empty or exhausted: use the
                    shared Mistral pool before trying the shared AI chain. */
                 if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
