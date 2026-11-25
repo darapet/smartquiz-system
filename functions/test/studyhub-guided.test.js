@@ -63,6 +63,7 @@ test('Guided Study reads long documents in full and stores source sections separ
   assert.match(firebase, /learningInstructions/);
   assert.match(rules, /data\.learningInstructions\.size\(\) <= 4000/);
   assert.match(read('studyhub-guided-dashboard.html'), /id="sg-material-instructions"/);
+  assert.match(read('studyhub-guided-dashboard.html'), /id="sg-review-instructions"/);
   assert.match(rules, /match \/studyPlans\/\{planId\}\/sourceChunks\/\{chunkId\}/);
   assert.match(rules, /request\.resource\.data\.text\.size\(\) <= 36000/);
 });
