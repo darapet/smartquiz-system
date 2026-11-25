@@ -360,6 +360,7 @@ function _aqsStudyPlanUser() {
 function _aqsValidateStudyPlan(data) {
     if (!data || typeof data !== 'object') throw new Error('Invalid study plan data.');
     if (!String(data.subject || '').trim()) throw new Error('Add a subject or course name.');
+    if(String(data.title||data.subject).length>120||String(data.academicCategory||'Self-directed').length>40||String(data.academicLevel||'').length>60||String(data.programme||'').length>120)throw new Error('Programme details are too long.');
     if (String(data.sourceMaterial || '').length > 24000) throw new Error('Study material must be 24,000 characters or fewer.');
     if (!Array.isArray(data.topics) || !data.topics.length || data.topics.length > 20) throw new Error('The study plan must contain between 1 and 20 topics.');
 }
@@ -376,8 +377,12 @@ window.aqsStudyPlanStore = {
         var user = _aqsStudyPlanUser();
         _aqsValidateStudyPlan(data);
         var payload = {
-            uid: user.uid,
-            subject: String(data.subject).trim().slice(0, 120),
+            uid:user.uid,
+            title:String(data.title||data.subject).trim().slice(0,120),
+            academicCategory:String(data.academicCategory||'Self-directed').slice(0,40),
+            academicLevel:String(data.academicLevel||'').slice(0,60),
+            programme:String(data.programme||'').slice(0,120),
+            subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
             sourceName: String(data.sourceName || '').slice(0, 120),
@@ -396,8 +401,12 @@ window.aqsStudyPlanStore = {
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
         _aqsValidateStudyPlan(data);
         await updateDoc(doc(db, 'users', user.uid, 'studyPlans', id), {
-            uid: user.uid,
-            subject: String(data.subject).trim().slice(0, 120),
+            uid:user.uid,
+            title:String(data.title||data.subject).trim().slice(0,120),
+            academicCategory:String(data.academicCategory||'Self-directed').slice(0,40),
+            academicLevel:String(data.academicLevel||'').slice(0,60),
+            programme:String(data.programme||'').slice(0,120),
+            subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
             sourceName: String(data.sourceName || '').slice(0, 120),
