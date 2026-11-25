@@ -56,4 +56,4 @@ $('dq-menu').addEventListener('click',()=>$('dq-sidebar').classList.toggle('open
 $('dq-logout').addEventListener('click',async e=>{e.preventDefault();try{await call('aqs_logout');}finally{location.href='login.html';}});
 load();
 })();
-</script></body></html>
+</script><div class="dq-attempt-modal" id="dq-attempt-modal" hidden role="dialog" aria-modal="true" aria-labelledby="dq-attempt-modal-title"><div class="dq-attempt-modal-card"><header><div><h2 id="dq-attempt-modal-title">Quiz attempt</h2><p id="dq-attempt-modal-meta"></p></div><button type="button" id="dq-attempt-modal-close" aria-label="Close report">×</button></header><div class="dq-attempt-modal-body" id="dq-attempt-modal-body"></div><footer><button type="button" class="dq-feature-button" id="dq-attempt-modal-print">Print report</button></footer></div></div><script src="js/daraquiz-quiz-dashboard-enhancements.js?v=1"></script></body></html>
