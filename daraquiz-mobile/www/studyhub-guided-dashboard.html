@@ -158,10 +158,39 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
     <div class="gs-modal-head"><div><span class="gs-modal-kicker">NEW LEARNING PLAN</span><h2 id="gs-create-title">Create a study plan</h2><p>Give your AI tutor the material you want to learn.</p></div><button type="button" class="gs-modal-close" data-close-create aria-label="Close">×</button></div>
     <div id="sg-auth-notice" class="gs-auth-notice sg-hidden"><strong>Sign in to save your learning journey</strong><p>Your study plans and progress are saved securely to your SmartQuiz account.</p><a href="login.html">Sign in or create an account</a></div>
     <form id="sg-create-form" class="gs-create-form">
-      <div class="gs-form-grid"><label class="wide">Learning title *<input id="sg-title" type="text" maxlength="120" placeholder="e.g. Understanding Human Anatomy"></label><label>Subject or course name *<input id="sg-subject" type="text" maxlength="120" required placeholder="e.g. Human Anatomy, MTH 201"></label><label>Academic category *<select id="sg-category" required><option value="">Choose category</option><option>Primary School</option><option>Secondary School</option><option>Undergraduate</option><option>Postgraduate</option><option>Self-directed</option></select></label><label>Level<select id="sg-level"><option value="">Select category first</option></select></label><label>Programme / degree<input id="sg-programme" type="text" maxlength="120" placeholder="e.g. BSc Computer Science"></label><label>Course code<input id="sg-course-code" type="text" maxlength="60" placeholder="e.g. BCH 202"></label><div class="wide"><div class="gs-mode-switch"><button type="button" id="sg-mode-text" class="active">Write / paste text</button><button type="button" id="sg-mode-upload">Upload materials</button></div><div id="sg-text-mode"><label>Learning material / instructions *<textarea id="sg-material" rows="7" placeholder="Paste lecture notes, a course outline or instructions here."></textarea></label></div><div id="sg-upload-mode" hidden><label class="gs-upload-button" for="sg-material-file">＋ Choose files</label><button type="button" class="gs-upload-button" id="sg-add-files">＋ Add more files</button><input id="sg-material-file" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" hidden><div class="gs-upload-row"><span id="sg-upload-name">No files selected</span></div><p class="gs-form-help">Supported: PDF, DOCX, TXT, Markdown and CSV. Files are checked for readable text.</p></div></div></div>
-      <p class="gs-form-help">Your material is sent to SmartQuiz AI to build lessons. Do not add passwords or sensitive personal details.</p>
+      <div class="gs-wizard-progress"><div class="gs-wizard-steps"><span class="gs-wizard-step active" data-wizard-indicator="1"><b>1</b><span>Programme</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="2"><b>2</b><span>Materials</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="3"><b>3</b><span>Review</span></span></div></div>
       <div id="sg-create-status" class="gs-form-status" role="status" aria-live="polite"></div>
-      <button type="submit" class="gs-submit" id="sg-create-btn">Build my study plan <span>→</span></button>
+      <section class="gs-wizard-card" id="sg-step-1" data-wizard-step="1">
+        <span class="gs-modal-kicker">STEP 1 OF 3</span><h3>Set up your programme</h3><p class="gs-form-help">Tell your AI tutor what you are studying and your academic level.</p>
+        <div class="gs-form-grid">
+          <label class="wide">Learning title *<input id="sg-title" type="text" maxlength="120" required placeholder="e.g. Understanding Human Anatomy"></label>
+          <label>Course / subject title *<input id="sg-subject" type="text" maxlength="120" required placeholder="e.g. Human Anatomy, MTH 201"></label>
+          <label>Academic category *<select id="sg-category" required><option value="">Choose category</option><option>Primary School</option><option>Secondary School</option><option>Undergraduate</option><option>Postgraduate</option><option>Self-directed</option></select></label>
+          <label>Academic level<select id="sg-level"><option value="">Select category first</option></select></label>
+          <label>Programme / degree<input id="sg-programme" type="text" maxlength="120" placeholder="e.g. BSc Computer Science"></label>
+          <label>Course code (optional)<input id="sg-course-code" type="text" maxlength="60" placeholder="e.g. BCH 202"></label>
+        </div>
+        <button type="button" class="gs-submit gs-wizard-next" id="sg-step-next-1">Continue to learning materials <span>→</span></button>
+      </section>
+      <section class="gs-wizard-card" id="sg-step-2" data-wizard-step="2" hidden>
+        <span class="gs-modal-kicker">STEP 2 OF 3</span><h3>Add your learning materials</h3><p class="gs-form-help">Paste notes or upload documents. Long documents are read section by section, including PDFs with hundreds of pages.</p>
+        <div class="gs-mode-switch"><button type="button" id="sg-mode-text" class="active">Write / paste text</button><button type="button" id="sg-mode-upload">Upload materials</button></div>
+        <div id="sg-text-mode"><label>Learning material / instructions *<textarea id="sg-material" rows="8" placeholder="Paste lecture notes, a course outline or instructions here."></textarea></label></div>
+        <div id="sg-upload-mode" hidden>
+          <div class="gs-upload-actions"><label class="gs-upload-button" for="sg-material-file">＋ Choose files</label><button type="button" class="gs-upload-button" id="sg-add-files">＋ Add more files</button></div>
+          <input id="sg-material-file" type="file" multiple accept=".pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/markdown,text/csv" hidden>
+          <div class="gs-upload-row"><span id="sg-upload-name">No files selected</span></div>
+          <p class="gs-form-help">Supported: PDF, Word, PowerPoint, Excel, TXT, Markdown and CSV. Text-based PDFs are supported; scanned image-only PDFs need OCR.</p>
+        </div>
+        <div id="sg-read-progress" class="gs-read-progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="gs-read-progress-top"><strong>Document processing</strong><span id="sg-read-progress-label">Waiting for files</span></div><div class="gs-read-progress-track"><span id="sg-read-progress-fill"></span></div></div>
+        <div class="gs-wizard-actions"><button type="button" class="gs-wizard-back" id="sg-step-back-2">← Back</button><button type="button" class="gs-submit" id="sg-step-next-2">Review programme <span>→</span></button></div>
+      </section>
+      <section class="gs-wizard-card" id="sg-step-3" data-wizard-step="3" hidden>
+        <span class="gs-modal-kicker">STEP 3 OF 3</span><h3>Review your programme</h3><p class="gs-form-help">Check these details before your AI tutor analyses the full material and creates the topic plan.</p>
+        <div class="gs-review-card"><div><small>LEARNING TITLE</small><strong id="sg-review-title">—</strong></div><div><small>COURSE / SUBJECT</small><strong id="sg-review-subject">—</strong></div><div><small>ACADEMIC LEVEL</small><strong id="sg-review-level">—</strong></div><div><small>LEARNING MATERIAL</small><strong id="sg-review-material">No material added</strong></div></div>
+        <p class="gs-form-help">Your complete source text is stored in secure sections. The AI analyses each section and selects relevant sections for each lesson.</p>
+        <div class="gs-wizard-actions"><button type="button" class="gs-wizard-back" id="sg-step-back-3">← Back</button><button type="submit" class="gs-submit" id="sg-create-btn">Build my study plan <span>→</span></button></div>
+      </section>
     </form>
   </section>
 </div>
@@ -187,6 +216,8 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="js/aqs-groq-key.js?v=client-keys-2"></script>
 <script src="js/aqs-voice.js?v=guided-voice-1"></script>
 <script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
