@@ -3234,7 +3234,9 @@ async function actionGetMyStats() {
         quiz_streak: quizStreak,
         total_questions_answered: totalQuestions,
         average_accuracy: totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
-        weekly_activity: weeklyActivity,\n        monthly_activity: monthlyActivity,\n        yearly_activity: yearlyActivity,
+        weekly_activity: weeklyActivity,
+        monthly_activity: monthlyActivity,
+        yearly_activity: yearlyActivity,
         app_days: appDays.slice(-120),
         app_days_count: appDays.length,
         recent_activity: recent
