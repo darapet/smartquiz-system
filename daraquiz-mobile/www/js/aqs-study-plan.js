@@ -337,7 +337,55 @@
       renderPlans(); if (state.activeId === id) backToPlans(); if (window.shToast) window.shToast('Study plan deleted.');
     } catch (error) { if (window.shToast) window.shToast(error.message || 'Could not delete this plan.'); }
   }
-  function initVoiceTutor(){var speak=byId('sg-voice-speak'),pause=byId('sg-voice-pause'),resume=byId('sg-voice-resume'),mute=byId('sg-voice-mute'),stop=byId('sg-voice-stop'),mic=byId('sg-voice-mic'),toggle=byId('sg-voice-transcript-toggle'),transcript=byId('sg-voice-transcript'),status=byId('sg-voice-status'),orb=byId('sg-voice-orb');if(!speak)return;var lastText='';function say(text){if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){if(status)status.textContent='Speech output is not supported in this browser.';return;}lastText=String(text||'').replace(/[#*_`>]/g,' ').slice(0,12000);if(!lastText){if(status)status.textContent='Prepare the lesson first, then try again.';return;}window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(lastText);u.rate=.96;u.onstart=function(){if(status)status.textContent='AI Teacher is speaking…';if(orb)orb.classList.add('speaking');};u.onend=function(){if(status)status.textContent='Lesson audio finished.';if(orb)orb.classList.remove('speaking');};u.onerror=function(){if(status)status.textContent='Audio playback could not continue.';if(orb)orb.classList.remove('speaking');};window.speechSynthesis.speak(u);}window.shGuidedSpeak=say;speak.addEventListener('click',function(){window.shGuidedVoiceMode=true;var t=activeTopic();say(t&&t.lesson||'');});if(pause)pause.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.pause();if(status)status.textContent='Audio paused.';});if(resume)resume.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.resume();if(status)status.textContent='Audio resumed.';});if(mute)mute.addEventListener('click',function(){if(window.speechSynthesis&&window.speechSynthesis.speaking){window.speechSynthesis.pause();mute.textContent='Unmute / resume';if(status)status.textContent='Audio muted.';}else if(window.speechSynthesis){window.speechSynthesis.resume();mute.textContent='Mute';if(status)status.textContent='Audio unmuted.';}});if(stop)stop.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.cancel();if(orb)orb.classList.remove('speaking');if(status)status.textContent='Audio stopped.';});if(toggle)toggle.addEventListener('click',function(){if(!transcript)return;transcript.hidden=!transcript.hidden;transcript.textContent=lastText||((activeTopic()||{}).lesson||'');toggle.textContent=transcript.hidden?'Show transcript':'Hide transcript';});if(mic)mic.addEventListener('click',function(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){if(status)status.textContent='Voice input is not supported here. Use the text question box.';return;}window.shGuidedVoiceMode=true;if(window.speechSynthesis)window.speechSynthesis.cancel();if(orb)orb.classList.remove('speaking');var rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=1;rec.onstart=function(){if(status)status.textContent='Listening… speak your question.';};rec.onerror=function(){if(status)status.textContent='Microphone input unavailable. Check browser permission or type your question.';};rec.onresult=function(e){var words=e.results[0][0].transcript,input=byId('sg-ask-input');if(input)input.value=words;if(status)status.textContent='You said: '+words;askMore();};try{rec.start();}catch(_){if(status)status.textContent='Could not start microphone input.';}});}
+  function initVoiceTutor(){
+    var speak=byId('sg-voice-speak'),pause=byId('sg-voice-pause'),resume=byId('sg-voice-resume'),mute=byId('sg-voice-mute'),stop=byId('sg-voice-stop'),mic=byId('sg-voice-mic'),toggle=byId('sg-voice-transcript-toggle'),transcript=byId('sg-voice-transcript'),status=byId('sg-voice-status'),orb=byId('sg-voice-orb'),voiceRoom=document.querySelector('.gs-voice-room'),live=byId('sg-live-transcript'),textMode=byId('sg-room-text-mode'),voiceMode=byId('sg-room-voice-mode');
+    if(!speak)return;
+    var lastText='',muted=false;
+    function setMode(mode){
+      window.shGuidedVoiceMode=mode==='voice';
+      if(voiceRoom)voiceRoom.style.display=mode==='voice'?'block':'none';
+      if(live){live.hidden=mode!=='text'||!lastText;live.textContent=lastText;}
+      if(textMode)textMode.classList.toggle('active',mode==='text');
+      if(voiceMode)voiceMode.classList.toggle('active',mode==='voice');
+      if(status&&mode==='text'&&window.speechSynthesis&&window.speechSynthesis.speaking)status.textContent='Audio continues while you read the transcript.';
+    }
+    function say(text){
+      lastText=String(text||'').replace(/[#*_>]/g,' ').slice(0,12000);
+      window.shGuidedLastSpeech=lastText;
+      if(transcript)transcript.textContent=lastText;
+      if(live){live.textContent=lastText;live.hidden=!window.shGuidedVoiceMode;}
+      if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){if(status)status.textContent='Speech output is not supported in this browser. Continue in Text learning.';return;}
+      if(!lastText){if(status)status.textContent='Prepare the lesson first, then try again.';return;}
+      window.speechSynthesis.cancel();muted=false;if(mute)mute.textContent='Mute';
+      var chunks=lastText.match(/[\s\S]{1,2200}(?:\s|$)/g)||[lastText];
+      chunks.forEach(function(chunk,index){
+        var utterance=new SpeechSynthesisUtterance(chunk.trim());utterance.rate=.96;
+        if(index===0)utterance.onstart=function(){if(status)status.textContent='AI Teacher is speaking…';if(orb)orb.classList.add('speaking');};
+        if(index===chunks.length-1){utterance.onend=function(){if(status)status.textContent='Lesson audio finished.';if(orb)orb.classList.remove('speaking');};utterance.onerror=function(){if(status)status.textContent='Audio playback was interrupted.';if(orb)orb.classList.remove('speaking');};}
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+    window.shGuidedSpeak=say;
+    if(textMode)textMode.addEventListener('click',function(){setMode('text');});
+    if(voiceMode)voiceMode.addEventListener('click',function(){setMode('voice');});
+    speak.addEventListener('click',function(){setMode('voice');var t=activeTopic();say(t&&t.lesson||'');});
+    if(pause)pause.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.pause();if(status)status.textContent='Audio paused.';});
+    if(resume)resume.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.resume();if(status)status.textContent='Audio resumed.';});
+    if(mute)mute.addEventListener('click',function(){if(!window.speechSynthesis)return;if(muted){window.speechSynthesis.resume();muted=false;mute.textContent='Mute';if(status)status.textContent='Audio unmuted.';}else{window.speechSynthesis.pause();muted=true;mute.textContent='Unmute';if(status)status.textContent='Audio muted.';}});
+    if(stop)stop.addEventListener('click',function(){if(window.speechSynthesis)window.speechSynthesis.cancel();if(orb)orb.classList.remove('speaking');if(status)status.textContent='Audio stopped.';});
+    if(toggle)toggle.addEventListener('click',function(){if(!transcript)return;transcript.hidden=!transcript.hidden;transcript.textContent=lastText||((activeTopic()||{}).lesson||'');toggle.textContent=transcript.hidden?'Show transcript':'Hide transcript';});
+    if(mic)mic.addEventListener('click',function(){
+      var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR){if(status)status.textContent='Voice input is not supported here. Use the text question box.';return;}
+      window.shGuidedVoiceMode=true;if(window.speechSynthesis)window.speechSynthesis.cancel();if(orb)orb.classList.remove('speaking');
+      var rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=1;
+      rec.onstart=function(){if(status)status.textContent='Listening… speak your question.';};
+      rec.onerror=function(){if(status)status.textContent='Microphone input unavailable. Check browser permission or type your question.';};
+      rec.onresult=function(e){var words=e.results[0][0].transcript,input=byId('sg-ask-input');if(input)input.value=words;if(status)status.textContent='You said: '+words;askMore();};
+      try{rec.start();}catch(_){if(status)status.textContent='Could not start microphone input.';}
+    });
+    setMode('text');
+  }
   function init() {
     if (state.initialized) return; state.initialized = true;
     var file=byId('sg-material-file');if(file)file.addEventListener('change',handleFileChange);var addFiles=byId('sg-add-files');if(addFiles&&file)addFiles.addEventListener('click',function(){var picker=document.createElement('input');picker.type='file';picker.multiple=true;picker.accept=file.accept;picker.onchange=function(){if(!picker.files||!picker.files.length)return;try{var transfer=new DataTransfer();Array.prototype.forEach.call(file.files,function(f){transfer.items.add(f);});Array.prototype.forEach.call(picker.files,function(f){transfer.items.add(f);});if(transfer.files.length>10){if(window.shToast)window.shToast('You can add up to 10 files per programme.');return;}file.files=transfer.files;handleFileChange();}catch(error){if(window.shToast)window.shToast('Your browser cannot append files this way. Choose all files together instead.');}};picker.click();});var category=byId('sg-category'),level=byId('sg-level');if(category&&level)category.addEventListener('change',function(){var choices={'Primary School':['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6'],'Secondary School':['JSS 1','JSS 2','JSS 3','SS 1','SS 2','SS 3'],'Undergraduate':['100 Level','200 Level','300 Level','400 Level','500 Level','600 Level'],'Postgraduate':['PGD','Master’s','PhD']};level.innerHTML='<option value="">Select level</option>'+(choices[category.value]||[]).map(function(v){return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>';}).join('');});var mt=byId('sg-mode-text'),mu=byId('sg-mode-upload');if(mt&&mu){mt.addEventListener('click',function(){byId('sg-text-mode').hidden=false;byId('sg-upload-mode').hidden=true;mt.classList.add('active');mu.classList.remove('active');});mu.addEventListener('click',function(){byId('sg-text-mode').hidden=true;byId('sg-upload-mode').hidden=false;mu.classList.add('active');mt.classList.remove('active');});}initVoiceTutor();
