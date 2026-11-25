@@ -64,7 +64,7 @@ service cloud.firestore {
       match /studyPlans/{planId} {
         function validStudyPlan(data) {
           return data.keys().hasOnly([
-              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
+              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'sourceCharacterCount', 'sourceChunkCount', 'sourceName',
               'topics', 'currentTopicIndex', 'completedTopics', 'bypassedTopics', 'status',
               'createdAt', 'updatedAt'
             ])
@@ -84,6 +84,8 @@ service cloud.firestore {
             && data.courseCode is string
             && data.sourceMaterial is string
             && data.sourceMaterial.size() <= 24000
+            && data.sourceCharacterCount is int && data.sourceCharacterCount >= 0
+            && data.sourceChunkCount is int && data.sourceChunkCount >= 0 && data.sourceChunkCount <= 5000
             && data.sourceName is string
             && data.topics is list
             && data.topics.size() > 0
@@ -109,6 +111,25 @@ service cloud.firestore {
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.createdAt == resource.data.createdAt
           && validStudyPlan(request.resource.data);
+      }
+
+      match /studyPlans/{planId}/sourceChunks/{chunkId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.keys().hasOnly(['uid', 'index', 'text', 'summary', 'createdAt'])
+          && request.resource.data.keys().hasAll(['uid', 'index', 'text', 'summary', 'createdAt'])
+          && request.resource.data.index is int
+          && request.resource.data.index >= 0
+          && request.resource.data.index < 5000
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 36000
+          && request.resource.data.summary is string
+          && request.resource.data.summary.size() <= 1800
+          && request.resource.data.createdAt is timestamp;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
       match /studyPlans/{planId}/conversations/{messageId} {
