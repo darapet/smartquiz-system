@@ -37,7 +37,7 @@ test('there is no fixed per-user study-plan count limit', () => {
 
 test('guided study implements lessons, tutor questions, objective quizzes and saved progress', () => {
   const guided = read('js/aqs-study-plan.js');
-  for (const marker of ['generateLesson', 'askMore', 'generateQuiz', 'submitQuiz', 'completedTopics', 'savePlan']) {
+  for (const marker of ['generateLesson', 'askMore', 'recapConversation', 'generateQuiz', 'submitQuiz', 'completedTopics', 'savePlan']) {
     assert.ok(guided.includes(marker), 'missing guided study feature: ' + marker);
   }
   assert.match(guided, /Pass the previous topic quiz, or use the Pro bypass/);
@@ -57,7 +57,8 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.match(dashboard, /id="sg-category"/);
   assert.match(dashboard, /multiple accept=/);
   assert.match(dashboard, /id="sg-voice-orb"/);
-  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-4/);
+  assert.match(dashboard, /id="sg-recap-btn"/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-6/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
 });
