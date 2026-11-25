@@ -160,7 +160,6 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
     <form id="sg-create-form" class="gs-create-form">
       <div class="gs-wizard-progress"><div class="gs-wizard-steps"><span class="gs-wizard-step active" data-wizard-indicator="1"><b>1</b><span>Programme</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="2"><b>2</b><span>Materials</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="3"><b>3</b><span>Review</span></span></div></div>
       <div id="sg-create-status" class="gs-form-status" role="status" aria-live="polite"></div>
-        <label class="gs-instructions-field">Additional instructions for your AI tutor (optional)<textarea id="sg-material-instructions" maxlength="4000" rows="3" placeholder="e.g. Focus on exam topics, explain calculations step by step, or use simple examples."></textarea></label>
         <div id="sg-read-progress" class="gs-read-progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="gs-read-progress-top"><strong>Document processing</strong><span id="sg-read-progress-label">Waiting for files</span></div><div class="gs-read-progress-track"><span id="sg-read-progress-fill"></span></div></div>
       <section class="gs-wizard-card" id="sg-step-1" data-wizard-step="1">
         <span class="gs-modal-kicker">STEP 1 OF 3</span><h3>Set up your programme</h3><p class="gs-form-help">Tell your AI tutor what you are studying and your academic level.</p>
@@ -184,6 +183,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
           <div class="gs-upload-row"><span id="sg-upload-name">No files selected</span></div>
           <p class="gs-form-help">Supported: PDF, Word, PowerPoint, Excel, TXT, Markdown and CSV. Text-based PDFs are supported; scanned image-only PDFs need OCR.</p>
         </div>
+        <label class="gs-instructions-field">Additional instructions for your AI tutor (optional)<textarea id="sg-material-instructions" maxlength="4000" rows="3" placeholder="e.g. Focus on exam topics, explain calculations step by step, or use simple examples."></textarea></label>
         <div class="gs-wizard-actions"><button type="button" class="gs-wizard-back" id="sg-step-back-2">← Back</button><button type="button" class="gs-submit" id="sg-step-next-2">Review programme <span>→</span></button></div>
       </section>
       <section class="gs-wizard-card" id="sg-step-3" data-wizard-step="3" hidden>
