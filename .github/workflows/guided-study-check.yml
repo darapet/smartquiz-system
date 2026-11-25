@@ -39,6 +39,8 @@ jobs:
         run: |
           node --check js/aqs-study-plan.js
           node --check daraquiz-mobile/www/js/aqs-study-plan.js
+          node --input-type=module --check < js/aqs-firebase.js
+          node --input-type=module --check < daraquiz-mobile/www/js/aqs-firebase.js
           node --check js/aqs-groq-key.js
           node --check daraquiz-mobile/www/js/aqs-groq-key.js
       - name: Run Guided Study regression tests
