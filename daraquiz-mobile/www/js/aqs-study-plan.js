@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   var state = { plans: [], activePlan: null, activeId: null, loading: false, saveQueue: Promise.resolve(), activeAIController: null, activeAIKind: '', initialized: false };
-  var SOURCE_CHUNK_SIZE = 30000;
+  var SOURCE_CHUNK_SIZE = 18000;
   var MAX_SOURCE_CHUNKS = 5000;
   var PASS_MARK = 70;
   function byId(id) { return document.getElementById(id); }
