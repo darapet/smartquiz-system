@@ -1,0 +1,43 @@
+name: Guided Study checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/aqs-study-plan.js'
+      - 'daraquiz-mobile/www/js/aqs-study-plan.js'
+      - 'studyhub-guided-dashboard.html'
+      - 'daraquiz-mobile/www/studyhub-guided-dashboard.html'
+      - 'js/aqs-firebase.js'
+      - 'daraquiz-mobile/www/js/aqs-firebase.js'
+      - 'firestore.rules'
+      - 'daraquiz-mobile/www/firestore.rules'
+      - 'functions/test/studyhub-guided.test.js'
+      - '.github/workflows/guided-study-check.yml'
+  pull_request:
+    paths:
+      - 'js/aqs-study-plan.js'
+      - 'daraquiz-mobile/www/js/aqs-study-plan.js'
+      - 'studyhub-guided-dashboard.html'
+      - 'daraquiz-mobile/www/studyhub-guided-dashboard.html'
+      - 'js/aqs-firebase.js'
+      - 'daraquiz-mobile/www/js/aqs-firebase.js'
+      - 'firestore.rules'
+      - 'daraquiz-mobile/www/firestore.rules'
+      - 'functions/test/studyhub-guided.test.js'
+      - '.github/workflows/guided-study-check.yml'
+
+jobs:
+  guided-study:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check js/aqs-study-plan.js
+          node --check daraquiz-mobile/www/js/aqs-study-plan.js
+      - name: Run Guided Study regression tests
+        run: node --test functions/test/studyhub-guided.test.js
