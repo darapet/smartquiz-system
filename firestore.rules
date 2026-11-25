@@ -88,8 +88,8 @@ service cloud.firestore {
       match /studyPlans/{planId} {
         function validStudyPlan(data) {
           return data.keys().hasOnly([
-              'uid', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
-              'topics', 'currentTopicIndex', 'completedTopics', 'status',
+              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
+              'topics', 'currentTopicIndex', 'completedTopics', 'bypassedTopics', 'status',
               'createdAt', 'updatedAt'
             ])
             && data.keys().hasAll([
@@ -98,6 +98,10 @@ service cloud.firestore {
               'createdAt', 'updatedAt'
             ])
             && data.uid == userId
+            && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+            && data.academicCategory is string && data.academicCategory.size() <= 40
+            && data.academicLevel is string && data.academicLevel.size() <= 60
+            && data.programme is string && data.programme.size() <= 120
             && data.subject is string
             && data.subject.size() > 0
             && data.subject.size() <= 120
@@ -113,6 +117,8 @@ service cloud.firestore {
             && data.currentTopicIndex < data.topics.size()
             && data.completedTopics is list
             && data.completedTopics.size() <= data.topics.size()
+            && data.bypassedTopics is list
+            && data.bypassedTopics.size() <= data.topics.size()
             && data.status in ['in_progress', 'completed']
             && data.createdAt is timestamp
             && data.updatedAt is timestamp;
