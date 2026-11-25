@@ -93,7 +93,7 @@ service cloud.firestore {
               'createdAt', 'updatedAt'
             ])
             && data.keys().hasAll([
-              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'sourceCharacterCount', 'sourceChunkCount', 'sourceName',
+              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'learningInstructions', 'sourceCharacterCount', 'sourceChunkCount', 'sourceName',
               'topics', 'currentTopicIndex', 'completedTopics', 'bypassedTopics', 'status',
               'createdAt', 'updatedAt'
             ])
