@@ -269,7 +269,7 @@ window.shGuidedSnapshot=function(items){var old=[],hadSnapshot=false;try{var raw
 window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-create-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}};
 (function(){var m=document.getElementById('gs-create-modal');var open=document.getElementById('gs-open-create');if(open)open.addEventListener('click',function(){m.classList.add('open');m.setAttribute('aria-hidden','false');if(window.shGuidedWizardReset)window.shGuidedWizardReset()});document.querySelectorAll('[data-close-create]').forEach(function(b){b.addEventListener('click',window.shGuidedCloseCreateModal)});document.addEventListener('keydown',function(e){if(e.key==='Escape')window.shGuidedCloseCreateModal()});})();
 </script>
-<script src="js/aqs-study-plan.js?v=guided-rebuild-13"></script>
+<script src="js/aqs-study-plan.js?v=guided-rebuild-14"></script>
 <style>
 .sg-lesson-live{margin-top:14px;padding:16px 18px;border:1px solid #dbe5f3;border-radius:16px;background:linear-gradient(135deg,#f7faff,#f3f1ff);color:#25364d;white-space:pre-wrap;line-height:1.75;max-height:360px;overflow:auto;font-size:.96rem}
 .sg-lesson-live:empty{display:none}
