@@ -402,9 +402,9 @@ window.aqsStudyPlanStore = {
         var created = await addDoc(collection(db, 'users', user.uid, 'studyPlans'), payload);
         var chunks = Array.isArray(sourceChunks) ? sourceChunks : [];
         try {
-            for (var offset = 0; offset < chunks.length; offset += 400) {
+            for (var offset = 0; offset < chunks.length; offset += 100) {
                 var batch = writeBatch(db);
-                chunks.slice(offset, offset + 400).forEach(function(chunk, localIndex) {
+                chunks.slice(offset, offset + 100).forEach(function(chunk, localIndex) {
                     var index = offset + localIndex;
                     var chunkText = String(chunk && chunk.text || '');
                     if (!chunkText || chunkText.length > 36000) throw new Error('A source section is empty or too large to save.');
