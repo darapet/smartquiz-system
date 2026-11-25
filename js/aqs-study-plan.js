@@ -154,8 +154,10 @@
     byId('sg-workspace-code').textContent=(meta?meta+' · ':'')+(plan.courseCode?plan.courseCode+' · ':'')+progress.done+' of '+progress.total+' topics complete';
     byId('sg-workspace-progress').style.width = progress.percent + '%'; byId('sg-workspace-percent').textContent = progress.percent + '% complete';
     var topics = byId('sg-topic-list');
+    var passedIds=plan.completedTopics||[],bypassedIds=plan.bypassedTopics||[],unlockedThrough=0;
+    for(var gateIndex=0;gateIndex<plan.topics.length;gateIndex++){var gateTopicId=plan.topics[gateIndex].id;if(passedIds.indexOf(gateTopicId)>=0||bypassedIds.indexOf(gateTopicId)>=0)unlockedThrough=gateIndex+1;else break;}
     topics.innerHTML = plan.topics.map(function (topic, index) {
-      var done=(plan.completedTopics||[]).indexOf(topic.id)>=0||topic.status==='completed',bypassed=(plan.bypassedTopics||[]).indexOf(topic.id)>=0,locked=index>(plan.currentTopicIndex||0)&&!done&&!bypassed,current=index===plan.currentTopicIndex;
+      var done=passedIds.indexOf(topic.id)>=0||topic.status==='completed',bypassed=bypassedIds.indexOf(topic.id)>=0,locked=index>unlockedThrough&&!done&&!bypassed,current=index===plan.currentTopicIndex;
       return '<button type="button" class="sg-topic-item ' + (done ? 'done ' : '') + (current ? 'active' : '') + '" data-sg-topic="' + index + '"><span class="sg-topic-num">' + (done?'✓':(bypassed?'↗':(locked?'🔒':index+1)))+'</span><span class="sg-topic-copy"><strong>'+escapeHtml(topic.title)+'</strong><small>'+(done?'Passed':(bypassed?'Bypassed · Pro':(locked?'Locked':(topic.status==='in_progress'?'In progress':topic.estimatedMinutes+' min'))))+'</small></span></button>';
     }).join('');
     topics.querySelectorAll('[data-sg-topic]').forEach(function (button) { button.addEventListener('click', function () { selectTopic(parseInt(button.getAttribute('data-sg-topic'), 10)); }); });
