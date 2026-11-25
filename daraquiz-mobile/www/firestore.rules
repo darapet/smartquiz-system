@@ -69,8 +69,8 @@ service cloud.firestore {
               'createdAt', 'updatedAt'
             ])
             && data.keys().hasAll([
-              'uid', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
-              'topics', 'currentTopicIndex', 'completedTopics', 'status',
+              'uid', 'title', 'academicCategory', 'academicLevel', 'programme', 'subject', 'courseCode', 'sourceMaterial', 'sourceName',
+              'topics', 'currentTopicIndex', 'completedTopics', 'bypassedTopics', 'status',
               'createdAt', 'updatedAt'
             ])
             && data.uid == userId
