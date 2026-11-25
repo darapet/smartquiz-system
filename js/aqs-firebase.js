@@ -389,6 +389,7 @@ window.aqsStudyPlanStore = {
             topics: data.topics,
             currentTopicIndex: 0,
             completedTopics: [],
+            bypassedTopics: Array.isArray(data.bypassedTopics) ? data.bypassedTopics : [],
             status: 'in_progress',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -413,6 +414,7 @@ window.aqsStudyPlanStore = {
             topics: data.topics,
             currentTopicIndex: Math.max(0, parseInt(data.currentTopicIndex, 10) || 0),
             completedTopics: Array.isArray(data.completedTopics) ? data.completedTopics : [],
+            bypassedTopics: Array.isArray(data.bypassedTopics) ? data.bypassedTopics : [],
             status: data.status === 'completed' ? 'completed' : 'in_progress',
             updatedAt: serverTimestamp()
         });
