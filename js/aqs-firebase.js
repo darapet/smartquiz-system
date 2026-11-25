@@ -362,6 +362,7 @@ function _aqsValidateStudyPlan(data) {
     if (!String(data.subject || '').trim()) throw new Error('Add a subject or course name.');
     if(String(data.title||data.subject).length>120||String(data.academicCategory||'Self-directed').length>40||String(data.academicLevel||'').length>60||String(data.programme||'').length>120)throw new Error('Programme details are too long.');
     if (String(data.sourceMaterial || '').length > 24000) throw new Error('The generated source summary is too large to save.');
+    if (String(data.learningInstructions || '').length > 4000) throw new Error('Additional learning instructions must be 4,000 characters or fewer.');
     if (Number(data.sourceChunkCount || 0) > 5000) throw new Error('This programme contains too many document sections. Split the source into fewer files.');
     if (!Array.isArray(data.topics) || !data.topics.length || data.topics.length > 20) throw new Error('The study plan must contain between 1 and 20 topics.');
 }
@@ -386,6 +387,7 @@ window.aqsStudyPlanStore = {
             subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
+            learningInstructions: String(data.learningInstructions || '').slice(0, 4000),
             sourceCharacterCount: Math.max(0, parseInt(data.sourceCharacterCount, 10) || 0),
             sourceChunkCount: Math.max(0, parseInt(data.sourceChunkCount, 10) || 0),
             sourceName: String(data.sourceName || '').slice(0, 120),
@@ -441,6 +443,7 @@ window.aqsStudyPlanStore = {
             subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
+            learningInstructions: String(data.learningInstructions || '').slice(0, 4000),
             sourceCharacterCount: Math.max(0, parseInt(data.sourceCharacterCount, 10) || String(data.sourceMaterial || '').length),
             sourceChunkCount: Math.max(0, parseInt(data.sourceChunkCount, 10) || 0),
             sourceName: String(data.sourceName || '').slice(0, 120),
