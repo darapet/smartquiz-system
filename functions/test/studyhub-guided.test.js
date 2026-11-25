@@ -43,7 +43,7 @@ test('guided study implements lessons, tutor questions, objective quizzes and sa
   assert.match(guided, /Pass the previous topic quiz, or use the Pro bypass/);
   assert.match(guided, /PASS_MARK = 70/);
   assert.match(guided, /bypassRecord/);
-  assert.match(guided, /guidedQuizBypass === true/);
+  assert.match(guided, /guidedQuizBypass===true/);
   assert.match(guided, /Math\.max\(2,\s*Math\.min\(5/);
 });
 
