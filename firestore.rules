@@ -135,6 +135,37 @@ service cloud.firestore {
           && validStudyPlan(request.resource.data);
       }
 
+
+      match /studyPlans/{planId}/conversations/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.keys().hasOnly(['uid', 'topicId', 'question', 'answer', 'createdAt'])
+          && request.resource.data.topicId is string
+          && request.resource.data.question is string && request.resource.data.question.size() <= 1200
+          && request.resource.data.answer is string && request.resource.data.answer.size() <= 5000
+          && request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
+      }
+      match /studyPlans/{planId}/memory/{memoryId} {
+        allow read: if isSignedIn() && request.auth.uid == userId && memoryId == 'state';
+        allow create, update: if isSignedIn()
+          && request.auth.uid == userId && memoryId == 'state'
+          && request.resource.data.uid == userId
+          && request.resource.data.keys().hasOnly(['uid', 'summary', 'strengths', 'weakAreas', 'keyQuestions', 'updatedAt'])
+          && request.resource.data.summary is string && request.resource.data.summary.size() <= 3500
+          && request.resource.data.strengths is list && request.resource.data.strengths.size() <= 8
+          && request.resource.data.weakAreas is list && request.resource.data.weakAreas.size() <= 8
+          && request.resource.data.keyQuestions is list && request.resource.data.keyQuestions.size() <= 8
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if isSignedIn() && request.auth.uid == userId && memoryId == 'state';
+      }
+      match /entitlements/{entitlementId} {
+        allow read: if isSignedIn() && request.auth.uid == userId && entitlementId == 'features';
+        allow write: if isAdmin();
+      }
+
       match /savedImages/{imageId} {
         allow read, delete: if isSignedIn() && request.auth.uid == userId;
         allow create, update: if isSignedIn()
