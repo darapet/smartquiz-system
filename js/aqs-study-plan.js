@@ -269,7 +269,7 @@
         sourceName:(byId('sg-upload-name').textContent||'Pasted study material').slice(0,120),topics:topics,currentTopicIndex:0,completedTopics:[],status:'in_progress'};
       var id=await window.aqsStudyPlanStore.create(plan,sourceChunks);
       plan.id=id;plan.sourceChunks=sourceChunks;plan.createdAt=Date.now();plan.updatedAt=Date.now();state.plans.unshift(plan);
-      byId('sg-subject').value='';byId('sg-course-code').value='';byId('sg-material').value='';
+      byId('sg-subject').value='';byId('sg-course-code').value='';byId('sg-material').value='';if(byId('sg-material-instructions'))byId('sg-material-instructions').value='';
       byId('sg-material-file').value='';byId('sg-upload-name').textContent='No files selected';
       updateReadProgress(100,'Study programme created successfully.');
       setStatus('Your full material is saved and your study plan is ready.');renderPlans();openPlan(id);
@@ -529,7 +529,7 @@
     var button=byId('sg-revision-btn');if(button){button.disabled=true;button.textContent='Preparing your revision…';}
     try{
       var weak=(topic.quiz.lastResult.review||[]).filter(function(item){return item.score<7;});
-      topic.revisionNotes=await window.shAI('Act as a patient tutor. Create a focused revision mini-lesson for the student using their actual weak answers. Explain the concepts from first principles, correct misconceptions gently, give a fresh worked example where relevant, and finish with three quick self-check prompts (do not reveal their answers). Adapt to '+(plan.academicCategory||'self-directed')+' '+(plan.academicLevel||'')+'. Topic: '+topic.title+'. Weak responses: '+JSON.stringify(weak).slice(0,5000)+'\n\nOriginal lesson: '+String(topic.lesson||'').slice(0,7000)+'\n\nSource: '+getTopicSource(plan,topic,10000),1500);
+      topic.revisionNotes=await window.shAI('Act as a patient tutor. Create a focused revision mini-lesson for the student using their actual weak answers. Explain the concepts from first principles, correct misconceptions gently, give a fresh worked example where relevant, and finish with three quick self-check prompts (do not reveal their answers). Adapt to '+(plan.academicCategory||'self-directed')+' '+(plan.academicLevel||'')+'. Follow learner instructions: '+String(plan.learningInstructions||'None')+'. Topic: '+topic.title+'. Weak responses: '+JSON.stringify(weak).slice(0,5000)+'\n\nOriginal lesson: '+String(topic.lesson||'').slice(0,7000)+'\n\nSource: '+getTopicSource(plan,topic,10000),1500);
       await savePlan();renderTopic();if(window.shToast)window.shToast('Your personalised revision lesson is ready.');
     }catch(error){if(window.shToast)window.shToast(error.message||'Could not prepare revision.');}
     finally{if(button){button.disabled=false;button.textContent='Teach me the weak areas';}}
