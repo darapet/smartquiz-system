@@ -30,7 +30,7 @@ test('study plans are stored below the signed-in user account', () => {
 
 test('there is no fixed per-user study-plan count limit', () => {
   const firebase = read('js/aqs-firebase.js');
-  const listMethod = firebase.slice(firebase.indexOf('window.aqsStudyPlanStore ='), firebase.indexOf('create: async function(data)'));
+  const listMethod = firebase.slice(firebase.indexOf('window.aqsStudyPlanStore ='), firebase.indexOf('create: async function(data, sourceChunks)'));
   assert.match(listMethod, /getDocs\(query\(plansRef,\s*orderBy\('updatedAt',\s*'desc'\)\)\)/);
   assert.doesNotMatch(listMethod, /limit\(/);
 });
@@ -91,7 +91,7 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   const androidGroq = read('daraquiz-mobile/www/js/aqs-groq-key.js');
   assert.match(groq, /extraOpts\.signal\.aborted\) throw e/);
   assert.match(androidGroq, /extraOpts\.signal\.aborted\) throw e/);
-  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-8/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-9/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
 });
