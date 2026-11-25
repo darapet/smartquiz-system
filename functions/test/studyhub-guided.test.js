@@ -62,6 +62,10 @@ test('Guided Study reads long documents in full and stores source sections separ
   assert.match(firebase, /sourceCharacterCount/);
   assert.match(firebase, /learningInstructions/);
   assert.match(rules, /data\.learningInstructions\.size\(\) <= 4000/);
+  const step2Start = dashboard.indexOf('data-wizard-step="2"');
+  const step3Start = dashboard.indexOf('data-wizard-step="3"');
+  const instructionsAt = dashboard.indexOf('id="sg-material-instructions"');
+  assert.ok(instructionsAt > step2Start && instructionsAt < step3Start);
   assert.match(read('studyhub-guided-dashboard.html'), /id="sg-material-instructions"/);
   assert.match(read('studyhub-guided-dashboard.html'), /id="sg-review-instructions"/);
   assert.match(rules, /match \/studyPlans\/\{planId\}\/sourceChunks\/\{chunkId\}/);
@@ -96,7 +100,7 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   const androidGroq = read('daraquiz-mobile/www/js/aqs-groq-key.js');
   assert.match(groq, /extraOpts\.signal\.aborted\) throw e/);
   assert.match(androidGroq, /extraOpts\.signal\.aborted\) throw e/);
-  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-10/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-11/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
 });
