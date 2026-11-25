@@ -292,7 +292,17 @@
     var plan = state.plans.find(function (item) { return item.id === id; });
     if (!plan) { await loadPlans(); plan = state.plans.find(function (item) { return item.id === id; }); }
     if (!plan) { if (window.shToast) window.shToast('That study plan could not be found. Refresh your plans and try again.'); return; }
-    state.activePlan=plan;state.activeId=id;state.conversation=[];state.learningMemory=null;try{if(window.aqsStudyPlanStore.getSourceChunks&&Number(plan.sourceChunkCount||0)>0)plan.sourceChunks=await window.aqsStudyPlanStore.getSourceChunks(id);if(window.aqsStudyPlanStore.getMemory)state.learningMemory=await window.aqsStudyPlanStore.getMemory(id);if(activeTopic())await loadTopicConversation(activeTopic());}catch(memoryError){console.warn('[Guided Study] Could not load saved learner memory or source material:',memoryError);}
+    state.conversation=[];state.learningMemory=null;
+    if(Number(plan.sourceChunkCount||0)>0){
+      try{
+        if(!window.aqsStudyPlanStore.getSourceChunks)throw new Error('The source-section reader is unavailable.');
+        var storedChunks=await window.aqsStudyPlanStore.getSourceChunks(id);
+        if(storedChunks.length!==Number(plan.sourceChunkCount))throw new Error('Some saved source sections could not be loaded.');
+        plan.sourceChunks=storedChunks;
+      }catch(sourceError){console.error('[Guided Study] Full source load failed:',sourceError);if(window.shToast)window.shToast('Could not load the full course material. The updated Firestore rules must be published and your connection checked.');return;}
+    }
+    state.activePlan=plan;state.activeId=id;
+    try{if(window.aqsStudyPlanStore.getMemory)state.learningMemory=await window.aqsStudyPlanStore.getMemory(id);if(activeTopic())await loadTopicConversation(activeTopic());}catch(memoryError){console.warn('[Guided Study] Could not load saved learner memory:',memoryError);}
     if (window.shGuidedCloseCreateModal) window.shGuidedCloseCreateModal();
     byId('sg-list-view').classList.add('sg-hidden'); byId('sg-workspace').style.display = 'block'; renderWorkspace();
     if (activeTopic() && !activeTopic().lesson) generateLesson();
