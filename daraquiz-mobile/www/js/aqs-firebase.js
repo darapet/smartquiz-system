@@ -361,7 +361,8 @@ function _aqsValidateStudyPlan(data) {
     if (!data || typeof data !== 'object') throw new Error('Invalid study plan data.');
     if (!String(data.subject || '').trim()) throw new Error('Add a subject or course name.');
     if(String(data.title||data.subject).length>120||String(data.academicCategory||'Self-directed').length>40||String(data.academicLevel||'').length>60||String(data.programme||'').length>120)throw new Error('Programme details are too long.');
-    if (String(data.sourceMaterial || '').length > 24000) throw new Error('Study material must be 24,000 characters or fewer.');
+    if (String(data.sourceMaterial || '').length > 24000) throw new Error('The generated source summary is too large to save.');
+    if (Number(data.sourceChunkCount || 0) > 5000) throw new Error('This programme contains too many document sections. Split the source into fewer files.');
     if (!Array.isArray(data.topics) || !data.topics.length || data.topics.length > 20) throw new Error('The study plan must contain between 1 and 20 topics.');
 }
 window.aqsStudyPlanStore = {
@@ -385,6 +386,8 @@ window.aqsStudyPlanStore = {
             subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
+            sourceCharacterCount: Math.max(0, parseInt(data.sourceCharacterCount, 10) || 0),
+            sourceChunkCount: Math.max(0, parseInt(data.sourceChunkCount, 10) || 0),
             sourceName: String(data.sourceName || '').slice(0, 120),
             topics: data.topics,
             currentTopicIndex: 0,
@@ -395,6 +398,34 @@ window.aqsStudyPlanStore = {
             updatedAt: serverTimestamp()
         };
         var created = await addDoc(collection(db, 'users', user.uid, 'studyPlans'), payload);
+        var chunks = Array.isArray(sourceChunks) ? sourceChunks : [];
+        try {
+            for (var offset = 0; offset < chunks.length; offset += 400) {
+                var batch = writeBatch(db);
+                chunks.slice(offset, offset + 400).forEach(function(chunk, localIndex) {
+                    var index = offset + localIndex;
+                    var chunkText = String(chunk && chunk.text || '');
+                    if (!chunkText || chunkText.length > 36000) throw new Error('A source section is empty or too large to save.');
+                    batch.set(doc(db, 'users', user.uid, 'studyPlans', created.id, 'sourceChunks', String(index).padStart(6, '0')), {
+                        uid: user.uid, index: index, text: chunkText,
+                        summary: String(chunk && chunk.summary || '').slice(0, 1800),
+                        createdAt: serverTimestamp()
+                    });
+                });
+                await batch.commit();
+            }
+        } catch (error) {
+            try {
+                var partial = await getDocs(collection(db, 'users', user.uid, 'studyPlans', created.id, 'sourceChunks'));
+                for (var pOffset = 0; pOffset < partial.docs.length; pOffset += 400) {
+                    var cleanup = writeBatch(db);
+                    partial.docs.slice(pOffset, pOffset + 400).forEach(function(item) { cleanup.delete(item.ref); });
+                    await cleanup.commit();
+                }
+                await deleteDoc(created.ref);
+            } catch (cleanupError) { console.warn('[StudyHub] Could not clean up incomplete source upload:', cleanupError); }
+            throw error;
+        }
         return created.id;
     },
     update: async function(id, data) {
@@ -410,6 +441,8 @@ window.aqsStudyPlanStore = {
             subject:String(data.subject).trim().slice(0,120),
             courseCode: String(data.courseCode || '').slice(0, 60),
             sourceMaterial: String(data.sourceMaterial || ''),
+            sourceCharacterCount: Math.max(0, parseInt(data.sourceCharacterCount, 10) || String(data.sourceMaterial || '').length),
+            sourceChunkCount: Math.max(0, parseInt(data.sourceChunkCount, 10) || 0),
             sourceName: String(data.sourceName || '').slice(0, 120),
             topics: data.topics,
             currentTopicIndex: Math.max(0, parseInt(data.currentTopicIndex, 10) || 0),
@@ -420,6 +453,13 @@ window.aqsStudyPlanStore = {
         });
     },
 
+    getSourceChunks: async function(id) {
+        var user = _aqsStudyPlanUser();
+        if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
+        var sourceRef = collection(db, 'users', user.uid, 'studyPlans', id, 'sourceChunks');
+        var snapshot = await getDocs(query(sourceRef, orderBy('index', 'asc')));
+        return snapshot.docs.map(function(item) { return Object.assign({ id: item.id }, item.data()); });
+    },
     appendConversation: async function(id, entry) {
         var user = _aqsStudyPlanUser();
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
@@ -469,7 +509,13 @@ window.aqsStudyPlanStore = {
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
         var base = doc(db, 'users', user.uid, 'studyPlans', id);
         var conversations = await getDocs(collection(db, 'users', user.uid, 'studyPlans', id, 'conversations'));
+        var sourceChunks = await getDocs(collection(db, 'users', user.uid, 'studyPlans', id, 'sourceChunks'));
         await Promise.all(conversations.docs.map(function(item) { return deleteDoc(item.ref); }));
+        for (var offset = 0; offset < sourceChunks.docs.length; offset += 400) {
+            var batch = writeBatch(db);
+            sourceChunks.docs.slice(offset, offset + 400).forEach(function(item) { batch.delete(item.ref); });
+            await batch.commit();
+        }
         await deleteDoc(doc(db, 'users', user.uid, 'studyPlans', id, 'memory', 'state'));
         await deleteDoc(base);
     }
