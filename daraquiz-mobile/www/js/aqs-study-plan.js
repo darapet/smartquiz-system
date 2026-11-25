@@ -234,8 +234,9 @@
       var scored=chunks.map(function(chunk,index){var hay=String(chunk.summary||'').toLowerCase(),score=terms.reduce(function(total,term){return total+(hay.indexOf(term)>=0?1:0);},0);return{index:index,score:score};}).sort(function(a,b){return b.score-a.score;});
       indexes=scored.slice(0,4).map(function(item){return item.index;});
     }
-    var output='',seen={};
-    indexes.forEach(function(index){if(seen[index]||output.length>=maxChars)return;seen[index]=true;var chunk=chunks[index];var header='[SOURCE SECTION '+index+']\n';var remaining=maxChars-output.length-header.length;if(remaining>0)output+=header+String(chunk.text||'').slice(0,remaining)+'\n\n';});
+    indexes=indexes.slice(0,Math.max(1,Math.min(8,Math.floor(maxChars/2500))));
+    var output='',seen={},perChunk=Math.max(1800,Math.floor(maxChars/indexes.length));
+    indexes.forEach(function(index){if(seen[index]||output.length>=maxChars)return;seen[index]=true;var chunk=chunks[index];var header='[SOURCE SECTION '+index+']\n';var remaining=Math.min(maxChars-output.length-header.length,perChunk);if(remaining>0)output+=header+String(chunk.text||'').slice(0,remaining)+'\n\n';});
     return output||String(plan.sourceMaterial||'').slice(0,maxChars);
   }
   async function createPlan(){
