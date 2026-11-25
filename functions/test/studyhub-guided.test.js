@@ -58,6 +58,8 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.match(dashboard, /multiple accept=/);
   assert.match(dashboard, /id="sg-voice-orb"/);
   assert.match(dashboard, /id="sg-recap-btn"/);
+  assert.match(dashboard, /Choose your learning mode/);
+  assert.match(dashboard, /sg-voice-orb/);
   assert.match(dashboard, /window\.shAIStream=async function/);
   assert.match(dashboard, /stream:true/);
   assert.match(dashboard, /Interrupt & ask/);
