@@ -57,7 +57,7 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.match(dashboard, /id="sg-category"/);
   assert.match(dashboard, /multiple accept=/);
   assert.match(dashboard, /id="sg-voice-orb"/);
-  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-3/);
+  assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-4/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
 });
