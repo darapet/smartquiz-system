@@ -87,6 +87,7 @@
     if(byId('sg-review-level'))byId('sg-review-level').textContent=[value('sg-category'),value('sg-level'),value('sg-programme')].filter(function(x){return x&&x!=='—';}).join(' · ')||'—';
     var material=(byId('sg-material')&&byId('sg-material').value||'').trim();
     if(byId('sg-review-material'))byId('sg-review-material').textContent=material.length.toLocaleString()+' characters · '+(byId('sg-upload-name')&&byId('sg-upload-name').textContent||'Pasted material');
+    if(byId('sg-review-instructions'))byId('sg-review-instructions').textContent=(byId('sg-material-instructions')&&byId('sg-material-instructions').value||'').trim()||'No extra instructions';
   }
   function setWizardStep(step){
     wizardStep=Math.max(1,Math.min(3,Number(step)||1));
