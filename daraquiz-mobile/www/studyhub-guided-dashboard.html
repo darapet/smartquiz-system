@@ -238,4 +238,13 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 (function(){var m=document.getElementById('gs-create-modal');var open=document.getElementById('gs-open-create');if(open)open.addEventListener('click',function(){m.classList.add('open');m.setAttribute('aria-hidden','false')});document.querySelectorAll('[data-close-create]').forEach(function(b){b.addEventListener('click',window.shGuidedCloseCreateModal)});document.addEventListener('keydown',function(e){if(e.key==='Escape')window.shGuidedCloseCreateModal()});})();
 </script>
 <script src="js/aqs-study-plan.js?v=guided-rebuild-7"></script>
+<style>
+.sg-lesson-live{margin-top:14px;padding:16px 18px;border:1px solid #dbe5f3;border-radius:16px;background:linear-gradient(135deg,#f7faff,#f3f1ff);color:#25364d;white-space:pre-wrap;line-height:1.75;max-height:360px;overflow:auto;font-size:.96rem}
+.sg-lesson-live:empty{display:none}
+.gs-discussion-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 14px}
+.gs-discussion-tools .gs-form-help{margin:0}
+#sg-recap-btn{min-height:40px;border-radius:12px}
+#sg-ask-btn{min-height:46px;white-space:nowrap}
+@media(max-width:560px){.gs-discussion-tools{align-items:flex-start}.gs-discussion-tools .gs-form-help{width:100%}#sg-ask-btn{width:100%}}
+</style>
 </body></html>
