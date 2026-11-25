@@ -701,6 +701,8 @@ async function handleAction(data) {
         case 'aqs_update_self_quiz_title': return await actionUpdateSelfQuizTitle(data);
         case 'aqs_update_quiz_metadata': return await actionUpdateQuizMetadata(data);
         case 'aqs_delete_quiz':      return await actionDeleteQuiz(data);
+        case 'aqs_confirm_quiz_archive_printed': return await actionConfirmQuizArchivePrinted(data);
+        case 'aqs_delete_quiz_after_archive': return await actionDeleteQuizAfterArchive(data);
         case 'aqs_toggle_quiz_status': return await actionToggleQuizStatus(data);
         case 'aqs_get_quiz_activity':  return await actionGetQuizActivity(data);
         case 'aqs_get_deleted_quizzes': return await actionGetDeletedQuizzes(data);
@@ -1530,6 +1532,33 @@ async function actionUpdateQuizMetadata(data) {
     }
     await updateDoc(doc(db, 'quizzes', quizId), update);
     return { updated: true, quiz_id: quizId, questions_unchanged: true };
+}
+
+async function actionConfirmQuizArchivePrinted(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    if (!quizId) throw new Error('Quiz ID is required.');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    if (snap.data().host_uid !== user.uid) throw new Error('Permission denied.');
+    await updateDoc(doc(db, 'quizzes', quizId), {
+        archive_printed_by: user.uid,
+        archive_printed_at: serverTimestamp()
+    });
+    return { confirmed: true, quiz_id: quizId };
+}
+
+async function actionDeleteQuizAfterArchive(data) {
+    var user = requireAuth();
+    var quizId = String(data.quiz_id || '');
+    var snap = await getDoc(doc(db, 'quizzes', quizId));
+    if (!snap.exists()) throw new Error('Quiz not found.');
+    var quiz = snap.data();
+    if (quiz.host_uid !== user.uid) throw new Error('Permission denied.');
+    if (quiz.archive_printed_by !== user.uid || !quiz.archive_printed_at) {
+        throw new Error('Print or save the full quiz archive before deleting this quiz.');
+    }
+    return await actionDeleteQuiz({ quiz_id: quizId });
 }
 
 async function actionDeleteQuiz(data) {
@@ -3181,6 +3210,21 @@ async function actionGetMyStats() {
         var count = attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === dayKey; }).length;
         weeklyActivity.push({ day: day.toLocaleDateString('en', { weekday: 'short' }), count: count });
     }
+    /* Complete activity series for the dashboard's Month and Year controls. */
+    var monthlyActivity = [];
+    for (var monthOffset = 29; monthOffset >= 0; monthOffset--) {
+        var monthDay = new Date(); monthDay.setHours(0, 0, 0, 0); monthDay.setDate(monthDay.getDate() - monthOffset);
+        var monthKey = monthDay.toISOString().slice(0, 10);
+        monthlyActivity.push({ day: monthDay.getDate(), label: monthDay.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+            count: attempts.filter(function(a) { return a._ms && new Date(a._ms).toISOString().slice(0, 10) === monthKey; }).length });
+    }
+    var yearlyActivity = [];
+    for (var yearOffset = 11; yearOffset >= 0; yearOffset--) {
+        var monthStart = new Date(new Date().getFullYear(), new Date().getMonth() - yearOffset, 1);
+        var nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+        yearlyActivity.push({ day: monthStart.toLocaleDateString('en', { month: 'short' }),
+            count: attempts.filter(function(a) { return a._ms && new Date(a._ms) >= monthStart && new Date(a._ms) < nextMonth; }).length });
+    }
 
     return {
         display_name: displayName,
@@ -3191,6 +3235,8 @@ async function actionGetMyStats() {
         total_questions_answered: totalQuestions,
         average_accuracy: totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
         weekly_activity: weeklyActivity,
+        monthly_activity: monthlyActivity,
+        yearly_activity: yearlyActivity,
         app_days: appDays.slice(-120),
         app_days_count: appDays.length,
         recent_activity: recent
