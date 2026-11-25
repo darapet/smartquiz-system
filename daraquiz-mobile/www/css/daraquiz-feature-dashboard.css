@@ -159,3 +159,39 @@
   .dq-studyhub-dashboard-page .dq-feature-card-head{flex-direction:column}
   .dq-studyhub-dashboard-page .dq-feature-card-head>span{text-align:left}
 }
+
+/* Quiz & Practice: detailed attempt review, archive tools and deletion guard. */
+#quiz-dashboard .dq-archive-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px}
+#quiz-dashboard .dq-archive-actions .dq-feature-pill{font:700 11px Inter,Arial,sans-serif;cursor:pointer}
+#quiz-dashboard .dq-archive-actions .dq-feature-pill:disabled{opacity:.42;cursor:not-allowed;background:#f4f6fa;color:#71809e}
+#quiz-dashboard .dq-archive-actions .dq-feature-pill.danger{border-color:#f2caca;color:#b42318}
+#quiz-dashboard .dq-archive-actions small{flex-basis:100%;color:#7b8499;font-size:10px;line-height:1.4}
+#quiz-dashboard .dq-report-question{padding:15px 0;border-bottom:1px solid #e8edf6}
+#quiz-dashboard .dq-report-question h3{margin:0 0 8px;color:#1764e8;font-size:13px}
+#quiz-dashboard .dq-report-question>p{font-size:13px;line-height:1.55}
+#quiz-dashboard .dq-report-question ul{display:grid;gap:7px;padding:0;margin:10px 0;list-style:none}
+#quiz-dashboard .dq-report-question li{padding:9px 11px;border:1px solid #e4eaf4;border-radius:9px;font-size:12px}
+#quiz-dashboard .dq-report-question li.is-correct{background:#edfaf1;border-color:#b9e9c8;color:#16763e}
+#quiz-dashboard .dq-report-question li.is-selected:not(.is-correct){background:#fff5e9;border-color:#f4d4a9;color:#92520d}
+#quiz-dashboard .dq-report-result{font-size:11px;font-weight:800}
+#quiz-dashboard .dq-report-result.good{color:#16834a}
+#quiz-dashboard .dq-report-result.needs-review{color:#c0781b}
+#quiz-dashboard .dq-report-explanation{padding:11px 13px;border-radius:10px;background:#f2f6ff;color:#35466b;font-size:12px}
+#quiz-dashboard .dq-report-explanation p{margin:5px 0 0;line-height:1.55}
+#quiz-dashboard .dq-attempt-modal[hidden]{display:none}
+#quiz-dashboard .dq-attempt-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:#0d183d88}
+#quiz-dashboard .dq-attempt-modal-card{width:min(860px,100%);max-height:min(88vh,900px);display:flex;flex-direction:column;border-radius:18px;background:#fff;box-shadow:0 24px 70px #0b174733;overflow:hidden}
+#quiz-dashboard .dq-attempt-modal-card>header{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:19px 22px;border-bottom:1px solid #e6ebf5}
+#quiz-dashboard .dq-attempt-modal-card>header h2{margin:0;font-size:19px}
+#quiz-dashboard .dq-attempt-modal-card>header p{margin:5px 0 0;color:#697795;font-size:12px}
+#quiz-dashboard #dq-attempt-modal-close{width:36px;height:36px;border:0;border-radius:50%;background:#f1f4fb;color:#27345d;font-size:23px;cursor:pointer}
+#quiz-dashboard .dq-attempt-modal-body{overflow:auto;padding:8px 22px 20px}
+#quiz-dashboard .dq-attempt-modal-card>footer{display:flex;justify-content:flex-end;gap:9px;padding:14px 22px;border-top:1px solid #e6ebf5;background:#fbfcff}
+#quiz-dashboard.dq-modal-open{overflow:hidden}
+@media(max-width:560px){
+ #quiz-dashboard .dq-attempt-modal{padding:8px}
+ #quiz-dashboard .dq-attempt-modal-card{max-height:94vh;border-radius:14px}
+ #quiz-dashboard .dq-attempt-modal-card>header,#quiz-dashboard .dq-attempt-modal-body{padding-left:15px;padding-right:15px}
+ #quiz-dashboard .dq-attempt-modal-card>footer{padding:12px 15px}
+ #quiz-dashboard .dq-archive-actions{min-width:210px}
+}
