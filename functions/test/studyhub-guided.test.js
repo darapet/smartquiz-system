@@ -81,6 +81,7 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.match(dashboard, /data-wizard-step="2"/);
   assert.match(dashboard, /data-wizard-step="3"/);
   assert.match(dashboard, /id="sg-read-progress"/);
+  assert.ok(dashboard.indexOf('id="sg-read-progress"') < dashboard.indexOf('data-wizard-step="1"'), 'progress stays visible during AI processing');
   assert.match(dashboard, /\.pptx,.xlsx,.xls/);
   assert.match(dashboard, /Choose your learning mode/);
   assert.match(dashboard, /sg-voice-orb/);
