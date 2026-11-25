@@ -193,7 +193,7 @@
         allText.push('\n\n--- SOURCE FILE: '+files[i].name+' ---\n'+body);names.push(files[i].name);
       }
       byId('sg-material').value=allText.join('').trim();
-      if(label)label.textContent=names.length+' file(s) · '+allText.join('').length.toLocaleString()+' characters extracted';
+      if(label)label.textContent=names.join(', ').slice(0,130)+' · '+allText.join('').length.toLocaleString()+' characters extracted';
       updateReadProgress(100,'All '+files.length+' file(s) read successfully.');
       setStatus('All document pages and sections were read. Continue to review your material.');
     }catch(error){if(label)label.textContent='Could not read all files';setStatus(error.message||'Could not read those files.',true);}
