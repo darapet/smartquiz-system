@@ -40,7 +40,10 @@ test('guided study implements lessons, tutor questions, objective quizzes and sa
   for (const marker of ['generateLesson', 'askMore', 'generateQuiz', 'submitQuiz', 'completedTopics', 'savePlan']) {
     assert.ok(guided.includes(marker), 'missing guided study feature: ' + marker);
   }
-  assert.match(guided, /Complete the previous topic quiz before moving ahead/);
+  assert.match(guided, /Pass the previous topic quiz, or use the Pro bypass/);
+  assert.match(guided, /PASS_MARK = 70/);
+  assert.match(guided, /bypassRecord/);
+  assert.match(guided, /guidedQuizBypass === true/);
   assert.match(guided, /Math\.max\(2,\s*Math\.min\(5/);
 });
 
@@ -51,6 +54,9 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.equal(dashboard, androidDashboard);
   assert.match(dashboard, /id="gs-create-modal"/);
   assert.match(dashboard, /id="sg-workspace"/);
+  assert.match(dashboard, /id="sg-category"/);
+  assert.match(dashboard, /multiple accept=/);
+  assert.match(dashboard, /id="sg-voice-orb"/);
   assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-3/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
