@@ -419,10 +419,59 @@ window.aqsStudyPlanStore = {
             updatedAt: serverTimestamp()
         });
     },
+
+    appendConversation: async function(id, entry) {
+        var user = _aqsStudyPlanUser();
+        if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
+        if (!entry || !String(entry.topicId || '').trim()) throw new Error('A topic is required for this conversation.');
+        var question = String(entry.question || '').trim().slice(0, 1200);
+        var answer = String(entry.answer || '').trim().slice(0, 5000);
+        if (!question || !answer) throw new Error('Both the question and tutor response are required.');
+        var created = await addDoc(collection(db, 'users', user.uid, 'studyPlans', id, 'conversations'), {
+            uid: user.uid, topicId: String(entry.topicId).slice(0, 80), question: question, answer: answer, createdAt: serverTimestamp()
+        });
+        return created.id;
+    },
+    listConversation: async function(id, topicId) {
+        var user = _aqsStudyPlanUser();
+        var ref = collection(db, 'users', user.uid, 'studyPlans', id, 'conversations');
+        var snapshot = await getDocs(query(ref, where('topicId', '==', String(topicId || '')), orderBy('createdAt', 'asc')));
+        return snapshot.docs.map(function(item) {
+            var data = item.data();
+            return Object.assign({ id: item.id }, data, { createdAt: data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : Date.now() });
+        });
+    },
+    getMemory: async function(id) {
+        var user = _aqsStudyPlanUser();
+        var snapshot = await getDoc(doc(db, 'users', user.uid, 'studyPlans', id, 'memory', 'state'));
+        return snapshot.exists() ? snapshot.data() : { summary: '', strengths: [], weakAreas: [], keyQuestions: [] };
+    },
+    saveMemory: async function(id, memory) {
+        var user = _aqsStudyPlanUser();
+        var clean = {
+            uid: user.uid,
+            summary: String(memory && memory.summary || '').slice(0, 3500),
+            strengths: Array.isArray(memory && memory.strengths) ? memory.strengths.slice(0, 8).map(function(v) { return String(v).slice(0, 180); }) : [],
+            weakAreas: Array.isArray(memory && memory.weakAreas) ? memory.weakAreas.slice(0, 8).map(function(v) { return String(v).slice(0, 180); }) : [],
+            keyQuestions: Array.isArray(memory && memory.keyQuestions) ? memory.keyQuestions.slice(0, 8).map(function(v) { return String(v).slice(0, 180); }) : [],
+            updatedAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'users', user.uid, 'studyPlans', id, 'memory', 'state'), clean);
+    },
+    getEntitlements: async function() {
+        var user = _aqsStudyPlanUser();
+        var snapshot = await getDoc(doc(db, 'users', user.uid, 'entitlements', 'features'));
+        var data = snapshot.exists() ? snapshot.data() : {};
+        return { guidedQuizBypass: data.guidedQuizBypass === true };
+    },
     remove: async function(id) {
         var user = _aqsStudyPlanUser();
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(id || ''))) throw new Error('Invalid study plan reference.');
-        await deleteDoc(doc(db, 'users', user.uid, 'studyPlans', id));
+        var base = doc(db, 'users', user.uid, 'studyPlans', id);
+        var conversations = await getDocs(collection(db, 'users', user.uid, 'studyPlans', id, 'conversations'));
+        await Promise.all(conversations.docs.map(function(item) { return deleteDoc(item.ref); }));
+        await deleteDoc(doc(db, 'users', user.uid, 'studyPlans', id, 'memory', 'state'));
+        await deleteDoc(base);
     }
 };
 
