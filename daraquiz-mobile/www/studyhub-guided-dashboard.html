@@ -266,9 +266,9 @@ window.shAI=async function(prompt,maxTokens){if(typeof window.studyhubGroqFetch!
 window.shToast=function(message){var n=document.createElement('div');n.className='gs-toast';n.textContent=message;document.body.appendChild(n);setTimeout(function(){n.remove()},3500);};
 window.shGuidedSnapshot=function(items){var old=[],hadSnapshot=false;try{var raw=localStorage.getItem('aqs_sh_guided_seen');hadSnapshot=raw!==null;old=JSON.parse(raw||'[]')}catch(e){}var next=(items||[]).map(function(p){return{id:p.id,subject:p.subject,courseCode:p.courseCode,topics:p.topics,completedTopics:p.completedTopics||[],status:p.status,at:p.updatedAt||Date.now()}});try{localStorage.setItem('aqs_sh_guided_seen',JSON.stringify(next));var log=JSON.parse(localStorage.getItem('aqs_sh_act_log_v1')||'[]');next.forEach(function(p){var prev=old.find(function(x){return x.id===p.id});if(hadSnapshot&&!prev)log.push({k:'guided',at:Date.now()});else if(prev&&(p.completedTopics||[]).length>(prev.completedTopics||[]).length)log.push({k:'topic-completed',at:Date.now()})});localStorage.setItem('aqs_sh_act_log_v1',JSON.stringify(log.slice(-300)))}catch(e){}window.dispatchEvent(new CustomEvent('aqs:guided-plans-updated',{detail:{plans:items||[]}}));};
 window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-create-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}};
-(function(){var m=document.getElementById('gs-create-modal');var open=document.getElementById('gs-open-create');if(open)open.addEventListener('click',function(){m.classList.add('open');m.setAttribute('aria-hidden','false')});document.querySelectorAll('[data-close-create]').forEach(function(b){b.addEventListener('click',window.shGuidedCloseCreateModal)});document.addEventListener('keydown',function(e){if(e.key==='Escape')window.shGuidedCloseCreateModal()});})();
+(function(){var m=document.getElementById('gs-create-modal');var open=document.getElementById('gs-open-create');if(open)open.addEventListener('click',function(){m.classList.add('open');m.setAttribute('aria-hidden','false');if(window.shGuidedWizardReset)window.shGuidedWizardReset()});document.querySelectorAll('[data-close-create]').forEach(function(b){b.addEventListener('click',window.shGuidedCloseCreateModal)});document.addEventListener('keydown',function(e){if(e.key==='Escape')window.shGuidedCloseCreateModal()});})();
 </script>
-<script src="js/aqs-study-plan.js?v=guided-rebuild-8"></script>
+<script src="js/aqs-study-plan.js?v=guided-rebuild-9"></script>
 <style>
 .sg-lesson-live{margin-top:14px;padding:16px 18px;border:1px solid #dbe5f3;border-radius:16px;background:linear-gradient(135deg,#f7faff,#f3f1ff);color:#25364d;white-space:pre-wrap;line-height:1.75;max-height:360px;overflow:auto;font-size:.96rem}
 .sg-lesson-live:empty{display:none}
@@ -277,5 +277,30 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 #sg-recap-btn{min-height:40px;border-radius:12px}
 #sg-ask-btn{min-height:46px;white-space:nowrap}
 @media(max-width:560px){.gs-discussion-tools{align-items:flex-start}.gs-discussion-tools .gs-form-help{width:100%}#sg-ask-btn{width:100%}}
-.gs-room-mode{flex-wrap:wrap;align-items:center}.gs-mode-caption{width:100%;font-size:11px;font-weight:800;color:#526579;letter-spacing:.04em;text-transform:uppercase}</style>
+.gs-room-mode{flex-wrap:wrap;align-items:center}.gs-mode-caption{width:100%;font-size:11px;font-weight:800;color:#526579;letter-spacing:.04em;text-transform:uppercase}.gs-wizard-progress{margin:6px 0 18px;padding:13px 15px;border:1px solid #e2e9f7;border-radius:15px;background:#f8faff}
+.gs-wizard-steps{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gs-wizard-step{display:flex;align-items:center;gap:8px;color:#8994aa;font-size:11px;font-weight:800;white-space:nowrap}
+.gs-wizard-step b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#e8edf6;color:#6c7890;font-size:11px}
+.gs-wizard-step.active{color:#1764e8}.gs-wizard-step.active b{background:#1764e8;color:#fff;box-shadow:0 4px 12px #1764e833}
+.gs-wizard-step.complete{color:#18884c}.gs-wizard-step.complete b{background:#e0f6e9;color:#18884c}
+.gs-wizard-line{height:2px;flex:1;background:#e0e7f2;min-width:14px}
+.gs-wizard-card{padding:18px;border:1px solid #e2e9f7;border-radius:17px;background:#fff;box-shadow:0 8px 24px #233d6b0a}
+.gs-wizard-card h3{font-size:19px;letter-spacing:-.35px;margin:7px 0 6px;color:#111a50}
+.gs-wizard-card>.gs-form-help{margin:0 0 16px;line-height:1.55}
+.gs-wizard-next{margin-top:18px;width:100%}
+.gs-wizard-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px}
+.gs-wizard-actions .gs-submit{margin:0;min-width:170px}
+.gs-wizard-back{border:1px solid #dce5f2;background:#fff;color:#4c5b76;border-radius:11px;padding:12px 17px;font-weight:800;font-size:12px;cursor:pointer}
+.gs-upload-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.gs-read-progress{margin:16px 0;padding:13px 14px;border:1px solid #dfe8f7;border-radius:13px;background:#f8faff}
+.gs-read-progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.gs-read-progress-top strong{font-size:11px;color:#34415b}.gs-read-progress-top span{font-size:10px;color:#64728c;text-align:right}
+.gs-read-progress-track{height:8px;border-radius:20px;background:#e5ebf5;overflow:hidden}
+.gs-read-progress-track span{display:block;height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,#1764e8,#7944df);transition:width .2s}
+.gs-review-card{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.gs-review-card>div{display:flex;flex-direction:column;gap:6px;padding:13px;border:1px solid #e5ebf5;border-radius:12px;background:#fafcff;min-width:0}
+.gs-review-card small{font-size:9px;letter-spacing:.06em;color:#7b879d;font-weight:900}
+.gs-review-card strong{font-size:12px;color:#1b2b4b;overflow-wrap:anywhere}
+@media(max-width:560px){.gs-wizard-card{padding:14px}.gs-wizard-step{gap:5px;font-size:9px}.gs-wizard-step b{width:25px;height:25px}.gs-wizard-actions .gs-submit{min-width:0;flex:1}.gs-review-card{grid-template-columns:1fr}.gs-read-progress-top{align-items:flex-start;flex-direction:column;gap:4px}.gs-read-progress-top span{text-align:left}}
+</style>
 </body></html>
