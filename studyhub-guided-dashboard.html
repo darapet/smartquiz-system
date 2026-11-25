@@ -160,6 +160,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
     <form id="sg-create-form" class="gs-create-form">
       <div class="gs-wizard-progress"><div class="gs-wizard-steps"><span class="gs-wizard-step active" data-wizard-indicator="1"><b>1</b><span>Programme</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="2"><b>2</b><span>Materials</span></span><span class="gs-wizard-line"></span><span class="gs-wizard-step" data-wizard-indicator="3"><b>3</b><span>Review</span></span></div></div>
       <div id="sg-create-status" class="gs-form-status" role="status" aria-live="polite"></div>
+        <label class="gs-instructions-field">Additional instructions for your AI tutor (optional)<textarea id="sg-material-instructions" maxlength="4000" rows="3" placeholder="e.g. Focus on exam topics, explain calculations step by step, or use simple examples."></textarea></label>
         <div id="sg-read-progress" class="gs-read-progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="gs-read-progress-top"><strong>Document processing</strong><span id="sg-read-progress-label">Waiting for files</span></div><div class="gs-read-progress-track"><span id="sg-read-progress-fill"></span></div></div>
       <section class="gs-wizard-card" id="sg-step-1" data-wizard-step="1">
         <span class="gs-modal-kicker">STEP 1 OF 3</span><h3>Set up your programme</h3><p class="gs-form-help">Tell your AI tutor what you are studying and your academic level.</p>
@@ -176,7 +177,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
       <section class="gs-wizard-card" id="sg-step-2" data-wizard-step="2" hidden>
         <span class="gs-modal-kicker">STEP 2 OF 3</span><h3>Add your learning materials</h3><p class="gs-form-help">Paste notes or upload documents. Long documents are read section by section, including PDFs with hundreds of pages.</p>
         <div class="gs-mode-switch"><button type="button" id="sg-mode-text" class="active">Write / paste text</button><button type="button" id="sg-mode-upload">Upload materials</button></div>
-        <div id="sg-text-mode"><label>Learning material / instructions *<textarea id="sg-material" rows="8" placeholder="Paste lecture notes, a course outline or instructions here."></textarea></label></div>
+        <div id="sg-text-mode"><label>Learning material *<textarea id="sg-material" rows="8" placeholder="Paste lecture notes, textbook content or a course outline here."></textarea></label></div>
         <div id="sg-upload-mode" hidden>
           <div class="gs-upload-actions"><label class="gs-upload-button" for="sg-material-file">＋ Choose files</label><button type="button" class="gs-upload-button" id="sg-add-files">＋ Add more files</button></div>
           <input id="sg-material-file" type="file" multiple accept=".pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/markdown,text/csv" hidden>
