@@ -266,10 +266,10 @@
       updateReadProgress(96,'Saving your full source material and study plan…');
       var plan={title:title.slice(0,120),academicCategory:academicCategory.slice(0,40),academicLevel:academicLevel.slice(0,60),programme:programme.slice(0,120),
         subject:subject.slice(0,120),courseCode:courseCode.slice(0,60),sourceMaterial:digest,learningInstructions:learningInstructions.slice(0,4000),sourceCharacterCount:material.length,sourceChunkCount:sourceChunks.length,
-        sourceName:(byId('sg-upload-name').textContent||'Pasted study material').slice(0,120),topics:topics,currentTopicIndex:0,completedTopics:[],status:'in_progress'};
+        sourceName:((byId('sg-upload-name').textContent||'No files selected')==='No files selected'?'Pasted study material':byId('sg-upload-name').textContent).slice(0,120),topics:topics,currentTopicIndex:0,completedTopics:[],status:'in_progress'};
       var id=await window.aqsStudyPlanStore.create(plan,sourceChunks);
       plan.id=id;plan.sourceChunks=sourceChunks;plan.createdAt=Date.now();plan.updatedAt=Date.now();state.plans.unshift(plan);
-      byId('sg-subject').value='';byId('sg-course-code').value='';byId('sg-material').value='';if(byId('sg-material-instructions'))byId('sg-material-instructions').value='';
+      byId('sg-title').value='';byId('sg-subject').value='';byId('sg-course-code').value='';byId('sg-programme').value='';byId('sg-category').value='';byId('sg-level').innerHTML='<option value="">Select category first</option>';byId('sg-level').required=false;byId('sg-material').value='';if(byId('sg-material-instructions'))byId('sg-material-instructions').value='';
       byId('sg-material-file').value='';byId('sg-upload-name').textContent='No files selected';
       updateReadProgress(100,'Study programme created successfully.');
       setStatus('Your full material is saved and your study plan is ready.');renderPlans();openPlan(id);
