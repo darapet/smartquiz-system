@@ -44,7 +44,7 @@ test('guided study implements lessons, tutor questions, objective quizzes and sa
   assert.match(guided, /PASS_MARK = 70/);
   assert.match(guided, /bypassRecord/);
   assert.match(guided, /guidedQuizBypass===true/);
-  assert.match(guided, /Math\.max\(2,\s*Math\.min\(5/);
+  assert.match(guided, /Math\.max\(3,\s*Math\.min\(5/);
 });
 
 test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', () => {
