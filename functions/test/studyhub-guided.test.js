@@ -51,6 +51,7 @@ test('Guided Study reads long documents in full and stores source sections separ
   const guided = read('js/aqs-study-plan.js');
   const firebase = read('js/aqs-firebase.js');
   const rules = read('firestore.rules');
+  const dashboard = read('studyhub-guided-dashboard.html');
   assert.doesNotMatch(guided, /MAX_MATERIAL/);
   assert.match(guided, /pageNo<=pdf\.numPages/);
   assert.doesNotMatch(guided, /Math\.min\(pdf\.numPages,\s*35\)/);
