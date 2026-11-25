@@ -188,7 +188,7 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
       </section>
       <section class="gs-wizard-card" id="sg-step-3" data-wizard-step="3" hidden>
         <span class="gs-modal-kicker">STEP 3 OF 3</span><h3>Review your programme</h3><p class="gs-form-help">Check these details before your AI tutor analyses the full material and creates the topic plan.</p>
-        <div class="gs-review-card"><div><small>LEARNING TITLE</small><strong id="sg-review-title">—</strong></div><div><small>COURSE / SUBJECT</small><strong id="sg-review-subject">—</strong></div><div><small>ACADEMIC LEVEL</small><strong id="sg-review-level">—</strong></div><div><small>LEARNING MATERIAL</small><strong id="sg-review-material">No material added</strong></div></div>
+        <div class="gs-review-card"><div><small>LEARNING TITLE</small><strong id="sg-review-title">—</strong></div><div><small>COURSE / SUBJECT</small><strong id="sg-review-subject">—</strong></div><div><small>ACADEMIC LEVEL</small><strong id="sg-review-level">—</strong></div><div><small>LEARNING MATERIAL</small><strong id="sg-review-material">No material added</strong></div><div class="wide"><small>ADDITIONAL AI INSTRUCTIONS</small><strong id="sg-review-instructions">No extra instructions</strong></div></div>
         <p class="gs-form-help">Your complete source text is stored in secure sections. The AI analyses each section and selects relevant sections for each lesson.</p>
         <div class="gs-wizard-actions"><button type="button" class="gs-wizard-back" id="sg-step-back-3">← Back</button><button type="submit" class="gs-submit" id="sg-create-btn">Build my study plan <span>→</span></button></div>
       </section>
@@ -303,5 +303,5 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 .gs-review-card small{font-size:9px;letter-spacing:.06em;color:#7b879d;font-weight:900}
 .gs-review-card strong{font-size:12px;color:#1b2b4b;overflow-wrap:anywhere}
 @media(max-width:560px){.gs-wizard-card{padding:14px}.gs-wizard-step{gap:5px;font-size:9px}.gs-wizard-step b{width:25px;height:25px}.gs-wizard-actions .gs-submit{min-width:0;flex:1}.gs-review-card{grid-template-columns:1fr}.gs-read-progress-top{align-items:flex-start;flex-direction:column;gap:4px}.gs-read-progress-top span{text-align:left}}
-</style>
+.gs-instructions-field{display:flex;flex-direction:column;gap:7px;margin:15px 0 4px;font-size:11px;font-weight:800;color:#46536d}.gs-instructions-field textarea{width:100%;box-sizing:border-box;border:1px solid #dfe6f2;border-radius:12px;padding:12px 13px;font:500 12px Inter,Arial,sans-serif;color:#1b2743;background:#fff;resize:vertical;line-height:1.6}.gs-instructions-field textarea:focus{outline:none;border-color:#1764e8;box-shadow:0 0 0 3px #1764e81a}</style>
 </body></html>
