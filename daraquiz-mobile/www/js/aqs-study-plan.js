@@ -241,6 +241,7 @@
     }
     if (topic.quiz.lastResult) {
       var result = topic.quiz.lastResult;
+      if(typeof result.passed!=='boolean')result.passed=(state.activePlan.completedTopics||[]).indexOf(topic.id)>=0||Number(result.percent||0)>=PASS_MARK;
       var reviewHtml = (result.review || []).map(function (item, index) {
         return '<div class="sg-review-item"><strong>' + (index + 1) + '. ' + escapeHtml(item.question) + '</strong><p class="' + (item.correct ? 'is-correct' : 'is-wrong') + '">' + (item.correct ? 'Correct' : 'Not quite') + ' · Your answer: ' + escapeHtml(item.selected) + '</p><p><b>Correct answer:</b> ' + escapeHtml(item.correctAnswer) + '</p><small>' + escapeHtml(item.explanation || '') + '</small></div>';
       }).join('');
