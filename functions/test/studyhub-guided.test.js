@@ -61,6 +61,10 @@ test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', ()
   assert.match(dashboard, /window\.shAIStream=async function/);
   assert.match(dashboard, /stream:true/);
   assert.match(dashboard, /Interrupt & ask/);
+  const groq = read('js/aqs-groq-key.js');
+  const androidGroq = read('daraquiz-mobile/www/js/aqs-groq-key.js');
+  assert.match(groq, /extraOpts\.signal\.aborted\) throw e/);
+  assert.match(androidGroq, /extraOpts\.signal\.aborted\) throw e/);
   assert.match(dashboard, /js\/aqs-study-plan\.js\?v=guided-rebuild-7/);
   assert.doesNotMatch(studyhub, /sh-panel-guided|aqs-study-plan\.js/);
   assert.match(read('studyhub-dashboard.html'), /href="studyhub-guided-dashboard\.html"/);
