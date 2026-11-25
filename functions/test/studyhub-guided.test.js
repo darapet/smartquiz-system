@@ -47,17 +47,41 @@ test('guided study implements lessons, tutor questions, objective quizzes and sa
   assert.match(guided, /Math\.max\(3,\s*Math\.min\(5/);
 });
 
+test('Guided Study reads long documents in full and stores source sections separately', () => {
+  const guided = read('js/aqs-study-plan.js');
+  const firebase = read('js/aqs-firebase.js');
+  const rules = read('firestore.rules');
+  assert.doesNotMatch(guided, /MAX_MATERIAL/);
+  assert.match(guided, /pageNo<=pdf\.numPages/);
+  assert.doesNotMatch(guided, /Math\.min\(pdf\.numPages,\s*35\)/);
+  assert.match(guided, /summarizeSourceChunks/);
+  assert.match(guided, /compressSourceSummaries/);
+  assert.match(guided, /getTopicSource\(plan,topic/);
+  assert.match(firebase, /getSourceChunks: async function/);
+  assert.match(firebase, /'sourceChunks'/);
+  assert.match(firebase, /sourceCharacterCount/);
+  assert.match(rules, /match \/studyPlans\/\{planId\}\/sourceChunks\/\{chunkId\}/);
+  assert.match(rules, /request\.resource\.data\.text\.size\(\) <= 36000/);
+});
+
 test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', () => {
   const dashboard = read('studyhub-guided-dashboard.html');
   const androidDashboard = read('daraquiz-mobile/www/studyhub-guided-dashboard.html');
   const studyhub = read('studyhub.html');
   assert.equal(dashboard, androidDashboard);
+  assert.equal(read('js/aqs-study-plan.js'), read('daraquiz-mobile/www/js/aqs-study-plan.js'));
+  assert.equal(read('js/aqs-firebase.js'), read('daraquiz-mobile/www/js/aqs-firebase.js'));
   assert.match(dashboard, /id="gs-create-modal"/);
   assert.match(dashboard, /id="sg-workspace"/);
   assert.match(dashboard, /id="sg-category"/);
   assert.match(dashboard, /multiple accept=/);
   assert.match(dashboard, /id="sg-voice-orb"/);
   assert.match(dashboard, /id="sg-recap-btn"/);
+  assert.match(dashboard, /data-wizard-step="1"/);
+  assert.match(dashboard, /data-wizard-step="2"/);
+  assert.match(dashboard, /data-wizard-step="3"/);
+  assert.match(dashboard, /id="sg-read-progress"/);
+  assert.match(dashboard, /\.pptx,.xlsx,.xls/);
   assert.match(dashboard, /Choose your learning mode/);
   assert.match(dashboard, /sg-voice-orb/);
   assert.match(dashboard, /window\.shAIStream=async function/);
