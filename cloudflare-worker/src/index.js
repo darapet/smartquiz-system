@@ -1182,16 +1182,20 @@ async function handleAIConfig(request, env) {
           .map((value) => String(value || '').trim())
           .filter((value) => value.length >= 10 && value.length <= 512 && !/[\r\n]/.test(value))
           .slice(0, 50);
-        // New format keeps two independent 50-key pools per feature.
-        // Read the legacy provider-key map only for older saved configurations.
-        if (Array.isArray(rawPools.primary) || Array.isArray(rawPools.fallback)) {
-          keys.primary = cleanPool(rawPools.primary);
-          keys.fallback = cleanPool(rawPools.fallback);
+        // New format stores independent 50-slot pools per role AND provider.
+        // Convert older provider-key maps and the temporary role-array format safely.
+        if (rawPools.primary && typeof rawPools.primary === 'object' && !Array.isArray(rawPools.primary)) {
+          keys.primary = Object.fromEntries([...allowedProviders].map((provider) => [provider, cleanPool(rawPools.primary[provider])]));
+          keys.fallback = Object.fromEntries([...allowedProviders].map((provider) => [provider, cleanPool(rawPools.fallback && rawPools.fallback[provider])]));
+        } else if (Array.isArray(rawPools.primary) || Array.isArray(rawPools.fallback)) {
+          const primaryProvider = provider(raw.primary) || 'groq';
+          const fallbackProvider = provider(raw.fallback);
+          keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === primaryProvider ? cleanPool(rawPools.primary) : []]));
+          keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id === fallbackProvider ? cleanPool(rawPools.fallback) : []]));
         } else {
-          const legacyProvider = allowedProviders.has(String(raw.primary || '').toLowerCase())
-            ? String(raw.primary).toLowerCase() : 'groq';
-          keys.primary = cleanPool(rawPools[legacyProvider]);
-          keys.fallback = [];
+          const legacyProvider = provider(raw.primary) || 'groq';
+          keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === legacyProvider ? cleanPool(rawPools[legacyProvider]) : []]));
+          keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id, []]));
         }
         const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
         normalized[id] = {
@@ -1388,9 +1392,10 @@ async function runConfiguredAI(env, featureId, messages, options) {
   let lastError = null;
   for (const attempt of attempts) {
     const pools = feature.keys || {};
-    const keys = Array.isArray(pools[attempt.role])
-      ? pools[attempt.role].slice(0, 50)
-      : (Array.isArray(pools[attempt.provider]) ? pools[attempt.provider].slice(0, 50) : []);
+    const rolePools = pools[attempt.role];
+    const keys = rolePools && !Array.isArray(rolePools) && Array.isArray(rolePools[attempt.provider])
+      ? rolePools[attempt.provider].slice(0, 50)
+      : (Array.isArray(rolePools) ? rolePools.slice(0, 50) : []);
     for (const key of keys) {
       try {
         const result = await callConfiguredAIProvider(attempt.provider, attempt.model, key, messages, options);
@@ -1432,9 +1437,9 @@ async function handleAIStatus(request, env) {
       primary: feature.primary || '',
       fallback: feature.fallback || '',
       keyCounts: {
-        primary: Array.isArray(feature.keys && feature.keys.primary) ? feature.keys.primary.length : 0,
-        fallback: Array.isArray(feature.keys && feature.keys.fallback) ? feature.keys.fallback.length : 0,
-        total: ['primary','fallback'].reduce((sum, role) => sum + (Array.isArray(feature.keys && feature.keys[role]) ? feature.keys[role].length : 0), 0)
+        primary: feature.keys && feature.keys.primary ? Object.values(feature.keys.primary).reduce((sum, keys) => sum + (Array.isArray(keys) ? keys.length : 0), 0) : 0,
+        fallback: feature.keys && feature.keys.fallback ? Object.values(feature.keys.fallback).reduce((sum, keys) => sum + (Array.isArray(keys) ? keys.length : 0), 0) : 0,
+        total: ['primary','fallback'].reduce((sum, role) => sum + (feature.keys && feature.keys[role] ? Object.values(feature.keys[role]).reduce((n, keys) => n + (Array.isArray(keys) ? keys.length : 0), 0) : 0), 0)
       }
     }));
     return json(request, env, {
