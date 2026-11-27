@@ -11,7 +11,9 @@ test('StudyHub standalone workspaces remain identical across web and Android', (
   for (const file of [
     'studyhub-flashcards-create.html',
     'studyhub-notes-create.html',
-    'studyhub-gpa-create.html'
+    'studyhub-gpa-create.html',
+    'css/studyhub-feature-dashboards.css',
+    'js/studyhub-feature-dashboards.js'
   ]) assert.equal(read(file), read('daraquiz-mobile/www/' + file), file + ' must match Android');
   assert.equal(fs.existsSync(path.join(root, 'studyhub.html')), false, 'legacy StudyHub page must be removed');
   assert.equal(fs.existsSync(path.join(root, 'daraquiz-mobile/www/studyhub.html')), false, 'legacy Android StudyHub page must be removed');
