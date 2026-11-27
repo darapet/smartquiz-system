@@ -82,7 +82,7 @@
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function call(action,data={}){return new Promise((resolve,reject)=>{const send=()=>window.aqsAjax({action,...data},r=>r&&r.success===false?reject(new Error(r.data||'Request failed')):resolve(r&&r.data!==undefined?r.data:r),reject);if(window.aqsAjax)send();else document.addEventListener('aqs:firebase:ready',send,{once:true});});}
 function date(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString();}
-let hosted=[],selfQuizzes=[],attempts=[],dashboardStats={},activityRange="week",activeQuizUid='';
+let hosted=[],selfQuizzes=[],attempts=[],dashboardStats={},activityRange="week",activeQuizUid='__pending__';
 function percent(a){return Number(a.total)>0?Math.round(Number(a.score)/Number(a.total)*100):0;}
 function renderOverview(){
  const query=($('dq-search').value||'').trim().toLowerCase();
