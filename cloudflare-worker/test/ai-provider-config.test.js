@@ -187,3 +187,43 @@ test('streaming feature requests use the central configured provider', async () 
     mock.restore();
   }
 });
+
+
+test('transcription reads the central StudyHub Groq key instead of the legacy key store', async () => {
+  const env = makeEnv();
+  const calls = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const target = String(url);
+    if (target.startsWith('https://identitytoolkit.googleapis.com/v1/accounts:lookup')) {
+      return new Response(JSON.stringify({ users: [{ localId: 'admin-uid', email: 'admin@example.com' }] }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (target === 'https://api.groq.com/openai/v1/audio/transcriptions') {
+      calls.push({ target, authorization: init.headers.Authorization });
+      return new Response(JSON.stringify({ text: 'Central transcription works' }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    throw new Error('Unexpected network request: ' + target);
+  };
+  try {
+    await syncConfigs(env, {
+      main: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-main-transcribe-key-123456789'] }, fallback: {} } },
+      studyhub: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-studyhub-transcribe-key-123456789'] }, fallback: {} } },
+    });
+    const form = new FormData();
+    form.append('file', new Blob(['audio bytes'], { type: 'audio/webm' }), 'voice.webm');
+    const response = await worker.fetch(new Request('https://worker.test/api/ai/transcribe', {
+      method: 'POST', headers: { Authorization: 'Bearer test-token' }, body: form,
+    }), env);
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.text, 'Central transcription works');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].authorization, 'Bearer gsk-studyhub-transcribe-key-123456789');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
