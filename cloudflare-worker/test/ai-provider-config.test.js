@@ -20,7 +20,7 @@ function makeEnv() {
   };
 }
 
-function mockFetch({ openaiStatus = 200 } = {}) {
+function mockFetch({ openaiStatus = 200, statusSequence = null } = {}) {
   const calls = [];
   const original = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
@@ -30,35 +30,36 @@ function mockFetch({ openaiStatus = 200 } = {}) {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
-    calls.push(target);
-    if (target === 'https://api.openai.com/v1/chat/completions') {
-      if (openaiStatus !== 200) {
+    calls.push({ url: target, authorization: init.headers && init.headers.Authorization || '' });
+    const configuredStatus = Array.isArray(statusSequence)
+      ? (statusSequence[calls.length - 1] == null ? 200 : statusSequence[calls.length - 1])
+      : target === 'https://api.openai.com/v1/chat/completions' ? openaiStatus : 200;
+    if (target === 'https://api.openai.com/v1/chat/completions' || target === 'https://api.groq.com/openai/v1/chat/completions') {
+      if (configuredStatus !== 200) {
         return new Response(JSON.stringify({ error: { message: 'Temporary provider limit' } }), {
-          status: openaiStatus, headers: { 'Content-Type': 'application/json' },
+          status: configuredStatus, headers: { 'Content-Type': 'application/json' },
         });
       }
-      return new Response(JSON.stringify({
-        id: 'chatcmpl-test', object: 'chat.completion', model: 'gpt-4.1-mini',
-        choices: [{ index: 0, message: { role: 'assistant', content: 'OpenAI route active' }, finish_reason: 'stop' }],
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-    if (target === 'https://api.groq.com/openai/v1/chat/completions') {
       const requestBody = JSON.parse(init.body || '{}');
       if (requestBody.stream === true) {
         return new Response('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { content: 'Central streamed route active' }, finish_reason: null }] }) + '\\n\\ndata: [DONE]\\n\\n', {
           status: 200, headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
         });
       }
+      const isOpenAI = target === 'https://api.openai.com/v1/chat/completions';
       return new Response(JSON.stringify({
-        id: 'chatcmpl-fallback', object: 'chat.completion', model: 'openai/gpt-oss-20b',
-        choices: [{ index: 0, message: { role: 'assistant', content: 'Fallback route active' }, finish_reason: 'stop' }],
+        id: 'chatcmpl-test', object: 'chat.completion', model: isOpenAI ? 'gpt-4.1-mini' : 'openai/gpt-oss-20b',
+        choices: [{ index: 0, message: { role: 'assistant', content: isOpenAI ? 'OpenAI route active' : 'Fallback route active' }, finish_reason: 'stop' }],
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     throw new Error('Unexpected network request: ' + target);
   };
-  return { calls, restore() { globalThis.fetch = original; } };
+  return {
+    calls,
+    restore() { globalThis.fetch = original; },
+    urls() { return calls.map((call) => call.url); },
+  };
 }
-
 async function syncConfigs(env, configs) {
   const response = await worker.fetch(new Request('https://worker.test/api/ai/config', {
     method: 'POST',
@@ -94,7 +95,7 @@ test('AI Control Centre config routes generation through the selected provider',
     const data = await response.json();
     assert.equal(response.status, 200);
     assert.equal(data.choices[0].message.content, 'OpenAI route active');
-    assert.deepEqual(mock.calls, ['https://api.openai.com/v1/chat/completions']);
+    assert.deepEqual(mock.urls(), ['https://api.openai.com/v1/chat/completions']);
   } finally {
     mock.restore();
   }
@@ -113,7 +114,7 @@ test('AI Control Centre falls back when the primary provider is rate limited', a
     const data = await response.json();
     assert.equal(response.status, 200);
     assert.equal(data.choices[0].message.content, 'Fallback route active');
-    assert.deepEqual(mock.calls, [
+    assert.deepEqual(mock.urls(), [
       'https://api.openai.com/v1/chat/completions',
       'https://api.groq.com/openai/v1/chat/completions',
     ]);
@@ -141,7 +142,7 @@ test('feature AI uses the central main primary when its own routes are unavailab
     const data = await response.json();
     assert.equal(response.status, 200);
     assert.equal(data.choices[0].message.content, 'Fallback route active');
-    assert.deepEqual(mock.calls, [
+    assert.deepEqual(mock.urls(), [
       'https://api.openai.com/v1/chat/completions',
       'https://api.groq.com/openai/v1/chat/completions',
     ]);
@@ -162,12 +163,117 @@ test('feature AI uses the central main primary even when the feature has no save
     const data = await response.json();
     assert.equal(response.status, 200);
     assert.equal(data.choices[0].message.content, 'Fallback route active');
-    assert.deepEqual(mock.calls, ['https://api.groq.com/openai/v1/chat/completions']);
+    assert.deepEqual(mock.urls(), ['https://api.groq.com/openai/v1/chat/completions']);
   } finally {
     mock.restore();
   }
 });
 
+
+
+test('feature primary and fallback failures continue to Main AI primary', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ statusSequence: [429, 429, 200] });
+  try {
+    await syncConfigs(env, {
+      main: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-main-primary-key-123456789'] }, fallback: { groq: ['gsk-main-fallback-key-123456789'] } },
+      },
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: { groq: ['gsk-studyhub-fallback-key-123456789'] } },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'OpenAI route active');
+    assert.deepEqual(mock.urls(), [
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+      'https://api.openai.com/v1/chat/completions',
+    ]);
+    assert.equal(mock.calls[2].authorization, 'Bearer sk-main-primary-key-123456789');
+  } finally {
+    mock.restore();
+  }
+});
+
+test('Main AI fallback is used when feature routes and Main AI primary fail', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ statusSequence: [429, 429, 429, 200] });
+  try {
+    await syncConfigs(env, {
+      main: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-main-primary-key-123456789'] }, fallback: { groq: ['gsk-main-fallback-key-123456789'] } },
+      },
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: { groq: ['gsk-studyhub-fallback-key-123456789'] } },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.urls(), [
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+    ]);
+    assert.equal(mock.calls[3].authorization, 'Bearer gsk-main-fallback-key-123456789');
+  } finally {
+    mock.restore();
+  }
+});
+
+test('Main AI requests try only Main AI primary and fallback without recursive routing', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ statusSequence: [429, 200] });
+  try {
+    await syncConfig(env, {
+      primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+      keys: { primary: { openai: ['sk-main-primary-key-123456789'] }, fallback: { groq: ['gsk-main-fallback-key-123456789'] } },
+    });
+    const response = await generate(env, 'main');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.urls(), [
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+    ]);
+  } finally {
+    mock.restore();
+  }
+});
+
+test('all configured routes failing returns a clear unavailable error', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ statusSequence: [429, 429, 429, 429] });
+  try {
+    await syncConfigs(env, {
+      main: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-main-primary-key-123456789'] }, fallback: { groq: ['gsk-main-fallback-key-123456789'] } },
+      },
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: { groq: ['gsk-studyhub-fallback-key-123456789'] } },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 429);
+    assert.match(data.error || '', /Feature and main AI routes are unavailable/);
+    assert.equal(mock.calls.length, 4);
+  } finally {
+    mock.restore();
+  }
+});
 
 test('streaming feature requests use the central configured provider', async () => {
   const env = makeEnv();
@@ -182,7 +288,7 @@ test('streaming feature requests use the central configured provider', async () 
     assert.equal(response.status, 200);
     assert.match(response.headers.get('Content-Type') || '', /text\/event-stream/);
     assert.match(body, /Central streamed route active/);
-    assert.deepEqual(mock.calls, ['https://api.groq.com/openai/v1/chat/completions']);
+    assert.deepEqual(mock.urls(), ['https://api.groq.com/openai/v1/chat/completions']);
   } finally {
     mock.restore();
   }
