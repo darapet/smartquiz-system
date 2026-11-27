@@ -1,0 +1,61 @@
+/* StudyHub learning analytics tracker */
+#studyhubTracker{margin-top:22px;display:grid;gap:16px}
+.shtrk-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.shtrk-head h2{margin:0;color:#202044;font-size:19px;letter-spacing:-.5px}
+.shtrk-head p{margin:6px 0 0;color:#68718b;font-size:12px;line-height:1.5}
+.shtrk-head select{border:1px solid #e2e5f0;border-radius:10px;padding:10px 12px;background:#fff;color:#303452;font:600 11px Inter,system-ui,sans-serif}
+.shtrk-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.shtrk-kpis article{position:relative;min-height:104px;padding:16px 17px 14px 59px;border:1px solid #e5e7f2;border-radius:16px;background:#fff;box-shadow:0 5px 16px #15113c08}
+.shtrk-kpis article>span{position:absolute;left:15px;top:17px;width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#f0edff;font-size:18px}
+.shtrk-kpis small{display:block;color:#6d7590;font-size:11px;font-weight:600}
+.shtrk-kpis strong{display:block;margin-top:8px;color:#202044;font-size:22px;letter-spacing:-.7px}
+.shtrk-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
+.shtrk-grid-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}
+.shtrk-card{min-width:0;padding:19px 20px;border:1px solid #e5e7f2;border-radius:17px;background:#fff;box-shadow:0 5px 16px #15113c08}
+.shtrk-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.shtrk-card-head h3{margin:0;color:#242344;font-size:14px;font-weight:800}
+.shtrk-card-head p{margin:5px 0 0;color:#7b8299;font-size:10px;line-height:1.5}
+.shtrk-card-head>b,.shtrk-card-head>strong{color:#5422db;font-size:12px;white-space:nowrap}
+.shtrk-chart{height:190px;display:flex;align-items:flex-end;justify-content:space-around;gap:10px;padding:12px 8px 0;border-bottom:1px solid #e9eaf2;background:repeating-linear-gradient(to bottom,transparent 0,transparent 43px,#f0f1f7 44px)}
+.shtrk-bar-col{height:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
+.shtrk-bar-col>b{font-size:10px;color:#68718b}
+.shtrk-bar{width:min(34px,65%);min-height:4px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#8a6af0,#5422db);transition:height .25s ease}
+.shtrk-bar-col>span{font-size:10px;color:#7b8299;padding-bottom:7px}
+.shtrk-feature-bars{display:grid;gap:13px;padding:5px 0}
+.shtrk-feature-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;color:#414866;font-size:11px}
+.shtrk-feature-meta strong{color:#242344;font-size:12px}
+.shtrk-track{height:8px;border-radius:99px;background:#eff0f7;overflow:hidden}
+.shtrk-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#6744df,#3984f6)}
+.shtrk-progress>div{height:12px;border-radius:99px;background:#eff0f7;overflow:hidden}
+.shtrk-progress>div>span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#12a66a,#36c58b)}
+.shtrk-progress>small{display:block;margin-top:8px;color:#68718b;font-size:10px}
+.shtrk-mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:17px}
+.shtrk-mini-stats span{padding:11px 8px;border-radius:11px;background:#f7f7fc;color:#68718b;font-size:10px;text-align:center}
+.shtrk-mini-stats b{display:block;margin-bottom:4px;color:#252447;font-size:17px}
+.shtrk-quiz-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:23px}
+.shtrk-quiz-stats>div{padding:14px 10px;border-radius:12px;background:#f7f7fc;text-align:center}
+.shtrk-quiz-stats small{display:block;color:#747c94;font-size:10px}
+.shtrk-quiz-stats strong{display:block;margin-top:8px;color:#252447;font-size:21px}
+.shtrk-note{margin:13px 0 0;color:#9a5a22;font-size:10px;line-height:1.5}
+.shtrk-feature-card,.shtrk-recent-card{padding-bottom:14px}
+.shtrk-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.shtrk-feature-grid>a{display:flex;align-items:center;gap:10px;min-width:0;padding:12px;border:1px solid #ececf5;border-radius:12px;background:#fff;transition:border-color .18s,transform .18s}
+.shtrk-feature-grid>a:hover{border-color:#b9a9f1;transform:translateY(-1px)}
+.shtrk-feature-grid>a>span{width:35px;height:35px;flex:0 0 35px;display:grid;place-items:center;border-radius:10px;background:#f0edff;font-size:17px}
+.shtrk-feature-grid>a>div{flex:1;min-width:0}
+.shtrk-feature-grid>a strong{display:block;color:#292748;font-size:11px}
+.shtrk-feature-grid>a small{display:block;margin-top:4px;color:#7b8299;font-size:9px;line-height:1.4}
+.shtrk-feature-grid>a>b{color:#5422db;font-size:16px}
+.shtrk-recent{display:grid;gap:0}
+.shtrk-recent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f1f6}
+.shtrk-recent-row:last-child{border-bottom:0}
+.shtrk-recent-icon{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;border-radius:10px;background:#f1efff;font-size:15px}
+.shtrk-recent-row>span:nth-child(2){flex:1;min-width:0}
+.shtrk-recent-row strong{display:block;color:#353653;font-size:11px}
+.shtrk-recent-row small{display:block;margin-top:3px;color:#8a90a5;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shtrk-recent-row time{color:#7d849a;font-size:9px;white-space:nowrap}
+.shtrk-empty{padding:20px 8px;color:#7b8299;font-size:11px;text-align:center;line-height:1.6}
+.shtrk-footnote{margin:0;color:#8188a0;font-size:10px;line-height:1.6}
+@media(max-width:1050px){.shtrk-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){#studyhubTracker{margin-top:18px}.shtrk-grid,.shtrk-grid-bottom{grid-template-columns:1fr}.shtrk-card{padding:16px}.shtrk-feature-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:430px){.shtrk-head{align-items:flex-start;flex-direction:column}.shtrk-head select{width:100%}.shtrk-kpis{gap:8px}.shtrk-kpis article{min-height:94px;padding:13px 9px 12px 47px}.shtrk-kpis article>span{left:9px;top:13px;width:29px;height:29px;font-size:15px}.shtrk-kpis small{font-size:9px}.shtrk-kpis strong{font-size:18px}.shtrk-feature-grid{grid-template-columns:1fr}.shtrk-quiz-stats{gap:6px}.shtrk-quiz-stats>div{padding:12px 5px}.shtrk-quiz-stats strong{font-size:18px}.shtrk-recent-row time{font-size:8px}}
