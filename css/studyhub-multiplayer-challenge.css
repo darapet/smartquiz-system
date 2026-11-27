@@ -1,0 +1,190 @@
+/* StudyHub visual layer for Multiplayer, Challenge and Host Quiz pages.
+   CSS-only overrides: keep existing forms, game states, Firebase and navigation logic intact. */
+:root{
+  --sh-ink:#17183d;--sh-muted:#68708d;--sh-line:#e7e8f3;
+  --sh-purple:#5422db;--sh-blue:#3478f6;--sh-yellow:#ffdf4d;
+}
+
+/* Shared StudyHub dashboard shell */
+body.dq-feature-page{
+  background:radial-gradient(circle at 88% 5%,rgba(84,34,219,.08),transparent 26%),#f7f8ff!important;
+  color:var(--sh-ink)!important;
+}
+.dq-feature-page .dq-feature-sidebar{
+  background:#15113c!important;border-right:1px solid rgba(255,255,255,.09)!important;
+  box-shadow:8px 0 28px rgba(21,17,60,.08);
+}
+.dq-feature-page .dq-feature-brand{border-color:rgba(255,255,255,.13)!important;color:#fff!important}
+.dq-feature-page .dq-feature-brand strong{color:#fff!important}
+.dq-feature-page .dq-feature-brand small{color:#c9bbff!important}
+.dq-feature-page .dq-feature-nav a,
+.dq-feature-page .dq-feature-nav button{color:#e8e6ff!important}
+.dq-feature-page .dq-feature-nav a:hover,
+.dq-feature-page .dq-feature-nav button:hover{background:rgba(255,255,255,.10)!important}
+.dq-feature-page .dq-feature-nav a[aria-current=page]{
+  background:linear-gradient(110deg,#5422db,#3478f6)!important;color:#fff!important;
+  box-shadow:0 7px 18px rgba(84,34,219,.28)!important
+}
+.dq-feature-page .dq-feature-topbar{
+  background:rgba(247,248,255,.92)!important;border-color:var(--sh-line)!important;
+  backdrop-filter:blur(14px)
+}
+.dq-feature-page .dq-feature-heading h1{color:var(--sh-ink)!important;font-weight:850}
+.dq-feature-page .dq-feature-heading p{color:var(--sh-muted)!important}
+.dq-feature-page .dq-feature-heading-icon{
+  background:linear-gradient(135deg,#5422db,#3478f6)!important;
+  box-shadow:0 8px 20px rgba(84,34,219,.2)
+}
+.dq-feature-page .dq-feature-button.primary,
+.dq-feature-page .dq-feature-button.primary:hover{
+  background:var(--sh-yellow)!important;border-color:var(--sh-yellow)!important;color:#21164f!important;
+  box-shadow:0 6px 15px rgba(33,22,79,.12)
+}
+.dq-feature-page .dq-feature-button:not(.primary){
+  background:#fff!important;border-color:#dfe2f1!important;color:#39345f!important
+}
+.dq-feature-page .dq-feature-stat,
+.dq-feature-page .dq-feature-card,
+.dq-feature-page .dq-feature-section,
+.dq-feature-page .dq-feature-table-wrap{
+  border-color:var(--sh-line)!important;box-shadow:0 7px 22px rgba(21,17,60,.045)!important
+}
+.dq-feature-page .dq-feature-stat strong{color:var(--sh-ink)!important}
+.dq-feature-page .dq-feature-stat span{color:var(--sh-muted)}
+.dq-feature-page .dq-feature-stat-icon{background:#f0ebff!important;color:var(--sh-purple)!important}
+.dq-feature-page .create,
+.dq-feature-page .mp-create{
+  border:1px solid rgba(84,34,219,.14)!important;
+  background:linear-gradient(112deg,#15113c 0%,#4520bd 57%,#3478f6 100%)!important;
+  color:#fff!important;box-shadow:0 15px 32px rgba(57,39,154,.16)!important
+}
+.dq-feature-page .create h2,.dq-feature-page .create p,
+.dq-feature-page .mp-create h2,.dq-feature-page .mp-create p{color:#fff!important}
+.dq-feature-page .create p,.dq-feature-page .mp-create p{opacity:.9}
+.dq-feature-page .create .symbol,.dq-feature-page .mp-create .symbol{color:var(--sh-yellow)!important}
+.dq-feature-page .create .go,.dq-feature-page .mp-create .go{color:var(--sh-yellow)!important}
+.dq-feature-page .dq-feature-search{background:#fff!important;border-color:#dfe2f1!important}
+.dq-feature-page .dq-feature-search input{color:var(--sh-ink)!important}
+.dq-feature-page .dq-feature-empty,.dq-feature-page .empty{color:var(--sh-muted)!important}
+@media(max-width:760px){
+  .dq-feature-page .dq-feature-sidebar{background:#15113c!important}
+  .dq-feature-page .dq-feature-content{padding:18px 14px 30px!important}
+  .dq-feature-page .dq-feature-heading{align-items:flex-start;flex-wrap:wrap}
+  .dq-feature-page .dq-feature-heading-actions{width:100%;margin-left:0}
+  .dq-feature-page .dq-feature-heading-actions .dq-feature-button{width:100%}
+}
+
+/* Live Multiplayer Host / setup and room screens */
+body[data-view]{
+  --ink:#17183d;--ink-2:#454665;--muted:#68708d;--paper:#f7f8ff;--card:#fff;
+  --line:#e7e8f3;--brand:#5422db;--brand-hover:#4520bd;--accent:#ffdf4d;
+  --shadow:0 10px 28px rgba(21,17,60,.07);
+  background:radial-gradient(circle at 90% 0%,rgba(84,34,219,.08),transparent 28%),#f7f8ff!important;
+  color:var(--ink)!important
+}
+body[data-view] .top{
+  background:rgba(255,255,255,.95)!important;border-color:var(--line)!important;
+  box-shadow:0 4px 18px rgba(21,17,60,.05)!important
+}
+body[data-view] .brand{color:var(--ink)!important}
+body[data-view] .brand-mark{color:var(--brand)!important}
+body[data-view] .back{color:var(--muted)!important}
+body[data-view] .shell{max-width:1120px!important;padding-top:28px!important}
+body[data-view] .card{
+  background:#fff!important;border:1px solid var(--line)!important;
+  box-shadow:var(--shadow)!important;border-radius:20px!important
+}
+body[data-view] h1,body[data-view] h2,body[data-view] h3{color:var(--ink)!important}
+body[data-view] .lead,body[data-view] .hint{color:var(--muted)!important}
+body[data-view] .eyebrow{color:var(--brand)!important}
+body[data-view] .btn.primary,
+body[data-view] .btn.ready,
+body[data-view] .btn.ready.is-ready{
+  background:var(--accent)!important;border-color:var(--accent)!important;color:#21164f!important
+}
+body[data-view] .btn.primary:hover:not(:disabled){background:#f4d33b!important}
+body[data-view] .btn.ghost{background:#fff!important;border-color:#dcdff0!important;color:#39345f!important}
+body[data-view] .btn.danger{background:#fff!important}
+body[data-view] input,body[data-view] select,body[data-view] textarea{
+  background:#fff!important;border-color:#dfe2f1!important;color:var(--ink)!important
+}
+body[data-view] input::placeholder,body[data-view] textarea::placeholder{color:#9298ad!important}
+body[data-view] .chip{background:#f0ebff!important;color:#5422db!important}
+body[data-view] .steps li.on{color:#5422db!important}
+body[data-view] .steps li.on span{background:#5422db!important;color:#fff!important}
+body[data-view] .steps li span{border-color:#d9d4f3!important}
+body[data-view] .field{color:#454665!important}
+body[data-view] .mic.live{background:#20a65b!important;color:#fff!important}
+@media(max-width:640px){
+  body[data-view] .top{padding-left:14px!important;padding-right:14px!important}
+  body[data-view] .shell{padding:16px 12px 56px!important}
+  body[data-view] .card{padding:18px!important}
+  body[data-view] .grid{grid-template-columns:1fr!important;gap:12px!important}
+}
+
+/* Challenge mode — retain the primary AI Quiz System navigation only */
+body.aqs-ch-body{
+  --ch-primary:#5422db;--ch-secondary:#4520bd;--ch-accent:#ffdf4d;
+  --ch-success:#20a65b;--ch-dark:#17183d;--ch-card:#fff;--ch-border:#e7e8f3;
+  --ch-text:#17183d;--ch-muted:#68708d;
+  background:#f7f8ff!important;color:#17183d!important
+}
+body.aqs-ch-body .aqs-phase2-page-header,
+body.aqs-ch-body #dara-category-nav,
+body.aqs-ch-body .dara-category-nav,
+body.aqs-ch-body .aqs-category-nav,
+body.aqs-ch-body .aqs-bottom-nav,
+body.aqs-ch-body #aqs-bottom-nav,
+body.aqs-ch-body .aqs-mobile-bottom-nav,
+body.aqs-ch-body [data-aqs-bottom-nav]{display:none!important}
+body.aqs-ch-body .aqs-site-header{
+  background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e8e9f5!important;
+  box-shadow:0 4px 18px rgba(21,17,60,.05)!important;backdrop-filter:blur(14px)
+}
+body.aqs-ch-body .aqs-site-logo-name{color:#17183d!important}
+body.aqs-ch-body .aqs-site-logo-sub{color:#68708d!important}
+body.aqs-ch-body .aqs-site-nav-link{color:#454665!important}
+body.aqs-ch-body .aqs-site-nav-highlight{color:#5422db!important}
+body.aqs-ch-body .aqs-ch-page{background:transparent!important;color:#17183d!important}
+body.aqs-ch-body .aqs-ch-bg-orb{opacity:.12!important}
+body.aqs-ch-body .aqs-ch-grid{
+  background-image:linear-gradient(rgba(84,34,219,.035) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(84,34,219,.035) 1px,transparent 1px)!important
+}
+body.aqs-ch-body .aqs-ch-topbar{background:rgba(255,255,255,.94)!important;border-color:#e7e8f3!important}
+body.aqs-ch-body .aqs-ch-logo{background:none!important;-webkit-text-fill-color:#17183d!important;color:#17183d!important}
+body.aqs-ch-body .aqs-ch-topbar-code{background:#f0ebff!important;color:#5422db!important;border-color:#ddd3ff!important}
+body.aqs-ch-body .aqs-ch-round-badge-top{background:#f7f5ff!important;color:#5422db!important;border-color:#e7e0ff!important}
+body.aqs-ch-body .aqs-ch-card{
+  background:#fff!important;border:1px solid #e7e8f3!important;color:#17183d!important;
+  box-shadow:0 8px 24px rgba(21,17,60,.06)!important;backdrop-filter:none!important
+}
+body.aqs-ch-body .aqs-ch-card-title{
+  background:none!important;-webkit-text-fill-color:#17183d!important;color:#17183d!important
+}
+body.aqs-ch-body .aqs-ch-card-sub,
+body.aqs-ch-body .aqs-ch-form-group label{color:#68708d!important}
+body.aqs-ch-body .aqs-ch-input{
+  background:#fff!important;color:#17183d!important;border-color:#dfe2f1!important
+}
+body.aqs-ch-body .aqs-ch-input::placeholder{color:#9298ad!important}
+body.aqs-ch-body .aqs-ch-input:focus{border-color:#5422db!important;box-shadow:0 0 0 3px rgba(84,34,219,.12)!important}
+body.aqs-ch-body .aqs-ch-tab-btn{background:#fff!important;border-color:#e1def0!important;color:#454665!important}
+body.aqs-ch-body .aqs-ch-tab-btn.active{
+  background:#5422db!important;border-color:#5422db!important;color:#fff!important
+}
+body.aqs-ch-body .aqs-ch-source-tab{background:#fff!important;border-color:#e1def0!important;color:#454665!important}
+body.aqs-ch-body .aqs-ch-source-tab.active{background:#f0ebff!important;border-color:#cbbcff!important;color:#5422db!important}
+body.aqs-ch-body .aqs-ch-btn-primary,
+body.aqs-ch-body .aqs-ch-btn,
+body.aqs-ch-body button.aqs-ch-primary{
+  background:#ffdf4d!important;border-color:#ffdf4d!important;color:#21164f!important
+}
+body.aqs-ch-body .aqs-ch-btn-primary:hover,
+body.aqs-ch-body .aqs-ch-btn:hover{filter:brightness(.97)}
+body.aqs-ch-body .aqs-ch-main{padding-top:26px!important}
+@media(max-width:680px){
+  body.aqs-ch-body .aqs-ch-main{padding:16px 12px!important}
+  body.aqs-ch-body .aqs-ch-card{padding:18px!important}
+  body.aqs-ch-body .aqs-site-header-inner{padding-left:14px!important;padding-right:14px!important}
+}
