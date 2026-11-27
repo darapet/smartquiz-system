@@ -296,7 +296,7 @@ function ensureFeature(id){
  var c=config[id];if(!c.keys||typeof c.keys!=='object')c.keys={};
  // Migrate both the original provider-key map and the intermediate role-array format.
  if(!c.keys.primary||Array.isArray(c.keys.primary)||!c.keys.fallback||Array.isArray(c.keys.fallback)){
-  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:(Array.isArray(old.primary)?old.primary:[]),fallbackPool=Array.isArray(old.fallback)?old.fallback:[];
+  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:(Array.isArray(old.primary)?old.primary:[]),fallbackPool=Array.isArray(old.fallback)?old.fallback:(c.fallback&&c.fallback!==c.primary&&Array.isArray(old[c.fallback])?old[c.fallback]:[]);
   c.keys={primary:{},fallback:{}};
   if(primaryPool.length)c.keys.primary[c.primary]=primaryPool.slice(0,50);
   if(fallbackPool.length&&c.fallback)c.keys.fallback[c.fallback]=fallbackPool.slice(0,50);
