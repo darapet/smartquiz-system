@@ -26,115 +26,17 @@ function _waitFirebase() {
   });
 }
 
-/* ══════════════════════════════════════════════════════
-   10-SLOT LIBRARY GROQ KEY POOL (round-robin, no main-pool fallback)
-   Keys are loaded automatically from Firebase admin settings
-   (field: lib_groq_keys) — no need to hardcode here.
-   To hardcode manually: paste reversed key (gsk_… reversed) into a slot.
-   To reverse in console: "gsk_yourkey".split('').reverse().join('')
-══════════════════════════════════════════════════════ */
+/*
+ * Library AI uses the shared secure provider router from aqs-groq-key.js.
+ * Do not create a second browser-side API-key pool here: that would override
+ * the central feature route and expose provider credentials in the browser.
+ */
 (function(){
-  var URL_  = 'https://api.groq.com/openai/v1/chat/completions';
-  var IDX   = 'aqs_lib_groq_idx';
-  var RL_MS = 62000;
-  var _rl   = {};
-
-  var _SLOTS = [
-    /* Slot  1  */ '',
-    /* Slot  2  */ '',
-    /* Slot  3  */ '',
-    /* Slot  4  */ '',
-    /* Slot  5  */ '',
-    /* Slot  6  */ '',
-    /* Slot  7  */ '',
-    /* Slot  8  */ '',
-    /* Slot  9  */ '',
-    /* Slot 10  */ ''
-  ].map(function(r){ return r ? r.split('').reverse().join('') : ''; })
-   .filter(function(k){ return k.length > 20; });
-
-  /* Keys-ready promise — resolves once the Firebase auto-loader finishes
-     (or after 5 s timeout). libGroqFetch awaits this before throwing
-     "not configured", so a slow Firestore read never causes a false error. */
-  window._libKeysReady = new Promise(function(resolve){
-    window._libKeysReadyResolve = resolve;
-    setTimeout(resolve, 5000);
-  });
-
-  function _h(k){ return k ? k.slice(-8) : '?'; }
-  function _isRL(k){ return (_rl[_h(k)]||0) > Date.now(); }
-  function _markRL(k){ _rl[_h(k)] = Date.now() + RL_MS; }
-  function _idx(){ var i=0; try{ i=parseInt(localStorage.getItem(IDX)||'0')||0; }catch(e){} return (isNaN(i)||i>=Math.max(1,_SLOTS.length))?0:i; }
-  function _setIdx(i){ try{ localStorage.setItem(IDX, String(i%Math.max(1,_SLOTS.length))); }catch(e){} }
-
-  window._libKeyCount = function(){ return _SLOTS.length; };
-  window.setLibGroqKeys = function(arr){
-    _SLOTS.length=0;
-    (arr||[]).map(function(k){ return (k||'').replace(/[^\x20-\x7E]/g,'').trim(); })
-             .filter(function(k){ return k.length>20 })
-             .forEach(function(k){ _SLOTS.push(k); });
-    try{ localStorage.setItem(IDX,'0'); }catch(e){}
-  };
-  window.getLibGroqKeyCount = function(){ return _SLOTS.length; };
-
-  window.libGroqFetch = async function(bodyObj){
-    /* Wait for Firebase auto-loader before deciding no keys are set */
-    if(!_SLOTS.length) await window._libKeysReady;
-
-    var model = (window._aqsGroqModel ? window._aqsGroqModel(window._AQS_GROQ_MODEL) : window._AQS_GROQ_MODEL) || 'openai/gpt-oss-20b';
-    if(_SLOTS.length){
-      var start=_idx();
-      for(var i=0;i<_SLOTS.length;i++){
-        var idx=(start+i)%_SLOTS.length, key=_SLOTS[idx];
-        if(_isRL(key)){ _setIdx(idx+1); continue; }
-        try{
-          var res=await fetch(URL_,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(Object.assign({},bodyObj,{model:model}))});
-          if(res.status===429){ _markRL(key); _setIdx(idx+1); continue; }
-          if(res.status===413){ _setIdx(idx+1); continue; }
-          if(res.status===401){ _rl[_h(key)]=Date.now()+600000; _setIdx(idx+1); continue; }
-          _setIdx(idx+1); return res;
-        }catch(e){ console.warn('[lib-ai] slot '+(idx+1)+' err',e.message); }
-      }
-      throw new Error('All library AI keys are busy or rate-limited. Please wait a moment and try again.');
-    }
-    /* No library keys configured — do NOT fall back to main pool */
-    throw new Error('Library AI keys not configured. Please add lib_groq_keys in Admin Settings.');
-  };
-})();
-
-/* ══════════════════════════════════════════════════════
-   LIBRARY KEY AUTO-LOADER
-   Reads lib_groq_keys from Firebase admin settings and
-   loads them into the library pool automatically.
-   Fires once per page load after Firebase is ready.
-══════════════════════════════════════════════════════ */
-(function(){
-  function _loadLibKeysFromFirebase(){
-    if(typeof window.aqsAjax !== 'function'){
-      /* aqs-firebase.js not present on this page — resolve immediately */
-      if(typeof window._libKeysReadyResolve === 'function'){
-        window._libKeysReadyResolve();
-        window._libKeysReadyResolve = null;
-      }
-      return;
-    }
-    window.aqsAjax({ action: 'aqs_get_settings' }, function(res){
-      var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
-      if(Array.isArray(s.lib_groq_keys) && s.lib_groq_keys.length){
-        window.setLibGroqKeys(s.lib_groq_keys);
-        console.log('[aqs-library] loaded '+window.getLibGroqKeyCount()+' library Groq key(s) from admin settings.');
-      }
-      if(typeof window._libKeysReadyResolve === 'function'){
-        window._libKeysReadyResolve();
-        window._libKeysReadyResolve = null;
-      }
-    });
-  }
-
-  if(window._aqsFirebaseReady){
-    _loadLibKeysFromFirebase();
-  } else {
-    document.addEventListener('aqs:firebase:ready', _loadLibKeysFromFirebase, { once: true });
+  if (typeof window.libGroqFetch !== 'function') {
+    window.libGroqFetch = function(bodyObj, extraOpts) {
+      if (typeof window.groqFetch === 'function') return window.groqFetch(bodyObj, extraOpts);
+      return Promise.reject(new Error('Secure AI service is not ready. Please reload and try again.'));
+    };
   }
 })();
 
