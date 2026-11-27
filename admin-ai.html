@@ -22,7 +22,7 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 .aic-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.aic-btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:#edf1f7;color:#23364f}.aic-btn.primary{background:var(--ai-blue);color:#fff}.aic-btn:disabled{opacity:.55;cursor:wait}
 .aic-status{font-size:.8rem;color:var(--ai-muted);align-self:center}.aic-feature-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .aic-feature{padding:14px;cursor:pointer;text-align:left;color:var(--ai-ink)}.aic-feature strong{display:block;margin-bottom:5px}.aic-feature small{color:var(--ai-muted)}
-.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
+.aic-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.aic-health-item{border:1px solid var(--ai-line);border-radius:10px;padding:10px 12px;background:#fbfcfe;min-width:0}.aic-health-item strong{display:block;font-size:.82rem}.aic-health-item small{display:block;color:var(--ai-muted);font-size:.72rem;margin-top:4px;overflow-wrap:anywhere}.aic-health-good{color:#12815c}.aic-health-bad{color:#b54747}@media(max-width:650px){.aic-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
 @media(max-width:850px){.aic-layout{grid-template-columns:1fr}.aic-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.aic-wrap{padding:16px 12px 40px}.aic-hero{padding:20px;display:block}.aic-provider-row,.aic-keygrid,.aic-feature-list{grid-template-columns:1fr}.aic-stats{gap:8px}.aic-stat{padding:13px}}
 </style></head>
@@ -33,7 +33,8 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 </nav></aside>
 <main class="aqs-admin-content"><div class="aic-wrap">
 <section class="aic-hero"><div><span class="aic-chip">AI OPERATIONS</span><h1>AI Control Centre</h1><p>Manage providers, credentials, model preferences and fallback plans independently for each AI feature.</p></div><div class="aic-chip" id="aic-save-state">Connecting to settings…</div></section>
-<div class="aic-stats"><div class="aic-stat"><small>AI features</small><strong id="aic-feature-count">9</strong></div><div class="aic-stat"><small>Providers configured</small><strong id="aic-provider-count">0</strong></div><div class="aic-stat"><small>Saved key slots</small><strong id="aic-key-count">0</strong></div><div class="aic-stat"><small>Maximum per provider / feature</small><strong>50</strong></div></div>
+<div class="aic-stats"><div class="aic-stat"><small>AI features</small><strong id="aic-feature-count">10</strong></div><div class="aic-stat"><small>Providers configured</small><strong id="aic-provider-count">0</strong></div><div class="aic-stat"><small>Saved key slots</small><strong id="aic-key-count">0</strong></div><div class="aic-stat"><small>Maximum per provider / feature</small><strong>50</strong></div></div>
+<section class="aic-panel" style="margin-bottom:16px"><h2>Runtime health</h2><p class="aic-sub">Latest provider key tests, configured feature routes and the enforced request limit.</p><div id="aic-runtime-health" class="aic-health-grid"><span class="aic-status">Waiting for secure runtime status…</span></div></section>
 <div class="aic-layout"><aside class="aic-panel"><h2>AI feature pages</h2><p class="aic-sub">Choose a feature to manage its provider and fallback.</p><nav class="aic-nav" id="aic-feature-nav"></nav></aside>
 <section class="aic-main"><div class="aic-panel"><h2 id="aic-feature-title">Main AI</h2><p class="aic-sub" id="aic-feature-desc">Shared AI provider configuration.</p>
 <div class="aic-provider-row">
@@ -101,6 +102,31 @@ function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
 $('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
 }
+async function loadRuntimeStatus(){
+ var target=$('aic-runtime-health');
+ try{
+  var user=window._aqsFirebaseUser||window._aqsAuthUser||null;
+  if(!user&&window._aqsAuthResolved!==true)await new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;resolve()};document.addEventListener('aqs:firebase:ready',finish,{once:true});setTimeout(finish,8000)});
+  user=window._aqsFirebaseUser||window._aqsAuthUser||user;
+  if(!user||typeof user.getIdToken!=='function')throw new Error('Admin session is not ready.');
+  var token=await user.getIdToken();
+  var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/status',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
+  var data=await response.json().catch(function(){return {}});
+  if(!response.ok)throw new Error(data.error||'Runtime status unavailable.');
+  var cards=[];
+  cards.push('<div class="aic-health-item"><strong>Request limit</strong><small class="aic-health-good">'+(data.rateLimit&&data.rateLimit.enforcement==='active'?'Active · ':'Not confirmed · ')+(data.rateLimit&&data.rateLimit.perUserPerMinute||'—')+' requests / user / minute</small></div>');
+  (data.features||[]).forEach(function(f){
+   var counts=f.keyCounts||{},total=Object.keys(counts).reduce(function(n,k){return n+(Number(counts[k])||0)},0);
+   cards.push('<div class="aic-health-item"><strong>'+String(f.id).replace(/[<>&"]/g,'')+'</strong><small>Primary: '+(f.primary||'—')+' · Fallback: '+(f.fallback||'—')+' · '+total+' keys</small></div>');
+  });
+  Object.keys(data.health||{}).forEach(function(providerId){
+   var h=data.health[providerId];if(!h)return;
+   cards.push('<div class="aic-health-item"><strong>'+provider(providerId).name+'</strong><small class="'+(h.ok?'aic-health-good':'aic-health-bad')+'">'+(h.ok?'Key test passed':'Key test failed')+' · HTTP '+h.status+' · '+h.ms+'ms</small><small>'+String(h.message||'').replace(/[<>&"]/g,'')+'</small></div>');
+  });
+  if(!cards.length)cards.push('<div class="aic-health-item"><strong>No runtime data yet</strong><small>Save a provider configuration and run a key test.</small></div>');
+  target.innerHTML=cards.join('');
+ }catch(error){target.innerHTML='<div class="aic-health-item"><strong>Runtime status unavailable</strong><small>'+String(error.message||error).replace(/[<>&"]/g,'')+'</small></div>'}
+}
 function load(){
 if(typeof window.aqsAjax!=='function')return setTimeout(load,250);
 window.aqsAjax({action:'aqs_get_settings'},function(res){
@@ -138,7 +164,7 @@ if(!existing||!Object.keys(existing).length){
 features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported from General Settings. Save a feature to store them in the new secure runtime.';
-renderNav();renderFeature();stats();
+renderNav();renderFeature();stats();loadRuntimeStatus();
 });
 }
 $('aic-key-owner').addEventListener('change',function(){config[active].keyOwner=this.value;renderKeys()});
