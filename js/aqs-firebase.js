@@ -3068,12 +3068,12 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 10; })
             .slice(0, 5);
     }
-    /* Trim and validate Creator Studio image-generation tokens (up to 5) */
+    /* Trim and validate Creator Studio image-generation tokens (up to 10) */
     if (Array.isArray(privatePayload.creator_image_keys)) {
         privatePayload.creator_image_keys = privatePayload.creator_image_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 10; })
-            .slice(0, 5);
+            .slice(0, 10);
     }
     /* Trim and validate Quote Groq keys (up to 5) before saving */
     if (Array.isArray(payload.quoteGroqKeys)) {
