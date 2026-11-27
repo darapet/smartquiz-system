@@ -241,10 +241,10 @@
           link.setAttribute('href', IMAGE_GEN_URL);
           primary.push(link);
           hasCreatorStudio = true;
-        } else if (href === 'quiz-setup.html' || href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+        } else if (href === 'quiz-setup.html' || href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub-dashboard.html' ||
             href === 'challenge.html' || href === 'library.html') {
           primary.push(link);
-          if (href === 'studyhub.html') hasStudyHub = true;
+          if (href === 'studyhub-dashboard.html') hasStudyHub = true;
           if (href === 'challenge.html') hasChallenge = true;
           if (href === 'library.html') hasLibrary = true;
           if (href === 'studio.html') {
@@ -263,7 +263,7 @@
 
       if (!hasStudyHub) {
         var studyHub = document.createElement('a');
-        studyHub.href = 'studyhub.html';
+        studyHub.href = 'studyhub-dashboard.html';
         studyHub.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
           (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
         studyHub.style.cssText = 'color:#6366f1;font-weight:700;';
