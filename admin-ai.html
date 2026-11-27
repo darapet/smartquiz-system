@@ -117,7 +117,27 @@ $('aic-fallback-model').addEventListener('change',function(){config[active].fall
 $('aic-save').addEventListener('click',function(){
 if(!loaded)return;var c=config[active];c.primary=$('aic-primary').value;c.fallback=$('aic-fallback').value;c.model=$('aic-model').value.trim();c.fallbackModel=$('aic-fallback-model').value.trim();c.keyOwner=$('aic-key-owner').value;
 var btn=this;btn.disabled=true;$('aic-status').textContent='Saving securely…';
-window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},function(res){btn.disabled=false;$('aic-status').textContent=res&&res.success?'Saved for '+features.find(function(f){return f.id===active}).name:(res&&res.data||'Save failed');$('aic-save-state').textContent=res&&res.success?'Saved':'Save failed';stats()});
+window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},async function(res){
+ btn.disabled=false;
+ if(!res||!res.success){$('aic-status').textContent=(res&&res.data)||'Firestore save failed';$('aic-save-state').textContent='Save failed';return}
+ $('aic-status').textContent='Saved privately. Syncing secure AI runtime…';
+ try{
+  var user=window._aqsFirebaseUser||window._aqsAuthUser||null;
+  if(!user&&window._aqsAuthResolved!==true)await new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;resolve()};document.addEventListener('aqs:firebase:ready',finish,{once:true});setTimeout(finish,8000)});
+  user=window._aqsFirebaseUser||window._aqsAuthUser||user;
+  if(!user||typeof user.getIdToken!=='function')throw new Error('Admin session not ready for runtime sync. Reload and save again.');
+  var token=await user.getIdToken();
+  var sync=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({ai_provider_config:config}),signal:AbortSignal.timeout(20000)});
+  var data=await sync.json().catch(function(){return {}});
+  if(!sync.ok||!data.saved)throw new Error(data.error||'Cloudflare runtime sync failed.');
+  $('aic-status').textContent='Saved securely and synced to AI runtime ('+data.featureCount+' feature(s), '+data.keyCount+' key(s)).';
+  $('aic-save-state').textContent='Saved + synced';
+ }catch(error){
+  $('aic-status').textContent='Saved in Firestore, but runtime sync failed: '+error.message;
+  $('aic-save-state').textContent='Sync needed';
+ }
+ stats();
+});
 });
 async function testProviderKey(owner,key,model){
  var user=window._aqsFirebaseUser||window._aqsAuthUser||null;
