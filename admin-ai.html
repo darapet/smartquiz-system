@@ -224,7 +224,7 @@ $('aic-test').addEventListener('click',async function(){
  btn.disabled=false;
  var good=results.filter(function(x){return x.ok}).length;
  $('aic-status').textContent=good+'/'+results.length+' key(s) working. '+results.map(function(x){return 'Slot '+x.slot+': '+(x.ok?'Active':x.msg||'Failed')+(x.ms?' ('+x.ms+'ms)':'')}).join(' · ');
- stats();
+ stats();loadRuntimeStatus();
 });
 document.addEventListener('aqs:firebase:ready',load,{once:true});if(window._aqsFirebaseReady)load();
 })();
