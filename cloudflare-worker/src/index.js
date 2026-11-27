@@ -1193,29 +1193,49 @@ async function handleAIKeyTest(request, env) {
     const payload = await request.json().catch(() => ({}));
     const provider = String(payload.provider || '').trim().toLowerCase();
     const key = String(payload.key || '').trim();
-    if (!['groq', 'mistral'].includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
-    if (key.length < 20 || key.length > 512 || /[\r\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
-    const model = provider === 'groq'
-      ? (String(payload.model || env.GROQ_MODEL || 'openai/gpt-oss-20b').trim().slice(0, 100) || 'openai/gpt-oss-20b')
-      : (String(payload.model || 'mistral-small-latest').trim().slice(0, 100) || 'mistral-small-latest');
-    const endpoint = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.mistral.ai/v1/chat/completions';
+    const supported = ['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface'];
+    if (!supported.includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
+    if (key.length < 10 || key.length > 512 || /[\\r\\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
+    const defaults = {
+      openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
+      deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
+      mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
+    };
+    const model = String(payload.model || defaults[provider]).trim().slice(0, 120) || defaults[provider];
+    let endpoint, headers = { 'Content-Type': 'application/json' }, body;
+    if (provider === 'gemini') {
+      endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+      body = { contents: [{ parts: [{ text: 'Reply with OK.' }] }], generationConfig: { maxOutputTokens: 4 } };
+    } else if (provider === 'claude') {
+      endpoint = 'https://api.anthropic.com/v1/messages';
+      headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01';
+      body = { model, max_tokens: 4, messages: [{ role: 'user', content: 'Reply with OK.' }] };
+    } else {
+      const endpoints = {
+        openai: 'https://api.openai.com/v1/chat/completions',
+        deepseek: 'https://api.deepseek.com/chat/completions',
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+        mistral: 'https://api.mistral.ai/v1/chat/completions',
+        huggingface: 'https://router.huggingface.co/v1/chat/completions'
+      };
+      endpoint = endpoints[provider];
+      headers.Authorization = 'Bearer ' + key;
+      body = { model, messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 4, temperature: 0 };
+    }
     const started = Date.now();
     let upstream;
     try {
       upstream = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 3, temperature: 0 }),
-        signal: AbortSignal.timeout(15000),
+        method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(18000)
       });
     } catch (networkError) {
       const timedOut = networkError && (networkError.name === 'TimeoutError' || networkError.name === 'AbortError');
-      return json(request, env, { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider. Try again shortly.' });
+      return json(request, env, { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider.' });
     }
     const ms = Date.now() - started;
-    const body = await upstream.json().catch(() => ({}));
+    const responseBody = await upstream.json().catch(() => ({}));
     if (upstream.ok) return json(request, env, { ok: true, status: upstream.status, ms, msg: 'Key is active.' });
-    const rawMessage = String(body && body.error && (body.error.message || body.error) || body && body.message || 'Provider rejected the request.').replace(/[\r\n\t]/g, ' ').slice(0, 140);
+    const rawMessage = String(responseBody && responseBody.error && (responseBody.error.message || responseBody.error) || responseBody && responseBody.message || responseBody && responseBody.detail || 'Provider rejected the request.').replace(/[\\r\\n\\t]/g, ' ').slice(0, 140);
     const label = upstream.status === 401 || upstream.status === 403 ? 'Invalid or unauthorized key' : upstream.status === 429 ? 'Rate limited or quota exhausted' : 'Provider returned an error';
     return json(request, env, { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage });
   } catch (error) {
