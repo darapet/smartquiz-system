@@ -1225,7 +1225,8 @@ async function handleAIConfig(request, env) {
     }
     const featureCount = Object.keys(normalized).length;
     const keyCount = Object.values(normalized).reduce((sum, feature) =>
-      sum + Object.values(feature.keys).reduce((count, values) => count + values.length, 0), 0);
+      sum + ['primary', 'fallback'].reduce((routeTotal, role) =>
+        routeTotal + Object.values(feature.keys[role] || {}).reduce((count, keys) => count + (Array.isArray(keys) ? keys.length : 0), 0), 0), 0);
     return json(request, env, { saved: true, featureCount, keyCount });
   } catch (error) {
     return json(request, env, { error: error && error.message ? error.message : 'Could not sync AI settings.' }, Number(error && error.httpStatus) || 500);
