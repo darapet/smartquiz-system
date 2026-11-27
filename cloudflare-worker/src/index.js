@@ -1168,12 +1168,51 @@ async function handleAIConfig(request, env) {
     if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
     if (!env.EMAIL_CONFIG) return json(request, env, { error: 'Cloudflare KV storage is not configured.' }, 503);
     const payload = await request.json().catch(() => ({}));
-    const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
-    const keys = rawKeys.map((key) => String(key || '').trim()).filter((key) => key.startsWith('gsk_') && key.length > 20).slice(0, 20);
-    if (rawKeys.length && !keys.length) return json(request, env, { error: 'No valid Groq API keys were supplied. Check the Groq keys in Admin Settings.' }, 400);
-    const model = String(payload.groq_model || '').trim().slice(0, 100);
-    await env.EMAIL_CONFIG.put(GROQ_AI_CONFIG_KEY, JSON.stringify({ keys, model, updatedAt: Date.now(), updatedBy: user.email }));
-    return json(request, env, { saved: true, keyCount: keys.length, model });
+    const allowedProviders = new Set(['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface']);
+    const normalized = {};
+    const source = payload && payload.ai_provider_config && typeof payload.ai_provider_config === 'object'
+      ? payload.ai_provider_config : null;
+    if (source) {
+      for (const [featureId, raw] of Object.entries(source).slice(0, 30)) {
+        const id = String(featureId || '').toLowerCase();
+        if (!/^[a-z0-9_-]{1,32}$/.test(id) || !raw || typeof raw !== 'object') continue;
+        const keys = {};
+        const rawPools = raw.keys && typeof raw.keys === 'object' ? raw.keys : {};
+        for (const provider of allowedProviders) {
+          const values = Array.isArray(rawPools[provider]) ? rawPools[provider] : [];
+          keys[provider] = values.map((value) => String(value || '').trim())
+            .filter((value) => value.length >= 10 && value.length <= 512 && !/[\\r\\n]/.test(value))
+            .slice(0, 50);
+        }
+        const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
+        normalized[id] = {
+          primary: provider(raw.primary) || 'groq',
+          model: String(raw.model || '').trim().slice(0, 120),
+          fallback: provider(raw.fallback),
+          fallbackModel: String(raw.fallbackModel || '').trim().slice(0, 120),
+          keys,
+          updatedAt: Date.now()
+        };
+      }
+      await env.EMAIL_CONFIG.put('ai-provider-config', JSON.stringify({
+        features: normalized,
+        updatedAt: Date.now(),
+        updatedBy: user.email
+      }));
+    }
+
+    // Keep the established Groq sync contract working for older admin pages.
+    if (Array.isArray(payload.groq_keys) || Object.prototype.hasOwnProperty.call(payload, 'groq_model')) {
+      const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
+      const keys = rawKeys.map((key) => String(key || '').trim()).filter((key) => key.startsWith('gsk_') && key.length > 20).slice(0, 20);
+      if (rawKeys.length && !keys.length) return json(request, env, { error: 'No valid Groq API keys were supplied. Check the Groq keys in Admin Settings.' }, 400);
+      const model = String(payload.groq_model || '').trim().slice(0, 100);
+      await env.EMAIL_CONFIG.put(GROQ_AI_CONFIG_KEY, JSON.stringify({ keys, model, updatedAt: Date.now(), updatedBy: user.email }));
+    }
+    const featureCount = Object.keys(normalized).length;
+    const keyCount = Object.values(normalized).reduce((sum, feature) =>
+      sum + Object.values(feature.keys).reduce((count, values) => count + values.length, 0), 0);
+    return json(request, env, { saved: true, featureCount, keyCount });
   } catch (error) {
     return json(request, env, { error: error && error.message ? error.message : 'Could not sync AI settings.' }, Number(error && error.httpStatus) || 500);
   }
