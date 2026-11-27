@@ -1581,10 +1581,8 @@ async function handleSpecialAIKeyTest(request, env) {
     } else if (service === 'elevenlabs') {
       response = await fetch('https://api.elevenlabs.io/v1/user', { headers: { 'xi-api-key': key }, signal: AbortSignal.timeout(15000) });
     } else {
-      response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=' + encodeURIComponent(key), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: 'Create a small simple blue circle on a plain white background.' }] }], generationConfig: { responseModalities: ['TEXT'] } }),
-        signal: AbortSignal.timeout(25000)
+      response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key) + '&pageSize=1', {
+        method: 'GET', signal: AbortSignal.timeout(15000)
       });
     }
     const elapsed = Date.now() - started;
