@@ -1636,8 +1636,8 @@ async function handleAITranscribe(request, env) {
     const addGroqKeys = (config) => {
       if (!config || typeof config !== 'object') return;
       for (const role of ['primary', 'fallback']) {
-        const provider = String(role === 'primary' ? config.primary : config.fallback || '').toLowerCase();
-        if (provider !== 'groq') continue;
+        // Whisper is Groq-only, so read the explicitly stored Groq key pool
+        // even if the text-generation provider selected for this route differs.
         const pool = config.keys && config.keys[role];
         const values = pool && !Array.isArray(pool) ? pool.groq : (Array.isArray(pool) ? pool : []);
         if (Array.isArray(values)) {
