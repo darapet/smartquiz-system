@@ -292,6 +292,29 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 @media(max-width:1100px){.aic-provider-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.aic-feature-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.aic-provider-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.aic-feature-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.aic-detail-heading{align-items:flex-start}}
 @media(max-width:560px){.aic-provider-cards,.aic-feature-cards,.aic-role-switch,.aic-keygrid,.aic-provider-row{grid-template-columns:1fr}.aic-section-heading{margin:23px 0 12px}.aic-provider-card{padding:14px}.aic-feature-card{min-height:155px;padding:16px}.aic-detail-top{align-items:flex-start;flex-direction:column}.aic-detail-heading{display:block}.aic-detail-capacity{margin-top:13px;width:max-content}.aic-config-panel{padding:15px}.aic-key-heading{align-items:flex-start}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Per-key provider test results */
+.aic-test-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.aic-test-results-empty{grid-column:1/-1;display:flex;align-items:center;gap:13px;padding:17px;border:1px dashed #cfd6e5;border-radius:14px;background:#fafbff;color:#53617a}
+.aic-test-results-empty strong{display:block;font-size:.82rem;color:#263653}
+.aic-test-results-empty p{margin:4px 0 0;font-size:.72rem;color:#78849a}
+.aic-test-results-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:12px;background:#eeedff;color:#6255d9;font-size:1.3rem}
+.aic-test-result{min-width:0;padding:15px;border:1px solid #e1e6f0;border-radius:14px;background:#fff;box-shadow:0 3px 12px #202b4308}
+.aic-test-result-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.aic-test-result-key{font-size:.8rem;font-weight:850;color:#263653}
+.aic-test-result-status{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:99px;font-size:.66rem;font-weight:850;white-space:nowrap}
+.aic-test-result-status.good{background:#e9f8ef;color:#187747}
+.aic-test-result-status.bad{background:#fff0ef;color:#b33d38}
+.aic-test-result-status .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.aic-test-result-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.aic-test-result-meta span{padding:5px 8px;border-radius:7px;background:#f3f5fa;color:#65728a;font-size:.66rem}
+.aic-test-result-message{margin:10px 0 0;font-size:.73rem;line-height:1.5;color:#64718a;overflow-wrap:anywhere}
+.aic-test-result-message.good{color:#187747}
+.aic-test-result-message.bad{color:#a63d38}
+.aic-test-results-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin:4px 0 0}
+.aic-test-results-heading strong{font-size:.8rem;color:#293957}
+.aic-test-results-heading span{font-size:.68rem;color:#7a879d}
+@media(max-width:560px){.aic-test-results{grid-template-columns:1fr}}
 </style></head>
 <body data-aqs-page="admin-settings" data-aqs-page-group="admin">
 <button class="aic-mobile-menu" id="aic-mobile-menu" type="button" aria-label="Open admin navigation" aria-expanded="false">☰</button><div class="aic-sidebar-backdrop" id="aic-sidebar-backdrop"></div>
@@ -324,6 +347,9 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 </div>
 <div class="aic-key-heading"><div><h2 id="aic-key-title">Primary provider API keys</h2><p class="aic-sub" id="aic-key-description">Keys saved here are used for the selected provider.</p></div><span class="aic-capacity-pill">50 key slots</span></div>
 <div class="aic-keygrid" id="aic-key-grid"></div>
+<div class="aic-test-results" id="aic-test-results" aria-live="polite">
+ <div class="aic-test-results-empty"><span class="aic-test-results-icon">⌁</span><div><strong>Key test results</strong><p>Test results will appear here, separately for every key slot.</p></div></div>
+</div>
 </div>
 <div class="aic-actions"><button class="aic-btn primary" id="aic-save">Save feature configuration</button><button class="aic-btn" id="aic-test">Test entered key</button><span class="aic-status" id="aic-status" aria-live="polite"></span></div>
 <div class="aic-notice">This feature uses its own Primary and Fallback providers. Keys are stored in admin-only settings and synced to the secure AI runtime; they are not sent to student browsers.</div>
@@ -359,6 +385,7 @@ var features=[
 {id:'darasocial',name:'Dara Social AI',desc:'Social content and publishing assistance.'}
 ];
 var config={},active='main',activeRole='primary',loaded=false;
+var testResults={};
 var $=function(id){return document.getElementById(id)};
 function optionList(el){el.innerHTML=providers.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')}
 function provider(id){return providers.find(function(p){return p.id===id})||providers[0]}
@@ -478,6 +505,20 @@ function renderKeys(){
   button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);arr[idx]='';renderKeys();stats();renderDashboard()});
  });
  $('aic-key-description').textContent='Only '+provider(owner).name+' keys for the '+(role==='primary'?'Primary':'Fallback')+' route are shown here. '+arr.filter(Boolean).length+' of 50 slots are in use.';
+ renderTestResults();
+}
+function testResultKey(feature,role,providerId,slot){return [feature,role,providerId,slot].join('|')}
+function renderTestResults(){
+ var target=$('aic-test-results');if(!target)return;
+ var owner=currentProvider(config[active]||{}),items=[];
+ Object.keys(testResults).forEach(function(key){var r=testResults[key];if(r.feature===active&&r.role===activeRole&&r.provider===owner)items.push(r)});
+ items.sort(function(a,b){return a.slot-b.slot});
+ if(!items.length){target.innerHTML='<div class="aic-test-results-empty"><span class="aic-test-results-icon">⌁</span><div><strong>Key test results</strong><p>Results for '+provider(owner).name+' '+(activeRole==='primary'?'Primary':'Fallback')+' keys will appear here, one card per slot.</p></div></div>';return}
+ var good=items.filter(function(r){return r.ok}).length;
+ target.innerHTML='<div class="aic-test-results-heading"><strong>Individual key results</strong><span>'+good+' passed · '+(items.length-good)+' failed</span></div>'+items.map(function(r){
+  var safe=function(v){return String(v==null?'':v).replace(/[<>&"]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch]})};
+  return '<article class="aic-test-result"><div class="aic-test-result-top"><strong class="aic-test-result-key">Slot '+r.slot+' · '+safe(provider(r.provider).name)+'</strong><span class="aic-test-result-status '+(r.ok?'good':'bad')+'"><i class="dot"></i>'+(r.ok?'Test passed':'Test failed')+'</span></div><div class="aic-test-result-meta">'+(r.status?'<span>HTTP '+safe(r.status)+'</span>':'')+(r.ms?'<span>'+safe(r.ms)+' ms</span>':'')+'<span>'+(r.role==='primary'?'Primary route':'Fallback route')+'</span></div><p class="aic-test-result-message '+(r.ok?'good':'bad')+'">'+safe(r.msg||(r.ok?'Provider accepted this key.':'The provider test did not pass.'))+'</p></article>';
+ }).join('');
 }
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});['primary','fallback'].forEach(function(role){Object.keys(keys[role]||{}).forEach(function(pid){n+=(keys[role][pid]||[]).filter(Boolean).length;});});});
@@ -600,21 +641,24 @@ async function testProviderKey(owner,key,model){
  return data;
 }
 $('aic-test').addEventListener('click',async function(){
- var owner=currentProvider(config[active]),inputs=[].slice.call($('aic-key-grid').querySelectorAll('input'));
+ var featureId=active,role=activeRole,owner=currentProvider(config[active]),inputs=[].slice.call($('aic-key-grid').querySelectorAll('input'));
  var entered=inputs.filter(function(x){return x.value.trim()}).map(function(x){return {slot:Number(x.dataset.slot)+1,key:x.value.trim()}});
  var saved=((config[active].keys[activeRole]||{})[owner]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
  var tests=entered.length?entered:saved;
  if(!tests.length){$('aic-status').textContent='No key to test. Enter a key or save one first.';return}
- var p=provider(owner),model=currentModel(config[active]);
- var btn=this;btn.disabled=true;var results=[];
- for(var i=0;i<tests.length;i++){
-  $('aic-status').textContent='Testing '+p.name+' key '+tests[i].slot+' ('+(i+1)+'/'+tests.length+')…';
-  try{var result=await testProviderKey(owner,tests[i].key,model);results.push({ok:result.ok===true,status:result.status,msg:result.msg,ms:result.ms,slot:tests[i].slot})}
-  catch(e){results.push({ok:false,msg:e.message,slot:tests[i].slot})}
- }
- btn.disabled=false;
+ var p=provider(owner),model=currentModel(config[active]),btn=this,results=[];btn.disabled=true;
+ try{
+  for(var i=0;i<tests.length;i++){
+   $('aic-status').textContent='Testing '+p.name+' key in slot '+tests[i].slot+' ('+(i+1)+'/'+tests.length+')…';
+   var record={feature:featureId,role:role,provider:owner,slot:tests[i].slot,ok:false,msg:'Test in progress'};
+   testResults[testResultKey(featureId,role,owner,tests[i].slot)]=record;renderTestResults();
+   try{var result=await testProviderKey(owner,tests[i].key,model);record={feature:featureId,role:role,provider:owner,slot:tests[i].slot,ok:result.ok===true,status:result.status,msg:result.msg,ms:result.ms}}
+   catch(e){record={feature:featureId,role:role,provider:owner,slot:tests[i].slot,ok:false,msg:e.message}}
+   testResults[testResultKey(featureId,role,owner,tests[i].slot)]=record;results.push(record);renderTestResults();
+  }
+ }finally{btn.disabled=false}
  var good=results.filter(function(x){return x.ok}).length;
- $('aic-status').textContent=good+'/'+results.length+' key(s) working. '+results.map(function(x){return 'Slot '+x.slot+': '+(x.ok?'Active':x.msg||'Failed')+(x.ms?' ('+x.ms+'ms)':'')}).join(' · ');
+ $('aic-status').textContent=good+'/'+results.length+' '+p.name+' key test(s) passed. Each result is shown against its own slot below.';
  stats();loadRuntimeStatus();
 });
 document.addEventListener('aqs:firebase:ready',load,{once:true});if(window._aqsFirebaseReady)load();
