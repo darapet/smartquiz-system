@@ -39,10 +39,10 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 <section class="aic-main"><div class="aic-panel"><h2 id="aic-feature-title">Main AI</h2><p class="aic-sub" id="aic-feature-desc">Shared AI provider configuration.</p>
 <div class="aic-provider-row">
 <div class="aic-field"><label for="aic-primary">Primary provider</label><select id="aic-primary"></select></div>
-<div class="aic-field"><label for="aic-model">Primary model</label><input id="aic-model" placeholder="Choose a provider first"></div>
+<div class="aic-field"><label for="aic-model">Primary model</label><input id="aic-model" list="aic-primary-models" placeholder="Choose or enter a model"><datalist id="aic-primary-models"></datalist></div>
 <div class="aic-field"><label for="aic-fallback">Fallback provider</label><select id="aic-fallback"></select></div>
 </div>
-<div class="aic-provider-row"><div class="aic-field"><label for="aic-fallback-model">Fallback model</label><input id="aic-fallback-model" placeholder="Fallback model"></div><div class="aic-field"><label for="aic-key-owner">Key owner / server</label><select id="aic-key-owner"></select></div><div class="aic-field"><label>Slot capacity</label><input value="50 maximum" disabled></div></div>
+<div class="aic-provider-row"><div class="aic-field"><label for="aic-fallback-model">Fallback model</label><input id="aic-fallback-model" list="aic-fallback-models" placeholder="Choose or enter fallback model"><datalist id="aic-fallback-models"></datalist></div><div class="aic-field"><label for="aic-key-owner">Key owner / server</label><select id="aic-key-owner"></select></div><div class="aic-field"><label>Slot capacity</label><input value="50 maximum" disabled></div></div>
 <h2 style="margin-top:8px">Provider key slots</h2><p class="aic-sub">Choose a key owner above. Up to 50 slots are available for that provider in this feature.</p>
 <div class="aic-keygrid" id="aic-key-grid"></div>
 <div class="aic-actions"><button class="aic-btn primary" id="aic-save">Save feature configuration</button><button class="aic-btn" id="aic-test">Test entered key</button><span class="aic-status" id="aic-status" aria-live="polite"></span></div>
@@ -80,6 +80,7 @@ var config={},active='main',loaded=false;
 var $=function(id){return document.getElementById(id)};
 function optionList(el,includeEmpty){el.innerHTML=(includeEmpty?'<option value="">None</option>':'')+providers.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')}
 function provider(id){return providers.find(function(p){return p.id===id})||providers[0]}
+function renderModelOptions(providerId,listId){var models=provider(providerId).models||[];$(listId).innerHTML=models.map(function(model){return '<option value="'+model+'"></option>'}).join('')}
 function ensureFeature(id){if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-20b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{}};if(!config[id].keys)config[id].keys={}}
 function renderNav(){
 $('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
@@ -91,6 +92,7 @@ $('aic-feature-title').textContent=f.name;$('aic-feature-desc').textContent=f.de
 optionList($('aic-primary'),false);optionList($('aic-fallback'),true);optionList($('aic-key-owner'),false);
 $('aic-primary').value=c.primary;$('aic-fallback').value=c.fallback||'';$('aic-key-owner').value=c.keyOwner||c.primary;
 $('aic-model').value=c.model||'';$('aic-fallback-model').value=c.fallbackModel||'';
+renderModelOptions(c.primary,'aic-primary-models');renderModelOptions(c.fallback,'aic-fallback-models');
 renderKeys();
 }
 function renderKeys(){
@@ -170,8 +172,8 @@ if(migrated){$('aic-status').textContent='Migrating existing AI key pools into t
 });
 }
 $('aic-key-owner').addEventListener('change',function(){config[active].keyOwner=this.value;renderKeys()});
-$('aic-primary').addEventListener('change',function(){config[active].primary=this.value;if(!config[active].keyOwner)config[active].keyOwner=this.value;});
-$('aic-fallback').addEventListener('change',function(){config[active].fallback=this.value;});
+$('aic-primary').addEventListener('change',function(){config[active].primary=this.value;if(!config[active].keyOwner)config[active].keyOwner=this.value;renderModelOptions(this.value,'aic-primary-models');});
+$('aic-fallback').addEventListener('change',function(){config[active].fallback=this.value;renderModelOptions(this.value,'aic-fallback-models');});
 $('aic-model').addEventListener('change',function(){config[active].model=this.value;});
 $('aic-fallback-model').addEventListener('change',function(){config[active].fallbackModel=this.value;});
 $('aic-save').addEventListener('click',function(){
