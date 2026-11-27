@@ -54,7 +54,7 @@ function render(){
  setStats(items);setActivity(items);
  var q=(search.value||'').trim().toLowerCase();
  var filtered=items.filter(function(x){return !q||(String(x.title||'').toLowerCase().includes(q)||(isNotes?String(x.body||''):JSON.stringify(x.cards||[])).toLowerCase().includes(q))});
- if(!filtered.length){host.innerHTML='<div class="empty"><strong>'+(items.length?'No matching items':'Your '+(isNotes?'saved notes':'flashcard decks')+' will appear here')+'</strong>'+(items.length?'Try another search.':'Create your first '+(isNotes?'set of AI notes':'revision deck')+' to start building your library.')+'<br><a class="secondary" style="margin-top:12px" href="studyhub-notes-create.html' : 'studyhub-flashcards-create.html+'">'+(isNotes?'Create study notes':'Create a flashcard deck')+' →</a></div>';return}
+ if(!filtered.length){host.innerHTML='<div class="empty"><strong>'+(items.length?'No matching items':'Your '+(isNotes?'saved notes':'flashcard decks')+' will appear here')+'</strong>'+(items.length?'Try another search.':'Create your first '+(isNotes?'set of AI notes':'revision deck')+' to start building your library.')+'<br><a class="secondary" style="margin-top:12px" href="'+(isNotes?'studyhub-notes-create.html':'studyhub-flashcards-create.html')+'">'+(isNotes?'Create study notes':'Create a flashcard deck')+' →</a></div>';return}
  host.innerHTML=filtered.map(function(x){
   var title=esc(x.title|| (isNotes?'Untitled notes':'Untitled deck'));
   if(isNotes){
