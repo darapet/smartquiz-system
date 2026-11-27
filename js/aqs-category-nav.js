@@ -13,7 +13,7 @@
   var eduPages = [
     'dara-edu.html', 'quiz-setup.html', 'create-quiz.html', 'self-quiz.html',
     'take-quiz.html', 'quiz-results.html', 'quiz-manage.html', 'quiz-leaderboard.html',
-    'studyhub.html', 'ai-teacher.html', 'challenge.html', 'puzzle.html',
+    'studyhub-dashboard.html', 'ai-teacher.html', 'challenge.html', 'puzzle.html',
     'library.html', 'library-upload.html', 'library-read.html',
     'library-host-profile.html', 'library-host-view.html', 'user-dashboard.html'
   ];
@@ -36,7 +36,7 @@
     ['Dara Edu', eduHome],
     ['Create Quiz', createQuiz],
     ['AI Teacher', 'ai-teacher.html'],
-    ['Study Hub', 'studyhub.html'],
+    ['Study Hub', 'studyhub-dashboard.html'],
     ['Challenge', 'challenge.html'],
     ['Puzzle', 'puzzle.html'],
     ['Library', 'library.html']
