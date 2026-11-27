@@ -35,7 +35,7 @@ function setStats(items){
  }else{
   second=items.reduce(function(sum,x){return sum+(Array.isArray(x.cards)?x.cards.length:0)},0);
   third=items.reduce(function(sum,x){return sum+(Array.isArray(x.cards)?x.cards.filter(function(c){return c.status==='mastered'||c.status==='known'}).length:0)},0);
-  fourth=items.reduce(function(sum,x){return sum+(Array.isArray(x.cards)?x.cards.filter(function(c){return !c.dueAt||Number(c.dueAt)<=Date.now()).length:0)},0);
+  fourth=items.reduce(function(sum,x){return sum+(Array.isArray(x.cards)?x.cards.filter(function(c){return !c.dueAt||Number(c.dueAt)<=Date.now()}).length:0)},0);
   document.getElementById('stat-one').textContent=items.length;
   document.getElementById('stat-two').textContent=second;
   document.getElementById('stat-three').textContent=third;
