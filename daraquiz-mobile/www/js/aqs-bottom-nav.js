@@ -12,7 +12,7 @@
   var cssHref = 'css/aqs-bottom-nav.css';
   var items = [
     { id: 'home', label: 'Workspace', href: 'user-dashboard.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>' },
-    { id: 'learn', label: 'Learn', href: 'studyhub.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15M8 7h8M8 11h8"/></svg>' },
+    { id: 'learn', label: 'Learn', href: 'studyhub-dashboard.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15M8 7h8M8 11h8"/></svg>' },
     { id: 'create', label: 'Create', href: 'quiz-setup.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>' },
     { id: 'library', label: 'Library', href: 'library.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 0 2 2M9 8h6M9 12h6"/></svg>' },
     { id: 'social', label: 'Dara Social', href: socialHref, icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.5 4v-4.4A3.5 3.5 0 0 1 4 12.5z"/><path d="m8 8 3 2.2L16 7"/></svg>' }
@@ -42,7 +42,7 @@
   function activeId() {
     if (isSocial) return 'social';
     if (page === 'user-dashboard.html' || page === 'dashboard.html') return 'home';
-    if (page === 'studyhub.html' || page === 'dara-edu.html') return 'learn';
+    if (page === 'studyhub-dashboard.html' || page === 'dara-edu.html') return 'learn';
     if (/^(quiz-setup|create-quiz|self-quiz|studio)\.html$/.test(page)) return 'create';
     if (page.indexOf('library') === 0) return 'library';
     return page === 'index.html' || page === '' ? 'home' : '';
