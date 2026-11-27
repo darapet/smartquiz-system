@@ -7,6 +7,7 @@ const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
 const BREVO_CONFIG_KEY = 'brevo';
 const GROQ_AI_CONFIG_KEY = 'groq-ai';
+const AI_SPECIAL_CONFIG_KEY = 'ai-special-services';
 const REGISTRATION_KEY_PREFIX = 'registration:';
 const EMAIL_PREFERENCES_PREFIX = 'email-preferences:';
 const EMAIL_UNSUBSCRIBE_PREFIX = 'email-unsubscribe:';
@@ -1201,6 +1202,36 @@ async function handleAIConfig(request, env) {
       }));
     }
 
+    const special = payload && payload.ai_special_services && typeof payload.ai_special_services === 'object'
+      ? payload.ai_special_services : null;
+    if (special) {
+      const cleanPool = (value, max) => Array.isArray(value)
+        ? value.map((key) => String(key || '').trim())
+          .filter((key) => key.length >= 10 && key.length <= 512 && !/[\\r\\n]/.test(key))
+          .slice(0, max) : [];
+      const creatorImage = special.creatorImage && typeof special.creatorImage === 'object' ? special.creatorImage : {};
+      const geminiTTS = special.geminiTTS && typeof special.geminiTTS === 'object' ? special.geminiTTS : {};
+      const elevenLabs = special.elevenLabs && typeof special.elevenLabs === 'object' ? special.elevenLabs : {};
+      const normalizedSpecial = {
+        creatorImage: {
+          keys: cleanPool(creatorImage.keys, 10),
+          model: String(creatorImage.model || 'gemini-3.1-flash-image').trim().slice(0, 120)
+        },
+        geminiTTS: {
+          keys: cleanPool(geminiTTS.keys, 5),
+          model: String(geminiTTS.model || 'gemini-2.5-flash-preview-tts').trim().slice(0, 120)
+        },
+        elevenLabs: {
+          keys: cleanPool(elevenLabs.keys, 5),
+          model: String(elevenLabs.model || 'eleven_multilingual_v2').trim().slice(0, 120),
+          voiceId: String(elevenLabs.voiceId || '21m00Tcm4TlvDq8ikWAM').trim().slice(0, 80)
+        },
+        updatedAt: Date.now(),
+        updatedBy: user.email
+      };
+      await env.EMAIL_CONFIG.put(AI_SPECIAL_CONFIG_KEY, JSON.stringify(normalizedSpecial));
+    }
+
     // Keep the established Groq sync contract working for older admin pages.
     if (Array.isArray(payload.groq_keys) || Object.prototype.hasOwnProperty.call(payload, 'groq_model')) {
       const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
@@ -1415,6 +1446,12 @@ async function handleAIStatus(request, env) {
         ? await env.EMAIL_CONFIG.get('ai-provider-health:' + provider, 'json').catch(() => null)
         : null;
     }
+    const special = env.EMAIL_CONFIG ? await env.EMAIL_CONFIG.get(AI_SPECIAL_CONFIG_KEY, 'json').catch(() => null) : null;
+    const specialServices = {
+      creatorImage: { configuredKeys: Array.isArray(special && special.creatorImage && special.creatorImage.keys) ? special.creatorImage.keys.length : 0, model: String(special && special.creatorImage && special.creatorImage.model || '') },
+      geminiTTS: { configuredKeys: Array.isArray(special && special.geminiTTS && special.geminiTTS.keys) ? special.geminiTTS.keys.length : 0, model: String(special && special.geminiTTS && special.geminiTTS.model || '') },
+      elevenLabs: { configuredKeys: Array.isArray(special && special.elevenLabs && special.elevenLabs.keys) ? special.elevenLabs.keys.length : 0, model: String(special && special.elevenLabs && special.elevenLabs.model || '') }
+    };
     const features = Object.entries(stored && stored.features || {}).map(([id, feature]) => ({
       id,
       primary: feature.primary || '',
@@ -1424,11 +1461,140 @@ async function handleAIStatus(request, env) {
     return json(request, env, {
       features,
       health,
+      specialServices,
       rateLimit: { perUserPerMinute: 12, enforcement: 'active' },
       checkedAt: Date.now()
     });
   } catch (error) {
     return json(request, env, { error: error && error.message ? error.message : 'Could not read AI runtime status.' }, Number(error && error.httpStatus) || 500);
+  }
+}
+
+async function readSpecialAIConfig(env) {
+  if (!env.EMAIL_CONFIG) return {};
+  return await env.EMAIL_CONFIG.get(AI_SPECIAL_CONFIG_KEY, 'json').catch(() => ({})) || {};
+}
+
+async function enforceTTSRateLimit(env, uid) {
+  if (!env.EMAIL_CONFIG) return;
+  const minute = Math.floor(Date.now() / 60000);
+  const key = 'ai-tts-rate:' + uid + ':' + minute;
+  const count = Number(await env.EMAIL_CONFIG.get(key)) || 0;
+  if (count >= 30) throw registrationError('TTS request limit reached. Please wait a minute and try again.', 429);
+  await env.EMAIL_CONFIG.put(key, String(count + 1), { expirationTtl: 120 });
+}
+
+async function handleTTSStatus(request, env) {
+  if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST.' }, 405);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const config = await readSpecialAIConfig(env);
+    return json(request, env, {
+      geminiTTS: { configured: Array.isArray(config.geminiTTS && config.geminiTTS.keys) && config.geminiTTS.keys.length > 0 },
+      elevenLabs: { configured: Array.isArray(config.elevenLabs && config.elevenLabs.keys) && config.elevenLabs.keys.length > 0 }
+    });
+  } catch (error) {
+    return json(request, env, { error: error.message || 'TTS status unavailable.' }, Number(error.httpStatus) || 500);
+  }
+}
+
+async function handleGeminiTTS(request, env) {
+  if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST for speech synthesis.' }, 405);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const payload = await request.json().catch(() => ({}));
+    const text = String(payload.text || '').trim();
+    const voiceName = String(payload.voiceName || 'Kore').trim();
+    const style = String(payload.style || '').trim().slice(0, 300);
+    if (!text || text.length > 4000) return json(request, env, { error: 'Text must contain 1–4,000 characters.' }, 400);
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(voiceName)) return json(request, env, { error: 'Invalid voice selection.' }, 400);
+    await enforceTTSRateLimit(env, user.uid);
+    const config = await readSpecialAIConfig(env);
+    const service = config.geminiTTS || {};
+    const keys = Array.isArray(service.keys) ? service.keys.filter((key) => typeof key === 'string' && key.length > 20).slice(0, 5) : [];
+    if (!keys.length) return json(request, env, { error: 'Gemini TTS is not configured. Please use the browser voice.' }, 503);
+    const models = [String(service.model || 'gemini-2.5-flash-preview-tts'), 'gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'].filter((model, index, list) => model && list.indexOf(model) === index);
+    let lastStatus = 502, lastMessage = 'Gemini TTS is temporarily unavailable.';
+    for (const key of keys) {
+      for (const model of models) {
+        const prompt = style ? style + ': ' + text : text;
+        let upstream;
+        try {
+          upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseModalities: ['AUDIO'],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }
+              }
+            }),
+            signal: AbortSignal.timeout(45000)
+          });
+        } catch (error) { lastMessage = error.message || lastMessage; continue; }
+        if (!upstream.ok) {
+          lastStatus = upstream.status;
+          const body = await upstream.json().catch(() => ({}));
+          lastMessage = String(body.error && body.error.message || 'Gemini TTS request failed.').slice(0, 180);
+          if (upstream.status === 404 || upstream.status === 400) continue;
+          if ([401, 403, 429].includes(upstream.status)) break;
+          continue;
+        }
+        const data = await upstream.json().catch(() => ({}));
+        const part = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
+          ? data.candidates[0].content.parts.find((item) => item.inlineData || item.inline_data) : null;
+        const audio = part && (part.inlineData || part.inline_data);
+        if (audio && audio.data) return json(request, env, { audioBase64: audio.data, mimeType: audio.mimeType || audio.mime_type || 'audio/L16;rate=24000', model });
+        lastMessage = 'Gemini returned no audio data.';
+      }
+    }
+    return json(request, env, { error: lastMessage, status: lastStatus }, lastStatus >= 400 ? lastStatus : 502);
+  } catch (error) {
+    return json(request, env, { error: error.message || 'Gemini TTS failed.' }, Number(error.httpStatus) || 500);
+  }
+}
+
+async function handleSpecialAIKeyTest(request, env) {
+  if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST.' }, 405);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+    if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
+    const payload = await request.json().catch(() => ({}));
+    const service = String(payload.service || '').toLowerCase();
+    const key = String(payload.key || '').trim();
+    if (!['gemini_tts', 'elevenlabs', 'creator_image'].includes(service) || key.length < 10 || key.length > 512 || /[\\r\\n]/.test(key)) {
+      return json(request, env, { error: 'A supported service and valid API key are required.' }, 400);
+    }
+    const started = Date.now();
+    let response;
+    if (service === 'gemini_tts') {
+      response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=' + encodeURIComponent(key), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK.' }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } }),
+        signal: AbortSignal.timeout(25000)
+      });
+    } else if (service === 'elevenlabs') {
+      response = await fetch('https://api.elevenlabs.io/v1/user', { headers: { 'xi-api-key': key }, signal: AbortSignal.timeout(15000) });
+    } else {
+      response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=' + encodeURIComponent(key), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Create a small simple blue circle on a plain white background.' }] }], generationConfig: { responseModalities: ['TEXT'] } }),
+        signal: AbortSignal.timeout(25000)
+      });
+    }
+    const elapsed = Date.now() - started;
+    const body = await response.json().catch(() => ({}));
+    const ok = response.ok;
+    const result = { ok, status: response.status, ms: elapsed, msg: ok ? 'Key is active.' : String(body.error && body.error.message || 'Provider rejected this key.').slice(0, 180) };
+    await env.EMAIL_CONFIG?.put('ai-special-health:' + service, JSON.stringify({ ...result, testedAt: Date.now() }));
+    return json(request, env, result, ok ? 200 : 200);
+  } catch (error) {
+    return json(request, env, { error: error.message || 'Special AI key test failed.' }, Number(error.httpStatus) || 500);
   }
 }
 
@@ -1583,6 +1749,15 @@ export default {
     }
     if (url.pathname === '/api/ai/test' || url.pathname === '/api/ai/test/') {
       return handleAIKeyTest(request, env);
+    }
+    if (url.pathname === '/api/ai/test-special' || url.pathname === '/api/ai/test-special/') {
+      return handleSpecialAIKeyTest(request, env);
+    }
+    if (url.pathname === '/api/tts/status' || url.pathname === '/api/tts/status/') {
+      return handleTTSStatus(request, env);
+    }
+    if (url.pathname === '/api/tts/gemini' || url.pathname === '/api/tts/gemini/') {
+      return handleGeminiTTS(request, env);
     }
     if (url.pathname === '/api/ai/status' || url.pathname === '/api/ai/status/') {
       return handleAIStatus(request, env);
