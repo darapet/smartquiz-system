@@ -2961,6 +2961,16 @@ async function actionGetSettings() {
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
                 var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                /* Migrate the legacy Creator Image key pool out of the public settings doc.
+                   Write the private copy first; only then remove the old public field. */
+                var legacyCreatorImageKeys = Array.isArray(snap.data().creator_image_keys)
+                    ? snap.data().creator_image_keys.slice(0, 10)
+                    : [];
+                if (!Array.isArray(privateData.creator_image_keys) && legacyCreatorImageKeys.length) {
+                    await setDoc(doc(db, 'settings', 'private'), { creator_image_keys: legacyCreatorImageKeys }, { merge: true });
+                    await setDoc(doc(db, 'settings', 'main'), { creator_image_keys: deleteField() }, { merge: true });
+                    privateData.creator_image_keys = legacyCreatorImageKeys;
+                }
                 /* Groq keys live in settings/main again. If an earlier build moved them into
                    settings/private, put them back so every page can use them. */
                 var mainGroqKeys = Array.isArray(snap.data().groq_keys) ? snap.data().groq_keys : [];
