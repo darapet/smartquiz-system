@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f7f9ff">
-<title>Guided Study Dashboard — DaraQuiz AI</title>
+<title>Guided Study — StudyHub</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/daraquiz-feature-dashboard.css?v=studyhub-guided-refresh-1">
 <style>
@@ -112,44 +112,269 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
 .sg-review-item p.is-wrong{color:#b42318;font-weight:800}
 @media(prefers-reduced-motion:reduce){.sg-spinner{animation:none}}
 </style>
-</head>
+
+<style id="studyhub-shared-dashboard-design">
+:root{--navy:#15113c;--purple:#5422db;--blue:#3478f6;--ink:#11143e;--muted:#68708d;--line:#e8e9f5;--bg:#f8f9ff;--white:#fff;--green:#12a66a;--orange:#f18a22;--sidebar:254px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg)}a{text-decoration:none;color:inherit}button,input{font:inherit}button{cursor:pointer}
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:linear-gradient(180deg,#15113c,#100e30);color:#fff;padding:27px 14px 19px;display:flex;flex-direction:column;z-index:20;overflow-y:auto}.brand{display:flex;align-items:center;gap:12px;padding:0 14px 30px;font-size:23px;font-weight:850;letter-spacing:-1px}.brand-mark{font-size:32px;color:#a58aff}.brand-name{background:linear-gradient(90deg,#fff,#b59aff);background-clip:text;color:transparent}.nav-label{padding:8px 15px 10px;color:#8e8ab9;font-size:9px;font-weight:800;letter-spacing:1.5px}.nav{display:grid;gap:7px}.nav a{display:flex;align-items:center;gap:14px;padding:13px 15px;border-radius:12px;color:#e4e3f4;font-weight:600;font-size:13px;transition:.18s}.nav a:hover,.nav a.active{background:linear-gradient(100deg,#5521db,#3f2bc1);color:#fff}.nav-icon{width:22px;text-align:center;font-size:18px}.nav-badge{margin-left:auto;background:#7b42e9;color:#fff;border-radius:20px;padding:3px 7px;font-size:9px}.help{margin-top:auto;background:#211d55;border:1px solid #302b70;border-radius:17px;text-align:center;padding:18px 13px}.help strong{display:block;font-size:14px;margin:8px 0}.help p{margin:0 0 13px;color:#c4c1e2;font-size:11px}.help a{display:inline-block;border:1px solid #7652ee;border-radius:99px;padding:8px 17px;font-size:11px}.version{margin:19px 14px 0;color:#aaa5e4;font-size:11px;line-height:1.6}
+.main{margin-left:var(--sidebar);min-height:100vh}.content{max-width:1600px;margin:0 auto;padding:24px 24px 38px}.topbar{display:flex;align-items:center;gap:16px;margin-bottom:23px}.menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:10px 12px;color:var(--ink)}.search{height:47px;max-width:690px;flex:1;display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #ebecf5;border-radius:30px;padding:0 18px;box-shadow:0 5px 18px #25215b0a}.search span{font-size:20px;color:#505b80}.search input{width:100%;border:0;outline:0;background:transparent;color:var(--ink);font-size:13px}.topright{margin-left:auto;display:flex;align-items:center;gap:17px}.bell{border:0;background:#fff;border-radius:50%;width:42px;height:42px;font-size:18px;position:relative;color:var(--ink)}.profile{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:750}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7b2be7,#c52be0);color:#fff;font-weight:800}.profile small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
+.hero{min-height:208px;position:relative;overflow:hidden;border-radius:20px;padding:32px 31px;color:#fff;background:linear-gradient(105deg,#5016d6 0%,#3f39dc 55%,#2e8bf6 100%);box-shadow:0 12px 25px #3e39d529}.hero:before,.hero:after{content:'✦';position:absolute;color:#ffffff48;font-size:26px}.hero:before{right:25%;top:38px}.hero:after{right:7%;top:80px;font-size:38px}.hero h1{font-size:clamp(25px,3vw,35px);line-height:1.2;letter-spacing:-1.2px;margin:0 0 10px;max-width:760px}.hero h1 em{font-style:normal;color:#ffe600}.hero h1 .typing-cursor::after{content:'|';display:inline-block;margin-left:2px;color:#ffe600;animation:studyhub-cursor-blink .8s steps(2,start) infinite}@keyframes studyhub-cursor-blink{to{visibility:hidden}}.hero p{font-size:15px;margin:0 0 21px;color:#f2efff}.primary{display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;background:#fff;color:#19143f;padding:12px 21px;font-size:13px;font-weight:800;box-shadow:0 5px 15px #17113d25}.hero-art{position:absolute;right:5%;bottom:-17px;font-size:98px;filter:drop-shadow(0 12px 12px #11113d45)}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px}.section-head h2{font-size:17px;letter-spacing:-.5px;margin:0}.section-head a{font-size:12px;color:#5221dc;font-weight:750}.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.tool{min-height:145px;border-radius:18px;padding:16px 17px;display:flex;flex-direction:column;align-items:flex-start;box-shadow:0 6px 14px #15113c0b;transition:transform .18s,box-shadow .18s}.tool:hover{transform:translateY(-3px);box-shadow:0 10px 22px #15113c18}.tool[hidden]{display:none}.tool:nth-child(1){background:linear-gradient(140deg,#e8e0ff,#f0eaff)}.tool:nth-child(2){background:linear-gradient(140deg,#d9f5e8,#e7faef)}.tool:nth-child(3){background:linear-gradient(140deg,#ffe6cf,#fff0e2)}.tool:nth-child(4){background:linear-gradient(140deg,#d9ebff,#e9f3ff)}.tool:nth-child(5){background:linear-gradient(140deg,#f0ddff,#f8eaff)}.tool-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#ffffff70;font-size:26px;margin:0 0 10px}.tool strong{font-size:14px;margin-bottom:5px}.tool small{font-size:11px;color:#535979}.tool .arrow{margin-left:auto;margin-top:-20px;font-size:17px;font-weight:800}
+.grid-main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);gap:16px;margin-top:19px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 19px;box-shadow:0 5px 17px #15113c08;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:12px}.panel-head h2{font-size:16px;margin:0;letter-spacing:-.4px}.panel-head a{font-size:11px;color:#5221dc;font-weight:750}.progress-wrap{display:grid;grid-template-columns:145px minmax(0,1fr) minmax(175px,.95fr);align-items:center;gap:14px}.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#dfe8ee 0 100%);display:grid;place-items:center;position:relative;margin:auto}.ring:before{content:'';position:absolute;inset:10px;background:#fff;border-radius:50%}.ring div{position:relative;text-align:center}.ring strong{display:block;font-size:27px}.ring small{font-size:10px;color:var(--muted)}.metrics{display:grid;gap:13px;border-left:1px solid var(--line);padding-left:17px}.metric{display:flex;gap:10px;align-items:center}.metric i{font-style:normal;font-size:19px}.metric b{display:block;font-size:17px}.metric small{color:var(--muted);font-size:10px}.success{background:#e4f8ef;border-radius:15px;padding:15px;min-height:130px;display:flex;flex-direction:column;justify-content:center}.success strong{font-size:14px}.success p{font-size:11px;color:#426c5a;margin:6px 0}.success .trophy{font-size:27px;margin-bottom:7px}.empty-message{font-size:11px;line-height:1.6;color:#73809a}.motivation{min-height:220px;overflow:hidden;position:relative;background:linear-gradient(125deg,#fff,#f0edff)}.motivation blockquote{font-size:19px;line-height:1.45;font-weight:800;font-style:italic;margin:20px 0 8px;max-width:270px;position:relative;z-index:1}.motivation p{color:var(--muted);font-size:12px}.motivation .mountain{position:absolute;right:-8px;bottom:-26px;font-size:105px;opacity:.35}.small-btn{display:inline-block;margin-top:9px;background:#5422db;color:#fff;border-radius:99px;padding:10px 17px;font-size:11px;font-weight:750;position:relative;z-index:1}
+.bottom-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);gap:16px;margin-top:16px}.activity{display:grid;gap:0}.activity-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #f0f1f7;font-size:12px}.activity-row:last-child{border-bottom:0}.activity-row .symbol{font-size:17px}.activity-row small{margin-left:auto;color:var(--muted);white-space:nowrap;font-size:10px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.stat{text-align:center;padding:8px 3px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat i{display:block;font-style:normal;font-size:20px;margin-bottom:7px}.stat strong{display:block;font-size:17px}.stat small{display:block;color:var(--muted);font-size:9px;margin-top:4px}.empty-row{padding:17px 0;color:var(--muted);font-size:11px;text-align:center}
+.mobile-overlay{display:none}
+@media(max-width:1180px){:root{--sidebar:220px}.quick{grid-template-columns:repeat(3,minmax(0,1fr))}.progress-wrap{grid-template-columns:130px minmax(0,1fr)}.success{grid-column:1/-1;min-height:auto}}
+@media(max-width:820px){:root{--sidebar:0px}.sidebar{display:none;width:254px}.sidebar.open{display:flex}.main{margin:0}.content{padding:15px 14px 30px}.menu-btn{display:block}.topbar{gap:9px}.topright{gap:8px}.profile-name{display:none}.search{height:43px;padding:0 13px}.hero{padding:25px 21px;min-height:190px}.hero-art{font-size:67px;right:3%;opacity:.5}.hero h1{font-size:26px;max-width:85%}.hero p{font-size:13px;max-width:80%}.quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool{min-height:135px;padding:14px}.grid-main,.bottom-grid{grid-template-columns:1fr}.progress-wrap{grid-template-columns:120px minmax(0,1fr)}.ring{width:110px;height:110px}.ring strong{font-size:23px}.metrics{padding-left:12px}.success{grid-column:1/-1}.mobile-overlay.show{display:block;position:fixed;inset:0;background:#08051d80;z-index:15}}
+@media(max-width:430px){.hero h1{font-size:22px}.hero p{max-width:100%;font-size:12px}.hero-art{display:none}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}.tool strong{font-size:13px}.tool small{font-size:10px}.panel{padding:14px}.progress-wrap{grid-template-columns:1fr}.metrics{border-left:0;border-top:1px solid var(--line);padding:13px 0 0;grid-template-columns:repeat(3,1fr)}.metric{display:block;text-align:center}.metric i{display:block}.metric b{font-size:15px}.success{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(2){border-right:0}.topright{gap:5px}.bell{width:36px;height:36px}}
+
+/* StudyHub dashboard polish — preserves the existing layout and behavior */
+:root{
+ --ink:#17183d;
+ --muted:#626b86;
+ --line:#e5e7f2;
+ --bg:#f6f7fc;
+}
+body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
+.sidebar{background:linear-gradient(180deg,#17133f 0%,#12102f 100%);padding-top:25px}
+.brand{padding-bottom:27px}
+.nav{gap:6px}
+.nav a{min-height:45px;color:#e8e7f5;border:1px solid transparent}
+.nav a:hover{background:#ffffff12;border-color:#ffffff12}
+.nav a.active{background:linear-gradient(100deg,#5a2cda,#4632c6);box-shadow:0 7px 18px #09062145}
+.nav-icon{font-size:17px;opacity:.95}
+.help{background:#211d50;border-color:#393276}
+.version{color:#b9b4e5}
+.content{padding:27px 30px 42px}
+.topbar{gap:14px;margin-bottom:25px}
+.search{border-color:#e5e7f1;box-shadow:0 4px 16px #1c1b4a0a}
+.search:focus-within{border-color:#9d8be8;box-shadow:0 0 0 3px #5422db12}
+.search span{color:#626b86}
+.search input::placeholder{color:#8188a0}
+.bell{box-shadow:0 3px 12px #15113c0b;border:1px solid #ececf5}
+.bell:hover{background:#f3f0ff;color:var(--purple)}
+.avatar{box-shadow:0 4px 10px #5422db25}
+.hero{min-height:205px;padding:34px 35px;border-radius:21px;box-shadow:0 13px 28px #4036c51f}
+.hero h1{font-weight:800;letter-spacing:-1.35px}
+.hero p{line-height:1.65;color:#f6f4ff}
+.primary{transition:transform .18s,box-shadow .18s}
+.primary:hover{transform:translateY(-2px);box-shadow:0 8px 19px #17113d30}
+.section-head{margin:26px 2px 14px}
+.section-head h2{font-size:17px;font-weight:800;color:#202044}
+.section-head a,.panel-head a{transition:color .15s}
+.section-head a:hover,.panel-head a:hover{color:#3210a9}
+.quick{gap:13px}
+.tool{min-height:148px;border:1px solid #ffffffb8;box-shadow:0 5px 16px #19133c0c;padding:17px 18px}
+.tool:hover{box-shadow:0 11px 24px #19133c15}
+.tool-icon{width:49px;height:49px;font-size:24px;background:#ffffffa0}
+.tool strong{font-size:13px;color:#252344;letter-spacing:-.2px}
+.tool small{color:#555d78;line-height:1.45}
+.tool .arrow{color:#4f2ac3}
+.grid-main,.bottom-grid{gap:17px}
+.grid-main{margin-top:21px}
+.panel{border-color:#e6e8f2;border-radius:19px;padding:20px 21px;box-shadow:0 5px 18px #17133d08}
+.panel-head{margin-bottom:17px}
+.panel-head h2{font-size:15px;font-weight:800;color:#242344}
+.ring{background:conic-gradient(#e5e8f2 0 100%);box-shadow:inset 0 0 0 1px #f1f2f8}
+.ring strong{color:#30265f}
+.ring small{color:#66708a}
+.metrics{border-color:#ececf4}
+.metric b{color:#272548}
+.metric small,.stat small{color:#68718b;line-height:1.4}
+.success{background:linear-gradient(145deg,#e8f8f0,#e0f5eb);border:1px solid #d6f0e2}
+.success strong{color:#176044}
+.success p{color:#466d5d;line-height:1.55}
+.motivation{background:linear-gradient(130deg,#fff 0%,#f4f1ff 100%)}
+.motivation blockquote{color:#29234f;line-height:1.5}
+.motivation p{color:#68718b;line-height:1.55}
+.small-btn{box-shadow:0 5px 12px #5422db24;transition:transform .18s,box-shadow .18s}
+.small-btn:hover{transform:translateY(-2px);box-shadow:0 8px 17px #5422db30}
+.activity-row{color:#343452;border-color:#eff0f6}
+.empty-row{color:#737c94;line-height:1.6}
+.stat{border-color:#ececf4}
+.stat strong{color:#29264b}
+@media(max-width:1180px){
+ .content{padding:23px 23px 36px}
+ .quick{gap:11px}
+}
+@media(max-width:820px){
+ .content{padding:15px 15px 30px}
+ .topbar{margin-bottom:19px}
+ .hero{padding:27px 23px}
+ .section-head{margin-top:22px}
+ .panel{padding:17px}
+}
+@media(max-width:430px){
+ .content{padding:12px 11px 25px}
+ .hero{border-radius:17px;padding:23px 18px}
+ .panel{border-radius:16px;padding:14px}
+ .panel-head h2{font-size:14px}
+ .tool{border-radius:15px;min-height:132px}
+}
+
+
+/* Guided Study keeps its existing feature components while sharing the main dashboard shell. */
+.gs-wrap{max-width:none;margin:0;padding:0}
+.gs-create{border:0;cursor:pointer;font-family:Inter,Arial,sans-serif;border-radius:11px;min-height:0}
+.gs-action.primary{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:0 11px;box-shadow:none}
+.gs-submit{display:inline-flex;align-items:center;justify-content:center;border-radius:10px}
+.gs-learning-header .gs-back{border-radius:9px}
+@media(max-width:820px){.gs-wrap{padding:0}}
+</style>
+<link rel="stylesheet" href="css/aqs-studyhub-dashboard-tracker.css?v=1">
+
+<style id="studyhub-main-dashboard-layout">
+:root{--navy:#15113c;--purple:#5422db;--blue:#3478f6;--ink:#11143e;--muted:#68708d;--line:#e8e9f5;--bg:#f8f9ff;--white:#fff;--green:#12a66a;--orange:#f18a22;--sidebar:254px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg)}a{text-decoration:none;color:inherit}button,input{font:inherit}button{cursor:pointer}
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:linear-gradient(180deg,#15113c,#100e30);color:#fff;padding:27px 14px 19px;display:flex;flex-direction:column;z-index:20;overflow-y:auto}.brand{display:flex;align-items:center;gap:12px;padding:0 14px 30px;font-size:23px;font-weight:850;letter-spacing:-1px}.brand-mark{font-size:32px;color:#a58aff}.brand-name{background:linear-gradient(90deg,#fff,#b59aff);background-clip:text;color:transparent}.nav-label{padding:8px 15px 10px;color:#8e8ab9;font-size:9px;font-weight:800;letter-spacing:1.5px}.nav{display:grid;gap:7px}.nav a{display:flex;align-items:center;gap:14px;padding:13px 15px;border-radius:12px;color:#e4e3f4;font-weight:600;font-size:13px;transition:.18s}.nav a:hover,.nav a.active{background:linear-gradient(100deg,#5521db,#3f2bc1);color:#fff}.nav-icon{width:22px;text-align:center;font-size:18px}.nav-badge{margin-left:auto;background:#7b42e9;color:#fff;border-radius:20px;padding:3px 7px;font-size:9px}.help{margin-top:auto;background:#211d55;border:1px solid #302b70;border-radius:17px;text-align:center;padding:18px 13px}.help strong{display:block;font-size:14px;margin:8px 0}.help p{margin:0 0 13px;color:#c4c1e2;font-size:11px}.help a{display:inline-block;border:1px solid #7652ee;border-radius:99px;padding:8px 17px;font-size:11px}.version{margin:19px 14px 0;color:#aaa5e4;font-size:11px;line-height:1.6}
+.main{margin-left:var(--sidebar);min-height:100vh}.content{max-width:1600px;margin:0 auto;padding:24px 24px 38px}.topbar{display:flex;align-items:center;gap:16px;margin-bottom:23px}.menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:10px 12px;color:var(--ink)}.search{height:47px;max-width:690px;flex:1;display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #ebecf5;border-radius:30px;padding:0 18px;box-shadow:0 5px 18px #25215b0a}.search span{font-size:20px;color:#505b80}.search input{width:100%;border:0;outline:0;background:transparent;color:var(--ink);font-size:13px}.topright{margin-left:auto;display:flex;align-items:center;gap:17px}.bell{border:0;background:#fff;border-radius:50%;width:42px;height:42px;font-size:18px;position:relative;color:var(--ink)}.profile{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:750}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7b2be7,#c52be0);color:#fff;font-weight:800}.profile small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
+.hero{min-height:208px;position:relative;overflow:hidden;border-radius:20px;padding:32px 31px;color:#fff;background:linear-gradient(105deg,#5016d6 0%,#3f39dc 55%,#2e8bf6 100%);box-shadow:0 12px 25px #3e39d529}.hero:before,.hero:after{content:'✦';position:absolute;color:#ffffff48;font-size:26px}.hero:before{right:25%;top:38px}.hero:after{right:7%;top:80px;font-size:38px}.hero h1{font-size:clamp(25px,3vw,35px);line-height:1.2;letter-spacing:-1.2px;margin:0 0 10px;max-width:760px}.hero h1 em{font-style:normal;color:#ffe600}.hero h1 .typing-cursor::after{content:'|';display:inline-block;margin-left:2px;color:#ffe600;animation:studyhub-cursor-blink .8s steps(2,start) infinite}@keyframes studyhub-cursor-blink{to{visibility:hidden}}.hero p{font-size:15px;margin:0 0 21px;color:#f2efff}.primary{display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;background:#fff;color:#19143f;padding:12px 21px;font-size:13px;font-weight:800;box-shadow:0 5px 15px #17113d25}.hero-art{position:absolute;right:5%;bottom:-17px;font-size:98px;filter:drop-shadow(0 12px 12px #11113d45)}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px}.section-head h2{font-size:17px;letter-spacing:-.5px;margin:0}.section-head a{font-size:12px;color:#5221dc;font-weight:750}.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.tool{min-height:145px;border-radius:18px;padding:16px 17px;display:flex;flex-direction:column;align-items:flex-start;box-shadow:0 6px 14px #15113c0b;transition:transform .18s,box-shadow .18s}.tool:hover{transform:translateY(-3px);box-shadow:0 10px 22px #15113c18}.tool[hidden]{display:none}.tool:nth-child(1){background:linear-gradient(140deg,#e8e0ff,#f0eaff)}.tool:nth-child(2){background:linear-gradient(140deg,#d9f5e8,#e7faef)}.tool:nth-child(3){background:linear-gradient(140deg,#ffe6cf,#fff0e2)}.tool:nth-child(4){background:linear-gradient(140deg,#d9ebff,#e9f3ff)}.tool:nth-child(5){background:linear-gradient(140deg,#f0ddff,#f8eaff)}.tool-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#ffffff70;font-size:26px;margin:0 0 10px}.tool strong{font-size:14px;margin-bottom:5px}.tool small{font-size:11px;color:#535979}.tool .arrow{margin-left:auto;margin-top:-20px;font-size:17px;font-weight:800}
+.grid-main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);gap:16px;margin-top:19px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 19px;box-shadow:0 5px 17px #15113c08;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:12px}.panel-head h2{font-size:16px;margin:0;letter-spacing:-.4px}.panel-head a{font-size:11px;color:#5221dc;font-weight:750}.progress-wrap{display:grid;grid-template-columns:145px minmax(0,1fr) minmax(175px,.95fr);align-items:center;gap:14px}.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#dfe8ee 0 100%);display:grid;place-items:center;position:relative;margin:auto}.ring:before{content:'';position:absolute;inset:10px;background:#fff;border-radius:50%}.ring div{position:relative;text-align:center}.ring strong{display:block;font-size:27px}.ring small{font-size:10px;color:var(--muted)}.metrics{display:grid;gap:13px;border-left:1px solid var(--line);padding-left:17px}.metric{display:flex;gap:10px;align-items:center}.metric i{font-style:normal;font-size:19px}.metric b{display:block;font-size:17px}.metric small{color:var(--muted);font-size:10px}.success{background:#e4f8ef;border-radius:15px;padding:15px;min-height:130px;display:flex;flex-direction:column;justify-content:center}.success strong{font-size:14px}.success p{font-size:11px;color:#426c5a;margin:6px 0}.success .trophy{font-size:27px;margin-bottom:7px}.empty-message{font-size:11px;line-height:1.6;color:#73809a}.motivation{min-height:220px;overflow:hidden;position:relative;background:linear-gradient(125deg,#fff,#f0edff)}.motivation blockquote{font-size:19px;line-height:1.45;font-weight:800;font-style:italic;margin:20px 0 8px;max-width:270px;position:relative;z-index:1}.motivation p{color:var(--muted);font-size:12px}.motivation .mountain{position:absolute;right:-8px;bottom:-26px;font-size:105px;opacity:.35}.small-btn{display:inline-block;margin-top:9px;background:#5422db;color:#fff;border-radius:99px;padding:10px 17px;font-size:11px;font-weight:750;position:relative;z-index:1}
+.bottom-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);gap:16px;margin-top:16px}.activity{display:grid;gap:0}.activity-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #f0f1f7;font-size:12px}.activity-row:last-child{border-bottom:0}.activity-row .symbol{font-size:17px}.activity-row small{margin-left:auto;color:var(--muted);white-space:nowrap;font-size:10px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.stat{text-align:center;padding:8px 3px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat i{display:block;font-style:normal;font-size:20px;margin-bottom:7px}.stat strong{display:block;font-size:17px}.stat small{display:block;color:var(--muted);font-size:9px;margin-top:4px}.empty-row{padding:17px 0;color:var(--muted);font-size:11px;text-align:center}
+.mobile-overlay{display:none}
+@media(max-width:1180px){:root{--sidebar:220px}.quick{grid-template-columns:repeat(3,minmax(0,1fr))}.progress-wrap{grid-template-columns:130px minmax(0,1fr)}.success{grid-column:1/-1;min-height:auto}}
+@media(max-width:820px){:root{--sidebar:0px}.sidebar{display:none;width:254px}.sidebar.open{display:flex}.main{margin:0}.content{padding:15px 14px 30px}.menu-btn{display:block}.topbar{gap:9px}.topright{gap:8px}.profile-name{display:none}.search{height:43px;padding:0 13px}.hero{padding:25px 21px;min-height:190px}.hero-art{font-size:67px;right:3%;opacity:.5}.hero h1{font-size:26px;max-width:85%}.hero p{font-size:13px;max-width:80%}.quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool{min-height:135px;padding:14px}.grid-main,.bottom-grid{grid-template-columns:1fr}.progress-wrap{grid-template-columns:120px minmax(0,1fr)}.ring{width:110px;height:110px}.ring strong{font-size:23px}.metrics{padding-left:12px}.success{grid-column:1/-1}.mobile-overlay.show{display:block;position:fixed;inset:0;background:#08051d80;z-index:15}}
+@media(max-width:430px){.hero h1{font-size:22px}.hero p{max-width:100%;font-size:12px}.hero-art{display:none}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}.tool strong{font-size:13px}.tool small{font-size:10px}.panel{padding:14px}.progress-wrap{grid-template-columns:1fr}.metrics{border-left:0;border-top:1px solid var(--line);padding:13px 0 0;grid-template-columns:repeat(3,1fr)}.metric{display:block;text-align:center}.metric i{display:block}.metric b{font-size:15px}.success{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(2){border-right:0}.topright{gap:5px}.bell{width:36px;height:36px}}
+
+/* StudyHub dashboard polish — preserves the existing layout and behavior */
+:root{
+ --ink:#17183d;
+ --muted:#626b86;
+ --line:#e5e7f2;
+ --bg:#f6f7fc;
+}
+body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
+.sidebar{background:linear-gradient(180deg,#17133f 0%,#12102f 100%);padding-top:25px}
+.brand{padding-bottom:27px}
+.nav{gap:6px}
+.nav a{min-height:45px;color:#e8e7f5;border:1px solid transparent}
+.nav a:hover{background:#ffffff12;border-color:#ffffff12}
+.nav a.active{background:linear-gradient(100deg,#5a2cda,#4632c6);box-shadow:0 7px 18px #09062145}
+.nav-icon{font-size:17px;opacity:.95}
+.help{background:#211d50;border-color:#393276}
+.version{color:#b9b4e5}
+.content{padding:27px 30px 42px}
+.topbar{gap:14px;margin-bottom:25px}
+.search{border-color:#e5e7f1;box-shadow:0 4px 16px #1c1b4a0a}
+.search:focus-within{border-color:#9d8be8;box-shadow:0 0 0 3px #5422db12}
+.search span{color:#626b86}
+.search input::placeholder{color:#8188a0}
+.bell{box-shadow:0 3px 12px #15113c0b;border:1px solid #ececf5}
+.bell:hover{background:#f3f0ff;color:var(--purple)}
+.avatar{box-shadow:0 4px 10px #5422db25}
+.hero{min-height:205px;padding:34px 35px;border-radius:21px;box-shadow:0 13px 28px #4036c51f}
+.hero h1{font-weight:800;letter-spacing:-1.35px}
+.hero p{line-height:1.65;color:#f6f4ff}
+.primary{transition:transform .18s,box-shadow .18s}
+.primary:hover{transform:translateY(-2px);box-shadow:0 8px 19px #17113d30}
+.section-head{margin:26px 2px 14px}
+.section-head h2{font-size:17px;font-weight:800;color:#202044}
+.section-head a,.panel-head a{transition:color .15s}
+.section-head a:hover,.panel-head a:hover{color:#3210a9}
+.quick{gap:13px}
+.tool{min-height:148px;border:1px solid #ffffffb8;box-shadow:0 5px 16px #19133c0c;padding:17px 18px}
+.tool:hover{box-shadow:0 11px 24px #19133c15}
+.tool-icon{width:49px;height:49px;font-size:24px;background:#ffffffa0}
+.tool strong{font-size:13px;color:#252344;letter-spacing:-.2px}
+.tool small{color:#555d78;line-height:1.45}
+.tool .arrow{color:#4f2ac3}
+.grid-main,.bottom-grid{gap:17px}
+.grid-main{margin-top:21px}
+.panel{border-color:#e6e8f2;border-radius:19px;padding:20px 21px;box-shadow:0 5px 18px #17133d08}
+.panel-head{margin-bottom:17px}
+.panel-head h2{font-size:15px;font-weight:800;color:#242344}
+.ring{background:conic-gradient(#e5e8f2 0 100%);box-shadow:inset 0 0 0 1px #f1f2f8}
+.ring strong{color:#30265f}
+.ring small{color:#66708a}
+.metrics{border-color:#ececf4}
+.metric b{color:#272548}
+.metric small,.stat small{color:#68718b;line-height:1.4}
+.success{background:linear-gradient(145deg,#e8f8f0,#e0f5eb);border:1px solid #d6f0e2}
+.success strong{color:#176044}
+.success p{color:#466d5d;line-height:1.55}
+.motivation{background:linear-gradient(130deg,#fff 0%,#f4f1ff 100%)}
+.motivation blockquote{color:#29234f;line-height:1.5}
+.motivation p{color:#68718b;line-height:1.55}
+.small-btn{box-shadow:0 5px 12px #5422db24;transition:transform .18s,box-shadow .18s}
+.small-btn:hover{transform:translateY(-2px);box-shadow:0 8px 17px #5422db30}
+.activity-row{color:#343452;border-color:#eff0f6}
+.empty-row{color:#737c94;line-height:1.6}
+.stat{border-color:#ececf4}
+.stat strong{color:#29264b}
+@media(max-width:1180px){
+ .content{padding:23px 23px 36px}
+ .quick{gap:11px}
+}
+@media(max-width:820px){
+ .content{padding:15px 15px 30px}
+ .topbar{margin-bottom:19px}
+ .hero{padding:27px 23px}
+ .section-head{margin-top:22px}
+ .panel{padding:17px}
+}
+@media(max-width:430px){
+ .content{padding:12px 11px 25px}
+ .hero{border-radius:17px;padding:23px 18px}
+ .panel{border-radius:16px;padding:14px}
+ .panel-head h2{font-size:14px}
+ .tool{border-radius:15px;min-height:132px}
+}
+
+
+.gs-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:18px 0 0}
+.gs-stat{display:flex;align-items:center;gap:13px;min-height:90px;padding:15px;border:1px solid var(--line);border-radius:17px;background:#fff}
+.gs-stat-icon{width:45px;height:45px;border-radius:13px;display:grid;place-items:center;font-size:20px;background:#eee8ff;color:var(--purple);flex-shrink:0}
+.gs-stat:nth-child(2) .gs-stat-icon{background:#fff0df;color:var(--orange)}.gs-stat:nth-child(3) .gs-stat-icon{background:#e4f8ef;color:var(--green)}.gs-stat:nth-child(4) .gs-stat-icon{background:#e6efff;color:var(--blue)}
+.gs-stat strong{display:block;font-size:22px}.gs-stat span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.gs-streak-count{font-size:32px;font-weight:900;color:var(--purple);margin:10px 0}.gs-streak-count small{font-size:12px;color:var(--muted)}
+.gs-streak-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:10px 0 17px}.gs-streak-days:before,.gs-streak-progress{display:none}
+.gs-day{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9px;color:var(--muted)}.gs-day-dot{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#f0edff;color:var(--purple);font-size:11px}.gs-day.done .gs-day-dot{background:#e4f8ef;color:var(--green)}.gs-day.today .gs-day-dot{outline:2px solid #c9baff}
+.gs-head-copy h1{font-size:15px;margin:0;color:var(--ink)}.gs-head-copy p{font-size:11px;color:var(--muted);margin:5px 0 0}
+.gs-tabs{display:flex;gap:6px;flex-wrap:wrap}.gs-tab{border:1px solid var(--line);background:#fff;color:var(--muted);padding:7px 11px;border-radius:99px;font:700 10px Inter,Arial,sans-serif;cursor:pointer}.gs-tab.active{background:var(--purple);border-color:var(--purple);color:#fff}
+.gs-plan-list{display:grid;grid-template-columns:1fr;gap:10px}.gs-plan{padding:13px;border-radius:13px}
+#gs-quick-access .tool{border:0;text-align:left;cursor:pointer;font-family:Inter,Arial,sans-serif}
+#gs-quick-access .tool:nth-child(1){background:linear-gradient(140deg,#e8e0ff,#f0eaff)}#gs-quick-access .tool:nth-child(2){background:linear-gradient(140deg,#d9f5e8,#e7faef)}#gs-quick-access .tool:nth-child(3){background:linear-gradient(140deg,#ffe6cf,#fff0e2)}#gs-quick-access .tool:nth-child(4){background:linear-gradient(140deg,#d9ebff,#e9f3ff)}#gs-quick-access .tool:nth-child(5){background:linear-gradient(140deg,#f0ddff,#f8eaff)}
+@media(max-width:1050px){.gs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.gs-stats{gap:8px}.gs-stat{padding:11px;gap:8px;min-height:76px}.gs-stat-icon{width:36px;height:36px}.gs-stat strong{font-size:18px}.gs-stat span{font-size:10px}.gs-streak-days{gap:2px}}
+</style></head>
 <body class="dq-feature-page gs-page">
-<main class="gs-wrap">
-<header class="gs-head">
-<div class="gs-avatar" id="gs-avatar">D</div>
-<div class="gs-head-copy"><h1 id="gs-greeting">Your Guided Study</h1><p>Build a steady learning routine, one topic at a time.</p></div>
-<div class="gs-subject">Current subject: <strong id="gs-subject">No active subject</strong></div>
-</header>
-<section class="gs-streak" aria-label="Learning streak">
-<div class="gs-streak-top"><div class="gs-streak-title"><span class="gs-streak-fire">🔥</span> Learning streak</div><div class="gs-streak-count"><span id="gs-streak-count">0</span> <small>day streak</small></div></div>
-<div class="gs-streak-days" id="gs-streak-days"><div class="gs-streak-progress" id="gs-streak-progress"></div></div>
+<div hidden aria-hidden="true"><div id="gs-avatar">S</div><button type="button" id="gs-open-create">Open create plan</button></div>
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMenu()"></div>
+<aside class="sidebar" id="sidebar">
+ <a class="brand" href="index.html"><span class="brand-mark">✦</span><span class="brand-name">StudyHub</span></a><div class="nav-label">YOUR LEARNING SPACE</div>
+ <nav class="nav" aria-label="StudyHub navigation">
+  <a href="studyhub-dashboard.html"><span class="nav-icon">⌂</span>Dashboard</a><a class="active" href="studyhub-guided-dashboard.html"><span class="nav-icon">🎓</span>Guided Study</a><a href="quiz-dashboard.html"><span class="nav-icon">✣</span>Practice Quiz</a><a href="studyhub-flashcards-dashboard.html"><span class="nav-icon">▣</span>Flashcards</a><a href="studyhub-notes-dashboard.html"><span class="nav-icon">▤</span>AI Notes</a><a href="studyhub-guided-dashboard.html#gs-plans"><span class="nav-icon">▦</span>Study Planner</a><a href="ai-teacher.html"><span class="nav-icon">✧</span>AI Assistant</a>
+ </nav><div class="help"><div style="font-size:24px">🎧</div><strong>Need Help?</strong><p>Get support anytime</p><a href="index.html">Back to SmartQuiz</a></div><div class="version">SmartQuiz · StudyHub</div>
+</aside>
+<main class="main"><div class="content">
+<header class="topbar"><button class="menu-btn" type="button" aria-label="Open menu" onclick="openMenu()">☰</button><label class="search"><span>⌕</span><input id="gs-dashboard-search" type="search" placeholder="Search study plans or topics…" autocomplete="off"></label><div class="topright"><button class="bell" type="button" aria-label="Go to study plans" onclick="location.href='#gs-plans'">♧</button><div class="profile"><span class="avatar" id="gs-top-avatar">S</span><span class="profile-name" id="gs-top-name">Student<small>Guided Study learner</small></span></div></div></header>
+<section class="hero"><h1>Welcome to <em>Guided Study!</em> 👋</h1><p>Turn your notes and course materials into a clear learning path. Study topic by topic with your AI tutor.</p><button class="primary" type="button" id="gs-hero-create">＋ &nbsp; Create a Study Plan →</button><div class="hero-art" aria-hidden="true">🎓📚</div></section>
+<section class="gs-stats" id="studyhubTracker" aria-label="Guided Study overview">
+ <article class="gs-stat"><div class="gs-stat-icon">▤</div><div><strong id="gs-total-plans">0</strong><span>Total study plans</span></div></article><article class="gs-stat"><div class="gs-stat-icon">◷</div><div><strong id="gs-study-time">—</strong><span>Total study time</span></div></article><article class="gs-stat"><div class="gs-stat-icon">◎</div><div><strong id="gs-current-count">0</strong><span>Current study plans</span></div></article><article class="gs-stat"><div class="gs-stat-icon">✓</div><div><strong id="gs-finished-count">0</strong><span>Finished study plans</span></div></article>
 </section>
-<section class="gs-stats">
-<article class="gs-stat"><div class="gs-stat-icon">▤</div><div><strong id="gs-total-plans">0</strong><span>Total study plans</span></div></article>
-<article class="gs-stat"><div class="gs-stat-icon">◷</div><div><strong id="gs-study-time">—</strong><span>Total study time</span></div></article>
-<article class="gs-stat"><div class="gs-stat-icon">◎</div><div><strong id="gs-current-count">0</strong><span>Current study plans</span></div></article>
-<article class="gs-stat"><div class="gs-stat-icon">✓</div><div><strong id="gs-finished-count">0</strong><span>Finished study plans</span></div></article>
+<section class="grid-main">
+ <article class="panel"><div class="panel-head"><h2>📊 Your Learning Progress</h2><a href="#gs-plans">View Study Plans →</a></div><div class="progress-wrap"><div class="ring" id="gs-progress-ring"><div><strong id="gs-progress-percent">—</strong><small>Plans completed</small></div></div><div class="metrics"><div class="metric"><i>📘</i><span><b id="gs-progress-topics">0</b><small>Topics in your plans</small></span></div><div class="metric"><i>✅</i><span><b id="gs-progress-finished">0</b><small>Completed plans</small></span></div><div class="metric"><i>📚</i><span><b id="gs-progress-current">0</b><small>Plans in progress</small></span></div></div><div class="success"><span class="trophy">🌱</span><strong id="gs-progress-message">Your learning journey starts here</strong><p id="gs-progress-copy">Create your first study plan and your progress will appear here.</p><span style="font-size:21px;color:#12a66a">↗</span></div></div></article>
+ <article class="panel motivation"><div class="panel-head"><h2>🔥 Your Learning Streak</h2></div><div class="gs-streak-count"><span id="gs-streak-count">0</span> <small>day streak</small></div><div class="gs-streak-days" id="gs-streak-days"><div class="gs-streak-progress" id="gs-streak-progress"></div></div><div class="gs-head-copy"><h1 id="gs-greeting">Your Guided Study</h1><p>Current subject: <strong id="gs-subject">No active subject</strong></p></div><button class="small-btn" type="button" id="gs-motivation-create">Continue Learning →</button><div class="mountain" aria-hidden="true">⛰️</div></article>
 </section>
-<section class="gs-grid">
-<article class="gs-card">
-<div class="gs-card-head"><h2>Study activity</h2><span class="gs-muted">Last 7 days</span></div>
-<svg class="gs-chart" viewBox="0 0 600 190" role="img" aria-label="Study activity line chart">
-<path d="M25 25H580 M25 65H580 M25 105H580 M25 145H580" stroke="#e9edf4" fill="none"/>
-<path id="gs-chart-area" class="area" d="M25 145 L25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145 Z"/>
-<path id="gs-chart-line" class="line" d="M25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145"/>
-<g id="gs-chart-points"></g>
-</svg>
-<div class="gs-chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+<section class="bottom-grid">
+ <article class="panel"><div class="panel-head"><h2>◷ Weekly Study Activity</h2><span class="empty-message">Last 7 days</span></div>
+<svg class="activity-chart" id="gs-chart" viewBox="0 0 600 190" role="img" aria-label="Guided Study activity over the last seven days" style="width:100%;height:auto;display:block">
+<path d="M25 25H580 M25 65H580 M25 105H580 M25 145H580" stroke="#e8e9f5" fill="none"/>
+<path id="gs-chart-area" d="M25 145 L25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145 Z" fill="#5422db" opacity=".09"/>
+<path id="gs-chart-line" d="M25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145" fill="none" stroke="#5422db" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="gs-chart-points"></g></svg>
+<div class="activity-labels" style="display:flex;justify-content:space-between;color:#68708d;font-size:10px;margin-top:4px"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
 </article>
-<button class="gs-create" type="button" id="gs-open-create" aria-label="Create new study plan"><span class="gs-create-icon">＋</span><h2>Create new</h2></button>
+<article class="panel" id="gs-plans"><div class="panel-head"><h2>◷ My Study Plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div><div class="gs-notice" id="gs-notice" role="status"></div><div class="gs-plan-list" id="gs-plan-list"><div class="gs-empty">Loading your study plans…</div></div></article>
+ <article class="panel"><div class="panel-head"><h2>▥ Quick Stats</h2></div><div class="stats"><div class="stat"><i>📘</i><strong id="gs-quick-total">0</strong><small>Total Plans</small></div><div class="stat"><i>📚</i><strong id="gs-quick-current">0</strong><small>In Progress</small></div><div class="stat"><i>✅</i><strong id="gs-quick-finished">0</strong><small>Completed</small></div><div class="stat"><i>🔥</i><strong id="gs-quick-streak">0</strong><small>Day Streak</small></div></div><div class="empty-message" style="margin-top:14px">Your plan progress updates here as you complete lessons and topics.</div></article>
 </section>
-<section class="gs-plans">
-<div class="gs-card-head"><h2>My study plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div>
-<div class="gs-notice" id="gs-notice" role="status"></div>
-<div class="gs-plan-list" id="gs-plan-list"><div class="gs-empty">Loading your study plans…</div></div>
-</section>
-</main>
-<div class="gs-data-host" aria-hidden="true">
+<div class="section-head"><h2>⚡ Guided Study Quick Access</h2><a href="#gs-plans">Explore your plans →</a></div>
+<section class="quick" id="gs-quick-access">
+ <button class="tool" type="button" id="gs-quick-create"><span class="tool-icon">＋</span><strong>Create Study Plan</strong><small>Start a new learning path</small><span class="arrow">➜</span></button>
+ <a class="tool" href="#gs-plans" data-search="current active continue study plans"><span class="tool-icon">📖</span><strong>Continue Learning</strong><small>Return to an active plan</small><span class="arrow">➜</span></a>
+ <button class="tool" type="button" id="gs-quick-finished"><span class="tool-icon">🏆</span><strong>Completed Plans</strong><small>Review finished learning</small><span class="arrow">➜</span></button>
+ <button class="tool" type="button" id="gs-quick-activity"><span class="tool-icon">📈</span><strong>Study Activity</strong><small>See your weekly activity</small><span class="arrow">➜</span></button>
+ <button class="tool" type="button" id="gs-quick-tutor"><span class="tool-icon">🎧</span><strong>AI Study Tutor</strong><small>Learn with text or voice</small><span class="arrow">➜</span></button>
+</section></div></main><div class="gs-data-host" aria-hidden="true">
   <div id="sg-list-view"><div id="sg-stat-plans">0</div><div id="sg-stat-topics">0</div><div id="sg-stat-completed">0</div><div id="sg-plan-list"></div></div>
 </div>
 <div class="gs-modal" id="gs-create-modal" aria-hidden="true">
@@ -213,6 +438,46 @@ body.gs-page{background:var(--gs-bg);color:var(--gs-ink)}
   </div>
 </div>
 
+
+<script>
+function openMenu(){document.getElementById('sidebar').classList.add('open');document.getElementById('mobileOverlay').classList.add('show')}
+function closeMenu(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('show')}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu()});
+(function(){
+ var input=document.getElementById('gs-dashboard-search');
+ if(input)input.addEventListener('input',function(){
+  var q=this.value.trim().toLowerCase();
+  document.querySelectorAll('#gs-plan-list .gs-plan').forEach(function(card){card.hidden=!!q&&!card.innerText.toLowerCase().includes(q)});
+  document.querySelectorAll('#gs-plan-list .gs-empty').forEach(function(card){card.hidden=!!q});
+ });
+})();
+</script>
+
+<script>
+function openMenu(){document.getElementById('sidebar').classList.add('open');document.getElementById('mobileOverlay').classList.add('show')}
+function closeMenu(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('show')}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu()});
+(function(){
+ var search=document.getElementById('gs-dashboard-search');
+ if(search)search.addEventListener('input',function(){var q=this.value.trim().toLowerCase();document.querySelectorAll('#gs-plan-list .gs-plan').forEach(function(card){card.hidden=!!q&&!card.innerText.toLowerCase().includes(q)})});
+ ['gs-hero-create','gs-motivation-create','gs-quick-create'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){document.getElementById('gs-open-create').click()})});
+ var done=document.getElementById('gs-quick-finished');if(done)done.addEventListener('click',function(){document.querySelector('[data-filter="finished"]').click();document.getElementById('gs-plans').scrollIntoView({behavior:'smooth'})});
+ var activity=document.getElementById('gs-quick-activity');if(activity)activity.addEventListener('click',function(){document.getElementById('gs-plans').scrollIntoView({behavior:'smooth'})});
+ var tutor=document.getElementById('gs-quick-tutor');if(tutor)tutor.addEventListener('click',function(){var first=document.querySelector('#gs-plan-list .gs-action.primary');if(first)first.click();else document.getElementById('gs-open-create').click()});
+ function mirror(){
+  [['gs-total-plans','gs-quick-total'],['gs-current-count','gs-quick-current'],['gs-finished-count','gs-quick-finished'],['gs-streak-count','gs-quick-streak'],['sg-stat-topics','gs-progress-topics']].forEach(function(p){var a=document.getElementById(p[0]),b=document.getElementById(p[1]);if(a&&b)b.textContent=a.textContent});
+  var total=+(document.getElementById('gs-total-plans').textContent)||0,finished=+(document.getElementById('gs-finished-count').textContent)||0,current=+(document.getElementById('gs-current-count').textContent)||0,pct=total?Math.round(finished/total*100):0;
+  document.getElementById('gs-progress-percent').textContent=total?pct+'%':'—';
+  document.getElementById('gs-progress-ring').style.background='conic-gradient(#12a66a 0 '+pct+'%, #dfe8ee '+pct+'% 100%)';
+  document.getElementById('gs-progress-finished').textContent=finished;document.getElementById('gs-progress-current').textContent=current;
+  document.getElementById('gs-progress-message').textContent=total?'You are building momentum':'Your learning journey starts here';
+  document.getElementById('gs-progress-copy').textContent=total?finished+' of '+total+' study plans completed. Keep moving forward.':'Create your first study plan and your progress will appear here.';
+ }
+ var list=document.getElementById('gs-plan-list');if(list)new MutationObserver(mirror).observe(list,{childList:true,subtree:true});
+ var streak=document.getElementById('gs-streak-count');if(streak)new MutationObserver(mirror).observe(streak,{childList:true,characterData:true,subtree:true});
+ setTimeout(mirror,350);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -236,7 +501,7 @@ function activity(){return read('aqs_sh_act_log_v1').filter(function(x){return x
 function streakCount(events){var set={};events.forEach(function(x){set[dayKey(new Date(x.at))]=1});var d=new Date(),n=0;if(!set[dayKey(d)])d.setDate(d.getDate()-1);while(set[dayKey(d)]){n++;d.setDate(d.getDate()-1)}return n}
 function renderStreak(events){var n=streakCount(events),days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],now=new Date(),monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));var set={};events.forEach(function(x){set[dayKey(new Date(x.at))]=1});$('gs-streak-count').textContent=n;var host=$('gs-streak-days');host.innerHTML='<div class="gs-streak-progress"></div>';for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(monday.getDate()+i);var cls='gs-day'+(set[dayKey(d)]?' done':'')+(dayKey(d)===dayKey(now)?' today':'');host.insertAdjacentHTML('beforeend','<div class="'+cls+'"><span class="gs-day-dot">'+(set[dayKey(d)]?'✓':'·')+'</span><span>'+days[i]+'</span></div>')}}
 function renderChart(events){var now=new Date(),offset=(now.getDay()+6)%7,monday=new Date(now);monday.setDate(now.getDate()-offset);monday.setHours(0,0,0,0);var vals=[];for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(monday.getDate()+i);var next=new Date(d);next.setDate(d.getDate()+1);vals.push(events.filter(function(e){return e.at>=d.getTime()&&e.at<next.getTime()}).length)}var max=Math.max(1,...vals),pts=vals.map(function(v,i){return(25+i*92.5)+','+(145-v/max*105)}),line='M'+pts.join(' L'),area=line+' L580 145 L25 145 Z';$('gs-chart-line').setAttribute('d',line);$('gs-chart-area').setAttribute('d',area);$('gs-chart-points').innerHTML=pts.map(function(p){var a=p.split(',');return'<circle cx="'+a[0]+'" cy="'+a[1]+'" r="5"/>'}).join('')}
-function renderHeader(){var u=window._aqsFirebaseUser||null,name=u&&(u.displayName||u.email)||'Student';$('gs-greeting').textContent='Welcome back, '+String(name).split('@')[0];if(u&&u.photoURL){$('gs-avatar').innerHTML='<img src="'+safe(u.photoURL)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'}else $('gs-avatar').textContent=String(name).charAt(0).toUpperCase()}
+function renderHeader(){var u=window._aqsFirebaseUser||null,name=u&&(u.displayName||u.email)||'Student',shortName=String(name).split('@')[0],initial=String(name).charAt(0).toUpperCase();$('gs-greeting').textContent='Welcome back, '+shortName;$('gs-top-name').innerHTML=safe(shortName)+'<small>Guided Study learner</small>';$('gs-top-avatar').textContent=initial;if(u&&u.photoURL){var photo='<img src="'+safe(u.photoURL)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';$('gs-avatar').innerHTML=photo;$('gs-top-avatar').innerHTML=photo}else{$('gs-avatar').textContent=initial}}
 function renderStats(events){var active=plans.filter(function(p){return!finished(p)}),done=plans.filter(finished);$('gs-total-plans').textContent=plans.length;$('gs-current-count').textContent=active.length;$('gs-finished-count').textContent=done.length;$('gs-study-time').textContent='Not tracked';var current=active[0];$('gs-subject').textContent=current?current.subject||'Study plan':'No active subject';}
 function downloadPlan(p){var data=JSON.stringify(p,null,2),blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(p.subject||'study-plan').replace(/[^a-z0-9-_]+/gi,'-').toLowerCase()+'-details.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
 async function removePlan(id){if(!confirm('Delete this study plan permanently?'))return;try{if(!window.aqsStudyPlanStore)throw new Error('Study plan storage is not ready.');await window.aqsStudyPlanStore.remove(id);plans=plans.filter(function(p){return p.id!==id});if(window.shGuidedSnapshot)window.shGuidedSnapshot(plans);renderAll();showNotice('Study plan deleted.')}catch(e){showNotice(e.message||'Could not delete this plan.');}}
@@ -304,4 +569,167 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 .gs-review-card strong{font-size:12px;color:#1b2b4b;overflow-wrap:anywhere}
 @media(max-width:560px){.gs-wizard-card{padding:14px}.gs-wizard-step{gap:5px;font-size:9px}.gs-wizard-step b{width:25px;height:25px}.gs-wizard-actions .gs-submit{min-width:0;flex:1}.gs-review-card{grid-template-columns:1fr}.gs-read-progress-top{align-items:flex-start;flex-direction:column;gap:4px}.gs-read-progress-top span{text-align:left}}
 .gs-instructions-field{display:flex;flex-direction:column;gap:7px;margin:15px 0 4px;font-size:11px;font-weight:800;color:#46536d}.gs-instructions-field textarea{width:100%;box-sizing:border-box;border:1px solid #dfe6f2;border-radius:12px;padding:12px 13px;font:500 12px Inter,Arial,sans-serif;color:#1b2743;background:#fff;resize:vertical;line-height:1.6}.gs-instructions-field textarea:focus{outline:none;border-color:#1764e8;box-shadow:0 0 0 3px #1764e81a}</style>
+
+<style id="gs-create-page-redesign">
+/* Guided Study creation page — visual direction matched to Self Quiz Studio.
+   The dashboard Create button and all wizard behaviour remain unchanged. */
+#gs-create-modal{align-items:flex-start;justify-content:center;overflow-y:auto;padding:0;background:transparent}
+#gs-create-modal .gs-modal-backdrop{background:radial-gradient(circle at 88% 8%,rgba(84,34,219,.09),transparent 27%),#f7f8ff;backdrop-filter:none}
+#gs-create-modal .gs-modal-panel{width:min(1000px,calc(100% - 40px));max-height:none;overflow:visible;margin:48px auto 76px;padding:0;background:transparent;border-radius:0;box-shadow:none;color:#17183d}
+#gs-create-modal .gs-modal-head{position:relative;overflow:hidden;align-items:flex-start;min-height:190px;margin:0 0 22px;padding:34px 36px;border:0;border-radius:24px;background:linear-gradient(112deg,#15113c 0%,#4520bd 57%,#3478f6 100%);color:#fff;box-shadow:0 16px 34px rgba(57,39,154,.18)}
+#gs-create-modal .gs-modal-head:after{content:"✦";position:absolute;right:7%;top:8px;font-size:150px;line-height:1;color:rgba(255,255,255,.08);pointer-events:none;transform:rotate(12deg)}
+#gs-create-modal .gs-modal-head>div{position:relative;z-index:1}
+#gs-create-modal .gs-modal-kicker{color:#c9bbff;font-size:11px;letter-spacing:.16em;font-weight:850}
+#gs-create-modal .gs-modal-head h2{position:relative;z-index:1;max-width:700px;margin:12px 0;color:#fff;font-size:clamp(30px,5vw,44px);font-weight:850;letter-spacing:-1.5px;line-height:1.08}
+#gs-create-modal .gs-modal-head p{position:relative;z-index:1;max-width:620px;margin:0;color:#eeebff;font-size:14px;line-height:1.7}
+#gs-create-modal .gs-modal-close{position:relative;z-index:2;flex:none;width:40px;height:40px;border:1px solid #ffffff55;border-radius:12px;background:#ffffff18;color:#fff;font-size:24px}
+#gs-create-modal .gs-auth-notice{margin:0 0 16px;padding:18px 20px;border:1px solid #e3e9ff;border-radius:16px;background:#f4f6ff;color:#343653;line-height:1.6}
+#gs-create-modal .gs-auth-notice a{color:#5422db}
+#gs-create-modal .gs-create-form{display:block}
+#gs-create-modal .gs-wizard-progress{margin:0 0 16px;padding:17px 22px;border:1px solid #e6e8f3;border-radius:18px;background:#fff;box-shadow:0 7px 24px rgba(21,17,60,.045)}
+#gs-create-modal .gs-wizard-steps{gap:12px}
+#gs-create-modal .gs-wizard-step{gap:9px;color:#8a90a6;font-size:12px;font-weight:800}
+#gs-create-modal .gs-wizard-step b{width:34px;height:34px;background:#f0ebff;color:#5422db;font-size:12px}
+#gs-create-modal .gs-wizard-step.active{color:#5422db}
+#gs-create-modal .gs-wizard-step.active b{background:#5422db;color:#fff;box-shadow:0 4px 12px #5422db35}
+#gs-create-modal .gs-wizard-step.complete{color:#16845b}
+#gs-create-modal .gs-wizard-step.complete b{background:#eaf8f0;color:#16845b}
+#gs-create-modal .gs-wizard-line{height:2px;background:#e9e7f4}
+#gs-create-modal .gs-form-status{min-height:0;margin:0 0 13px;padding:0;color:#68708d;font-size:12px;line-height:1.5}
+#gs-create-modal .gs-form-status:empty{display:none}
+#gs-create-modal .gs-wizard-card{margin:0 0 16px;padding:26px;border:1px solid #e6e8f3;border-radius:20px;background:#fff;box-shadow:0 7px 24px rgba(21,17,60,.055)}
+#gs-create-modal .gs-wizard-card>.gs-modal-kicker{display:inline-block;color:#6d4be1;font-size:10px;letter-spacing:.14em}
+#gs-create-modal .gs-wizard-card h3{margin:9px 0 6px;color:#202044;font-size:21px;font-weight:850;letter-spacing:-.5px}
+#gs-create-modal .gs-wizard-card>.gs-form-help{margin:0 0 22px;color:#737b95;font-size:12px;line-height:1.65}
+#gs-create-modal .gs-form-grid{gap:16px}
+#gs-create-modal .gs-form-grid label,
+#gs-create-modal #sg-text-mode>label{display:flex;flex-direction:column;gap:8px;color:#343653;font-size:12px;font-weight:750}
+#gs-create-modal .gs-form-grid input,
+#gs-create-modal .gs-form-grid select,
+#gs-create-modal .gs-form-grid textarea,
+#gs-create-modal #sg-text-mode textarea,
+#gs-create-modal .gs-instructions-field textarea{
+ width:100%;min-height:47px;box-sizing:border-box;padding:12px 14px;border:1px solid #e1e4ef;border-radius:12px;background:#fbfcff;color:#202044;font:500 14px Inter,system-ui,sans-serif;box-shadow:none;transition:border-color .18s,box-shadow .18s
+}
+#gs-create-modal .gs-form-grid textarea,
+#gs-create-modal #sg-text-mode textarea{min-height:190px;resize:vertical;line-height:1.6}
+#gs-create-modal .gs-form-grid input:focus,
+#gs-create-modal .gs-form-grid select:focus,
+#gs-create-modal .gs-form-grid textarea:focus,
+#gs-create-modal #sg-text-mode textarea:focus,
+#gs-create-modal .gs-instructions-field textarea:focus{outline:0;border-color:#8c70ed;box-shadow:0 0 0 4px rgba(84,34,219,.10)}
+#gs-create-modal .gs-form-grid input::placeholder,
+#gs-create-modal #sg-text-mode textarea::placeholder,
+#gs-create-modal .gs-instructions-field textarea::placeholder{color:#9aa1b5}
+#gs-create-modal .gs-mode-switch{display:flex;gap:9px;padding:5px;margin:0 0 16px;border:1px solid #eceef6;border-radius:13px;background:#f5f6fc}
+#gs-create-modal .gs-mode-switch button{flex:1;min-height:42px;padding:10px 13px;border:0;border-radius:10px;background:transparent;color:#68708d;font-size:12px;font-weight:750}
+#gs-create-modal .gs-mode-switch button.active{background:#fff;border:0;color:#5422db;box-shadow:0 3px 10px rgba(21,17,60,.09)}
+#gs-create-modal .gs-upload-actions{gap:10px}
+#gs-create-modal .gs-upload-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1px solid #ded7f7;border-radius:11px;background:#f5f2ff;color:#5422db;font-size:12px;font-weight:800}
+#gs-create-modal .gs-upload-button:hover{border-color:#7656e8;background:#eee9ff}
+#gs-create-modal .gs-upload-row{margin-top:12px;padding:13px 14px;border:1px solid #e6e8f3;border-radius:11px;background:#fbfcff;color:#16845b}
+#gs-create-modal .gs-instructions-field{margin:19px 0 4px;color:#343653;font-size:12px}
+#gs-create-modal .gs-instructions-field textarea{min-height:105px}
+#gs-create-modal .gs-read-progress{margin:17px 0;padding:15px 16px;border:1px solid #e3e9ff;border-radius:13px;background:#f7f6ff}
+#gs-create-modal .gs-read-progress-top strong{color:#343653}
+#gs-create-modal .gs-read-progress-track span{background:linear-gradient(110deg,#5422db,#3478f6)}
+#gs-create-modal .gs-wizard-actions{margin-top:22px}
+#gs-create-modal .gs-wizard-back{min-height:46px;padding:0 18px;border:1px solid #e1e4ef;border-radius:12px;background:#fff;color:#5c6380;font-size:12px;font-weight:800}
+#gs-create-modal .gs-submit{min-height:46px;padding:0 19px;border:0;border-radius:12px;background:linear-gradient(110deg,#5422db,#3478f6);color:#fff;font-size:12px;font-weight:800;box-shadow:0 7px 16px rgba(84,34,219,.2)}
+#gs-create-modal .gs-submit:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(84,34,219,.25)}
+#gs-create-modal .gs-submit:disabled{opacity:.6;transform:none}
+#gs-create-modal .gs-review-card{gap:12px;margin:18px 0}
+#gs-create-modal .gs-review-card>div{gap:7px;padding:16px;border:1px solid #e6e8f3;border-radius:13px;background:#fbfcff}
+#gs-create-modal .gs-review-card small{color:#7b8299;font-size:10px;letter-spacing:.1em}
+#gs-create-modal .gs-review-card strong{color:#202044;font-size:13px;line-height:1.5}
+#gs-create-modal .gs-wizard-card[hidden]{display:none!important}
+@media(max-width:760px){
+ #gs-create-modal .gs-modal-panel{width:calc(100% - 28px);margin:25px auto 45px}
+ #gs-create-modal .gs-modal-head{min-height:0;padding:25px 22px;border-radius:19px;margin-bottom:18px}
+ #gs-create-modal .gs-modal-head:after{right:-3%;top:15px;font-size:100px}
+ #gs-create-modal .gs-modal-head h2{font-size:clamp(27px,8vw,36px);letter-spacing:-1.1px}
+ #gs-create-modal .gs-modal-head p{max-width:95%;font-size:12px}
+ #gs-create-modal .gs-wizard-progress{padding:14px}
+ #gs-create-modal .gs-wizard-step{gap:5px;font-size:10px}
+ #gs-create-modal .gs-wizard-step b{width:29px;height:29px}
+ #gs-create-modal .gs-wizard-card{padding:19px;border-radius:17px}
+ #gs-create-modal .gs-form-grid{grid-template-columns:1fr}
+ #gs-create-modal .gs-form-grid .wide{grid-column:auto}
+ #gs-create-modal .gs-wizard-actions{align-items:stretch}
+ #gs-create-modal .gs-wizard-actions .gs-submit{min-width:0;flex:1}
+ #gs-create-modal .gs-review-card{grid-template-columns:1fr}
+}
+@media(max-width:390px){
+ #gs-create-modal .gs-modal-panel{width:calc(100% - 22px)}
+ #gs-create-modal .gs-modal-head{padding:21px 17px}
+ #gs-create-modal .gs-wizard-card{padding:16px}
+ #gs-create-modal .gs-wizard-step{font-size:9px}
+ #gs-create-modal .gs-wizard-step b{width:25px;height:25px}
+ #gs-create-modal .gs-form-grid input,#gs-create-modal .gs-form-grid select,#gs-create-modal #sg-text-mode textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ #gs-create-modal *{scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+
+
+<style id="gs-create-fullscreen-fix">
+/* Make the creation wizard a true full-screen workspace, not a floating popup. */
+#gs-create-modal{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  box-sizing:border-box!important;
+  display:none;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  padding:0!important;
+  margin:0!important;
+  background:#f7f8ff!important;
+  z-index:99999!important;
+  isolation:isolate;
+}
+#gs-create-modal.open{display:flex!important}
+#gs-create-modal .gs-modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  z-index:0!important;
+  background:#f7f8ff!important;
+  pointer-events:none;
+  backdrop-filter:none!important;
+}
+#gs-create-modal .gs-modal-panel{
+  position:relative!important;
+  z-index:1!important;
+  flex:0 0 auto!important;
+  width:min(1000px,calc(100% - 40px))!important;
+  max-width:1000px!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:38px auto 56px!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
+body:has(#gs-create-modal.open){overflow:hidden!important}
+@media(max-width:760px){
+  #gs-create-modal .gs-modal-panel{
+    width:calc(100% - 28px)!important;
+    margin:18px auto 32px!important;
+  }
+}
+@media(max-width:390px){
+  #gs-create-modal .gs-modal-panel{
+    width:calc(100% - 22px)!important;
+    margin:12px auto 24px!important;
+  }
+}
+</style>
+
 </body></html>
