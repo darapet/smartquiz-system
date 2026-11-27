@@ -290,16 +290,22 @@ function provider(id){return providers.find(function(p){return p.id===id})||prov
 function currentProvider(c){return activeRole==='primary'?c.primary:(c.fallback||'')}
 function currentModel(c){return activeRole==='primary'?c.model:(c.fallbackModel||'')}
 function renderModelOptions(providerId){var models=provider(providerId).models||[];$('aic-current-models').innerHTML=models.map(function(model){return '<option value="'+model+'"></option>'}).join('')}
+var keySchemaMigrated=false;
 function ensureFeature(id){
- if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-120b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{primary:[],fallback:[]}};
+ if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-120b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{primary:{},fallback:{}}};
  var c=config[id];if(!c.keys||typeof c.keys!=='object')c.keys={};
- // Migrate the old provider-key pools to the primary route only; never share them with fallback.
- if(!Array.isArray(c.keys.primary)||!Array.isArray(c.keys.fallback)){
-  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:[];
-  c.keys={primary:primaryPool.slice(0,50),fallback:[]};
+ // Migrate both the original provider-key map and the intermediate role-array format.
+ if(!c.keys.primary||Array.isArray(c.keys.primary)||!c.keys.fallback||Array.isArray(c.keys.fallback)){
+  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:(Array.isArray(old.primary)?old.primary:[]),fallbackPool=Array.isArray(old.fallback)?old.fallback:[];
+  c.keys={primary:{},fallback:{}};
+  if(primaryPool.length)c.keys.primary[c.primary]=primaryPool.slice(0,50);
+  if(fallbackPool.length&&c.fallback)c.keys.fallback[c.fallback]=fallbackPool.slice(0,50);
+  keySchemaMigrated=true;
  }
- c.keys.primary=Array.isArray(c.keys.primary)?c.keys.primary.slice(0,50):[];
- c.keys.fallback=Array.isArray(c.keys.fallback)?c.keys.fallback.slice(0,50):[];
+ ['primary','fallback'].forEach(function(role){
+  if(!c.keys[role]||typeof c.keys[role]!=='object'||Array.isArray(c.keys[role]))c.keys[role]={};
+  Object.keys(c.keys[role]).forEach(function(pid){c.keys[role][pid]=Array.isArray(c.keys[role][pid])?c.keys[role][pid].slice(0,50):[];});
+ });
 }
 function renderNav(){
 $('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
@@ -327,17 +333,17 @@ renderModelOptions(selected);
 renderKeys();
 }
 function renderKeys(){
-var c=config[active],owner=currentProvider(c),role=activeRole,arr=c.keys[role]||[];
+var c=config[active],owner=currentProvider(c),role=activeRole,arr=(c.keys[role]&&c.keys[role][owner])||[];
 $('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){
  var val=arr[i]||'',mask=val?'••••••••••••••••':'';
  return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span class="'+(val?'aic-key-present':'aic-key-empty')+'">'+(val?'● Key stored':'Empty slot')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?mask+'  (enter new key to replace)':'Paste '+provider(owner).name+' key')+'" value="" aria-label="'+(role==='primary'?'Primary':'Fallback')+' API key slot '+(i+1)+'"></div>';
 }).join('');
-$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);if(!c.keys[role])c.keys[role]=[];if(input.value.trim())c.keys[role][idx]=input.value.trim();})});
-$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[role][idx]='';renderKeys();stats()})});
+$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);if(!c.keys[role])c.keys[role]={};if(!c.keys[role][owner])c.keys[role][owner]=[];if(input.value.trim())c.keys[role][owner][idx]=input.value.trim();})});
+$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[role][owner][idx]='';renderKeys();stats()})});
 $('aic-key-description').textContent='Separate '+(role==='primary'?'primary':'fallback')+' key pool for '+provider(owner).name+'. '+arr.filter(Boolean).length+' of 50 slots are in use.';
 }
 function stats(){
-var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});n+=(keys.primary||[]).filter(Boolean).length+(keys.fallback||[]).filter(Boolean).length;});
+var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});['primary','fallback'].forEach(function(role){Object.keys(keys[role]||{}).forEach(function(pid){n+=(keys[role][pid]||[]).filter(Boolean).length;});});});
 $('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
 }
 async function loadRuntimeStatus(){
@@ -400,10 +406,10 @@ if(!existing||!Object.keys(existing).length){
  });
 }
 features.forEach(function(f){ensureFeature(f.id)});
-loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
+loaded=true;$('aic-save-state').textContent=(migrated||keySchemaMigrated)?'Key pools migrated — saving securely':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported into the primary key pool. Fallback has its own separate 50 slots.';
 renderNav();renderFeature();stats();loadRuntimeStatus();
-if(migrated){$('aic-status').textContent='Migrating existing AI key pools into the secure runtime…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
+if(migrated||keySchemaMigrated){$('aic-status').textContent='Migrating existing key pools into separate primary and fallback storage…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
 }
 $('aic-primary-tab').addEventListener('click',function(){setRole('primary')});
@@ -456,7 +462,7 @@ async function testProviderKey(owner,key,model){
 $('aic-test').addEventListener('click',async function(){
  var owner=currentProvider(config[active]),inputs=[].slice.call($('aic-key-grid').querySelectorAll('input'));
  var entered=inputs.filter(function(x){return x.value.trim()}).map(function(x){return {slot:Number(x.dataset.slot)+1,key:x.value.trim()}});
- var saved=(config[active].keys[activeRole]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
+ var saved=((config[active].keys[activeRole]||{})[owner]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
  var tests=entered.length?entered:saved;
  if(!tests.length){$('aic-status').textContent='No key to test. Enter a key or save one first.';return}
  var p=provider(owner),model=currentModel(config[active]);
