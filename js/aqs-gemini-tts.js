@@ -71,29 +71,34 @@
         return ready.length ? ready : pool;   /* if all cooling, try anyway */
     }
 
-    function hasKeys() {
-        var pool = _keys.length ? _keys : (window._AQS_GEMINI_TTS_KEYS || []);
-        return pool.length > 0;
+    var _serverConfigured = false;
+    function hasKeys() { return _serverConfigured; }
+
+    async function firebaseToken() {
+        var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && window._aqsAuthResolved !== true) {
+            await new Promise(function(resolve) {
+                var done = false, finish = function(){ if(done)return; done=true; resolve(); };
+                document.addEventListener('aqs:firebase:ready', finish, { once:true });
+                setTimeout(finish, 8000);
+            });
+            user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        }
+        if (!user || typeof user.getIdToken !== 'function') throw new Error('Sign in to use Gemini voice generation.');
+        return user.getIdToken();
     }
 
-    function loadKeys() {
-        return new Promise(function (resolve) {
-            if (Array.isArray(window._AQS_GEMINI_TTS_KEYS) && window._AQS_GEMINI_TTS_KEYS.length) {
-                setKeys(window._AQS_GEMINI_TTS_KEYS);
-                resolve(_keys);
-                return;
-            }
-            if (typeof window.aqsAjax !== 'function') { resolve([]); return; }
-            var done = false;
-            setTimeout(function () { if (!done) { done = true; resolve(_keys); } }, 6000);
-            window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
-                if (done) return;
-                done = true;
-                var s = (res && res.success && res.data && res.data.settings) || {};
-                setKeys(Array.isArray(s.gemini_tts_keys) ? s.gemini_tts_keys : []);
-                resolve(_keys);
+    async function loadKeys() {
+        try {
+            var token = await firebaseToken();
+            var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/tts/status', {
+                method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}, body:'{}',
+                signal:AbortSignal.timeout(12000)
             });
-        });
+            var data = await response.json().catch(function(){return {}});
+            _serverConfigured = !!(response.ok && data.geminiTTS && data.geminiTTS.configured);
+        } catch (error) { _serverConfigured = false; }
+        return _serverConfigured ? [true] : [];
     }
 
     /* ── Curated character → Gemini voice table ───────────────────
@@ -342,22 +347,16 @@
     /* ── Public: synthesize with automatic key rotation ───────────── */
     async function synth(text, voiceName, style, opts) {
         opts = opts || {};
-        var keys = activeKeys();
-        if (!keys.length) throw new Error('NO_KEYS');
-        var lastErr = '';
-        for (var i = 0; i < keys.length; i++) {
-            try {
-                return await callKey(text, voiceName, style, keys[i], opts.model);
-            } catch (e) {
-                lastErr = e.message || String(e);
-                if (lastErr === 'RATE_LIMITED') { _cooldown[keys[i]] = Date.now() + COOLDOWN_MS; continue; }
-                continue; /* try the next key */
-            }
-        }
-        if (lastErr === 'RATE_LIMITED') throw new Error('All Gemini TTS keys are rate-limited — wait a minute or add more keys in Admin Settings.');
-        if (lastErr === 'INVALID_KEY')  throw new Error('Gemini TTS key invalid — update it in Admin Settings → Gemini TTS.');
-        if (lastErr === 'NO_KEYS')      throw new Error('No Gemini TTS key — add one in Admin Settings → Gemini TTS.');
-        throw new Error('Gemini TTS failed: ' + lastErr);
+        var token = await firebaseToken();
+        var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/tts/gemini', {
+            method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+            body:JSON.stringify({text:String(text||''),voiceName:voiceName||'Kore',style:style||'',model:opts.model||''}),
+            signal:AbortSignal.timeout(55000)
+        });
+        var data = await response.json().catch(function(){return {}});
+        if (!response.ok || !data.audioBase64) throw new Error(data.error || 'Gemini TTS generation failed.');
+        var pcm = b64ToBytes(data.audioBase64);
+        return pcmToWav(pcm, sampleRateFrom(data.mimeType||'audio/L16;rate=24000'));
     }
 
     /* ── Public: test a single key the exact same way playback works ─ */
