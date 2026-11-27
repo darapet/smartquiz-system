@@ -25,8 +25,99 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 .aic-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.aic-health-item{border:1px solid var(--ai-line);border-radius:10px;padding:10px 12px;background:#fbfcfe;min-width:0}.aic-health-item strong{display:block;font-size:.82rem}.aic-health-item small{display:block;color:var(--ai-muted);font-size:.72rem;margin-top:4px;overflow-wrap:anywhere}.aic-health-good{color:#12815c}.aic-health-bad{color:#b54747}@media(max-width:650px){.aic-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
 @media(max-width:850px){.aic-layout{grid-template-columns:1fr}.aic-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.aic-wrap{padding:16px 12px 40px}.aic-hero{padding:20px;display:block}.aic-provider-row,.aic-keygrid,.aic-feature-list{grid-template-columns:1fr}.aic-stats{gap:8px}.aic-stat{padding:13px}}
+
+/* AI Control Centre visual refresh */
+:root{--ai-bg:#f3f6fc;--ai-card:#fff;--ai-ink:#17243b;--ai-muted:#718096;--ai-line:#e5eaf3;--ai-blue:#4968ee;--ai-purple:#7857e8;--ai-green:#14966d}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body[data-aqs-page-group="admin"]{margin:0!important;min-height:100vh;background:radial-gradient(circle at 85% 0%,#e8edff 0,transparent 28%),var(--ai-bg)!important;color:var(--ai-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;display:flex;align-items:stretch}
+.aqs-admin-sidebar{width:258px;min-width:258px;min-height:100vh;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;background:linear-gradient(180deg,#111c35 0%,#18294b 100%);color:#eaf0ff;padding:0 14px 22px;box-shadow:8px 0 28px #14213b12;z-index:40}
+.aqs-admin-sidebar-brand{padding:27px 15px 24px;border-bottom:1px solid #ffffff18;margin-bottom:18px}
+.aqs-admin-sidebar-brand a{color:#fff!important;text-decoration:none;font-size:1.15rem;font-weight:850;letter-spacing:-.03em}
+.aqs-admin-nav{display:flex;flex-direction:column;gap:6px}
+.aqs-admin-nav a{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid transparent;border-radius:12px;color:#c8d4ed!important;text-decoration:none;font-size:.9rem;font-weight:650;transition:background .18s,border-color .18s,color .18s}
+.aqs-admin-nav a:hover{background:#ffffff12;color:#fff!important}
+.aqs-admin-nav a.active{background:linear-gradient(100deg,#526df0,#7658df);border-color:#ffffff25;color:#fff!important;box-shadow:0 8px 20px #050b1e35}
+.aqs-nav-icon{width:22px;text-align:center;font-size:1rem}
+.aqs-admin-content{flex:1;min-width:0;padding:28px clamp(16px,3vw,42px)!important;overflow-x:hidden}
+.aic-wrap{max-width:1380px;padding:0 0 56px}
+.aic-hero{position:relative;overflow:hidden;min-height:190px;padding:34px 38px;border-radius:24px;background:linear-gradient(118deg,#172849 0%,#263f79 55%,#604bc0 100%);box-shadow:0 18px 44px #233d7026}
+.aic-hero:after{content:"✦";position:absolute;right:7%;top:-54px;font-size:230px;line-height:1;color:#ffffff0b;pointer-events:none}
+.aic-hero h1{font-size:clamp(1.65rem,3vw,2.25rem);letter-spacing:-.045em;font-weight:850;margin:13px 0 9px}
+.aic-hero p{font-size:.96rem;max-width:670px;color:#dce5fa}
+.aic-chip{font-weight:750;letter-spacing:.08em}
+#aic-save-state{letter-spacing:0;font-weight:700;white-space:nowrap}
+.aic-stats{gap:16px;margin:20px 0}
+.aic-stat,.aic-panel,.aic-feature{border:1px solid #e4eaf4;border-radius:18px;box-shadow:0 8px 26px #233c6509}
+.aic-stat{padding:20px;position:relative;overflow:hidden}
+.aic-stat:after{content:"";position:absolute;right:-22px;top:-26px;width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#edf1ff,#f5f0ff)}
+.aic-stat small{position:relative;z-index:1;font-size:.78rem;font-weight:650;color:#78869c}
+.aic-stat strong{position:relative;z-index:1;font-size:1.8rem;letter-spacing:-.04em;color:#1b2c4b}
+.aic-layout{grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+.aic-layout>.aic-panel{position:sticky;top:22px}
+.aic-panel{padding:22px}
+.aic-panel h2{font-size:1.08rem;font-weight:800;letter-spacing:-.02em}
+.aic-sub{line-height:1.55;color:#78869a}
+.aic-nav{gap:8px}
+.aic-nav button{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:11px 13px;border-radius:12px;font-size:.86rem;transition:all .18s}
+.aic-nav button:before{content:"";width:7px;height:7px;border-radius:50%;background:#b9c4d7;flex:0 0 auto}
+.aic-nav button:hover{background:#f3f6ff;border-color:#e6ebff}
+.aic-nav button.active{background:#edf1ff;border-color:#dce4ff;color:#3457dc;box-shadow:inset 3px 0 #4968ee}
+.aic-nav button.active:before{background:#4968ee;box-shadow:0 0 0 4px #4968ee1a}
+.aic-provider-row{gap:14px;margin-bottom:19px}
+.aic-field label{font-size:.79rem;color:#53627a;font-weight:750}
+.aic-field select,.aic-field input{min-height:44px;padding:11px 13px;border:1px solid #dce4f0;border-radius:11px;outline:none;transition:border .15s,box-shadow .15s}
+.aic-field select:focus,.aic-field input:focus,.aic-key input:focus{border-color:#7188f3;box-shadow:0 0 0 3px #4968ee18}
+.aic-keygrid{gap:11px;max-height:500px;padding:2px}
+.aic-key{border:1px solid #e4eaf3;border-radius:13px;padding:12px;background:#fbfcff}
+.aic-key label{align-items:center;font-weight:700}
+.aic-key input{width:100%;min-width:0;padding:10px 11px;border:1px solid #dce4f0;border-radius:9px;background:#fff}
+.aic-key button{font-weight:750}
+.aic-actions{align-items:center;gap:10px;margin-top:20px}
+.aic-btn{min-height:43px;padding:11px 17px;border:1px solid #e0e6f0;border-radius:11px;font-size:.84rem;transition:transform .15s,box-shadow .15s,background .15s}
+.aic-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px #1b2b4815}
+.aic-btn.primary{background:linear-gradient(110deg,#4968ee,#7057df);box-shadow:0 7px 17px #4968ee2b}
+.aic-health-grid{gap:11px}
+.aic-health-item{border:1px solid #e4eaf3;border-radius:13px;padding:13px 14px;background:linear-gradient(145deg,#fff,#fafbff)}
+.aic-health-item strong{font-size:.84rem;font-weight:800;color:#263653}
+.aic-notice{border-radius:13px;padding:14px 16px;line-height:1.65}
+.aic-mobile-menu{display:none}
+.aic-sidebar-backdrop{display:none}
+@media(max-width:1050px){.aic-layout{grid-template-columns:220px minmax(0,1fr)}.aqs-admin-sidebar{width:230px;min-width:230px}.aqs-admin-content{padding:22px!important}}
+@media(max-width:800px){
+ body[data-aqs-page-group="admin"]{display:block}
+ .aqs-admin-sidebar{display:none;position:fixed;inset:0 auto 0 0;width:min(290px,86vw);min-width:0;height:100dvh;min-height:100dvh;z-index:120;box-shadow:20px 0 50px #08142b40}
+ .aqs-admin-sidebar.open{display:flex}
+ .aqs-admin-content{padding:76px 16px 28px!important}
+ .aic-mobile-menu{display:inline-flex;position:fixed;z-index:110;top:14px;left:14px;width:46px;height:46px;align-items:center;justify-content:center;border:1px solid #dce4f0;border-radius:13px;background:#fff;color:#1c2e4c;font-size:1.25rem;box-shadow:0 5px 18px #1d315019;cursor:pointer}
+ .aic-sidebar-backdrop.show{display:block;position:fixed;inset:0;background:#101a2e80;z-index:115}
+ .aic-layout{grid-template-columns:1fr}
+ .aic-layout>.aic-panel{position:static}
+ .aic-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .aic-hero{padding:26px 23px}
+}
+@media(max-width:560px){
+ .aqs-admin-content{padding:72px 12px 22px!important}
+ .aic-wrap{padding-bottom:30px}
+ .aic-hero{border-radius:19px;padding:23px 19px;min-height:0}
+ .aic-hero h1{font-size:1.55rem}
+ .aic-stats{gap:9px;margin:13px 0}
+ .aic-stat{padding:14px 12px;border-radius:14px}
+ .aic-stat strong{font-size:1.45rem}
+ .aic-layout{gap:12px}
+ .aic-panel{padding:16px;border-radius:15px}
+ .aic-provider-row,.aic-keygrid,.aic-feature-list{grid-template-columns:1fr}
+ .aic-nav{grid-template-columns:1fr 1fr;gap:6px}
+ .aic-nav button{font-size:.77rem;padding:10px 9px;min-height:42px}
+ .aic-health-grid{grid-template-columns:1fr 1fr}
+ .aic-actions{align-items:stretch}
+ .aic-actions .aic-btn{flex:1}
+ .aic-status{width:100%}
+}
+
 </style></head>
 <body data-aqs-page="admin-settings" data-aqs-page-group="admin">
+<button class="aic-mobile-menu" id="aic-mobile-menu" type="button" aria-label="Open admin navigation" aria-expanded="false">☰</button><div class="aic-sidebar-backdrop" id="aic-sidebar-backdrop"></div>
 <header class="aqs-phase2-page-header"><a href="admin-settings.html" class="aqs-phase2-back">← General Settings</a><span class="aqs-phase2-page-title">AI Control Centre</span></header>
 <aside class="aqs-admin-sidebar"><div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div><nav class="aqs-admin-nav">
 <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a><a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a><a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a><a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> General Settings</a><a href="admin-ai.html" class="active"><span class="aqs-nav-icon">🤖</span> AI Control Centre</a><a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a><a href="admin-update.html"><span class="aqs-nav-icon">🚀</span> App Updates</a><a href="admin.html"><span class="aqs-nav-icon">🛡️</span> Admin Panel</a>
@@ -232,4 +323,4 @@ $('aic-test').addEventListener('click',async function(){
 });
 document.addEventListener('aqs:firebase:ready',load,{once:true});if(window._aqsFirebaseReady)load();
 })();
-</script></body></html>
+</script><script>/* aic-mobile-menu-init */(function(){var b=document.getElementById('aic-mobile-menu'),s=document.querySelector('.aqs-admin-sidebar'),o=document.getElementById('aic-sidebar-backdrop');if(!b||!s||!o)return;function close(){s.classList.remove('open');o.classList.remove('show');b.setAttribute('aria-expanded','false');b.textContent='☰'}b.addEventListener('click',function(){var open=!s.classList.contains('open');s.classList.toggle('open',open);o.classList.toggle('show',open);b.setAttribute('aria-expanded',String(open));b.textContent=open?'×':'☰'});o.addEventListener('click',close);s.querySelectorAll('a').forEach(function(a){a.addEventListener('click',close)});window.addEventListener('resize',function(){if(window.innerWidth>800)close()})})();</script></body></html>
