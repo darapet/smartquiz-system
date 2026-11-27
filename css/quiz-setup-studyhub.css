@@ -160,3 +160,24 @@ body.quiz-setup-page .qdb-toast{color:#fff!important}
 body.quiz-setup-page .qdb-welcome p{color:#f4f1ff!important}
 body.quiz-setup-page .qdb-welcome h1{color:#fff!important}
 body.quiz-setup-page .qdb-tip p{color:#59627c!important}
+
+
+/* Banner and action-button contrast refinement */
+body.quiz-setup-page .qdb-welcome .qdb-eyebrow,
+body.quiz-setup-page .qdb-welcome h1,
+body.quiz-setup-page .qdb-welcome p{
+  color:#ffdf4d!important;
+}
+body.quiz-setup-page .qdb-secondary-action{
+  color:#ffdf4d!important;
+  border-color:rgba(255,223,77,.72)!important;
+}
+body.quiz-setup-page .qdb-primary{
+  background:#ffdf4d!important;
+  color:#17183d!important;
+  border:1px solid #ffdf4d!important;
+  font-weight:850!important;
+}
+body.quiz-setup-page .qdb-primary span{
+  color:#17183d!important;
+}
