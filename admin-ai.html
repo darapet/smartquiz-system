@@ -540,9 +540,9 @@ function loadSpecialServices(settings){
  var hasSaved=settings.ai_special_services&&typeof settings.ai_special_services==='object'&&Object.keys(settings.ai_special_services).length>0;
  specialMigrated=!hasSaved&&!!([settings.creator_image_keys,settings.gemini_tts_keys,settings.elevenlabs_keys].some(function(pool){return Array.isArray(pool)&&pool.length>0}));
  var saved=hasSaved?settings.ai_special_services:{},image=saved.creatorImage||{},gtts=saved.geminiTTS||{},el=saved.elevenLabs||{};
- specialConfig.creatorImage={keys:normalizeSpecialPool(image.keys||settings.creator_image_keys,10),model:String(image.model||settings.creator_image_model||'gemini-3.1-flash-image')};
- specialConfig.geminiTTS={keys:normalizeSpecialPool(gtts.keys||settings.gemini_tts_keys,5),model:String(gtts.model||'gemini-2.5-flash-preview-tts')};
- specialConfig.elevenLabs={keys:normalizeSpecialPool(el.keys||settings.elevenlabs_keys,5),model:String(el.model||'eleven_multilingual_v2'),voiceId:String(el.voiceId||'21m00Tcm4TlvDq8ikWAM')};
+ specialConfig.creatorImage={keys:normalizeSpecialPool(image.keys&&image.keys.length?image.keys:settings.creator_image_keys,10),model:String(image.model||settings.creator_image_model||'gemini-3.1-flash-image')};
+ specialConfig.geminiTTS={keys:normalizeSpecialPool(gtts.keys&&gtts.keys.length?gtts.keys:settings.gemini_tts_keys,5),model:String(gtts.model||'gemini-2.5-flash-preview-tts')};
+ specialConfig.elevenLabs={keys:normalizeSpecialPool(el.keys&&el.keys.length?el.keys:settings.elevenlabs_keys,5),model:String(el.model||'eleven_multilingual_v2'),voiceId:String(el.voiceId||'21m00Tcm4TlvDq8ikWAM')};
  $('aic-image-model').value=specialConfig.creatorImage.model;$('aic-gtts-model').value=specialConfig.geminiTTS.model;
  $('aic-el-model').value=specialConfig.elevenLabs.model;$('aic-el-voice').value=specialConfig.elevenLabs.voiceId;
  renderSpecialSlots();
@@ -594,13 +594,18 @@ $('aic-special-save').addEventListener('click',function(){
 $('aic-special-test').addEventListener('click',async function(){
  collectSpecialServices();var tests=[];
  document.querySelectorAll('[data-special]').forEach(function(input){if(input.value.trim())tests.push({service:input.dataset.special,slot:Number(input.dataset.slot)+1,key:input.value.trim()})});
- if(!tests.length){$('aic-special-status').textContent='Enter at least one key to test.';return}
+ if(!tests.length){
+  [['creatorImage','creator_image'],['geminiTTS','gemini_tts'],['elevenLabs','elevenlabs']].forEach(function(pair){
+   (specialConfig[pair[0]].keys||[]).forEach(function(key,index){if(key)tests.push({service:pair[0],serviceId:pair[1],slot:index+1,key:key})});
+  });
+ }
+ if(!tests.length){$('aic-special-status').textContent='No saved or entered keys are available to test.';return}
  var btn=this;btn.disabled=true;
  try{
   var token=await getAdminToken(),results=[];
   for(var i=0;i<tests.length;i++){
    var t=tests[i];$('aic-special-status').textContent='Testing '+t.service+' key '+t.slot+' ('+(i+1)+'/'+tests.length+')…';
-   var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test-special',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({service:t.service==='creatorImage'?'creator_image':t.service==='geminiTTS'?'gemini_tts':'elevenlabs',key:t.key}),signal:AbortSignal.timeout(30000)});
+   var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test-special',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({service:t.serviceId|| (t.service==='creatorImage'?'creator_image':t.service==='geminiTTS'?'gemini_tts':'elevenlabs'),key:t.key}),signal:AbortSignal.timeout(30000)});
    var data=await response.json().catch(function(){return {}});
    results.push(t.service+' slot '+t.slot+': '+(data.ok?'Active':'Failed — '+(data.msg||data.error||'Test failed'))+(data.ms?' ('+data.ms+'ms)':''));
   }
