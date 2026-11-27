@@ -1181,7 +1181,7 @@ async function handleAIConfig(request, env) {
         for (const provider of allowedProviders) {
           const values = Array.isArray(rawPools[provider]) ? rawPools[provider] : [];
           keys[provider] = values.map((value) => String(value || '').trim())
-            .filter((value) => value.length >= 10 && value.length <= 512 && !/[\\r\\n]/.test(value))
+            .filter((value) => value.length >= 10 && value.length <= 512 && !/[\r\n]/.test(value))
             .slice(0, 50);
         }
         const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
@@ -1225,7 +1225,7 @@ async function recordAIProviderHealth(env, provider, result) {
     ok: result.ok === true,
     status: Number(result.status) || 0,
     ms: Number(result.ms) || 0,
-    message: String(result.msg || '').replace(/[\\r\\n\\t]/g, ' ').slice(0, 160),
+    message: String(result.msg || '').replace(/[\r\n\t]/g, ' ').slice(0, 160),
     testedAt: Date.now()
   };
   await env.EMAIL_CONFIG.put('ai-provider-health:' + provider, JSON.stringify(safe));
@@ -1247,7 +1247,7 @@ async function handleAIKeyTest(request, env) {
     const key = String(payload.key || '').trim();
     const supported = ['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface'];
     if (!supported.includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
-    if (key.length < 10 || key.length > 512 || /[\\r\\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
+    if (key.length < 10 || key.length > 512 || /[\r\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
     const defaults = {
       openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
       deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
@@ -1293,7 +1293,7 @@ async function handleAIKeyTest(request, env) {
       await recordAIProviderHealth(env, provider, health);
       return json(request, env, health);
     }
-    const rawMessage = String(responseBody && responseBody.error && (responseBody.error.message || responseBody.error) || responseBody && responseBody.message || responseBody && responseBody.detail || 'Provider rejected the request.').replace(/[\\r\\n\\t]/g, ' ').slice(0, 140);
+    const rawMessage = String(responseBody && responseBody.error && (responseBody.error.message || responseBody.error) || responseBody && responseBody.message || responseBody && responseBody.detail || 'Provider rejected the request.').replace(/[\r\n\t]/g, ' ').slice(0, 140);
     const label = upstream.status === 401 || upstream.status === 403 ? 'Invalid or unauthorized key' : upstream.status === 429 ? 'Rate limited or quota exhausted' : 'Provider returned an error';
     const health = { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage };
     await recordAIProviderHealth(env, provider, health);
