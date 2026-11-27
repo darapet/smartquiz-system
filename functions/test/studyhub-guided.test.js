@@ -7,13 +7,17 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
-test('StudyHub web and Android page assets remain identical', () => {
-  for (const [web, android] of [
-    ['studyhub.html', 'daraquiz-mobile/www/studyhub.html'],
-    ['js/aqs-study-plan.js', 'daraquiz-mobile/www/js/aqs-study-plan.js'],
-    ['css/aqs-studyhub.css', 'daraquiz-mobile/www/css/aqs-studyhub.css'],
-    ['js/aqs-firebase.js', 'daraquiz-mobile/www/js/aqs-firebase.js']
-  ]) assert.equal(read(web), read(android), web + ' must match ' + android);
+test('StudyHub standalone workspaces remain identical across web and Android', () => {
+  for (const file of [
+    'studyhub-flashcards-create.html',
+    'studyhub-notes-create.html',
+    'studyhub-gpa-create.html',
+    'js/aqs-study-plan.js',
+    'css/aqs-studyhub.css',
+    'js/aqs-firebase.js'
+  ]) assert.equal(read(file), read('daraquiz-mobile/www/' + file), file + ' must match Android');
+  assert.equal(fs.existsSync(path.join(root, 'studyhub.html')), false, 'legacy StudyHub page must be removed');
+  assert.equal(fs.existsSync(path.join(root, 'daraquiz-mobile/www/studyhub.html')), false, 'legacy Android StudyHub page must be removed');
 });
 
 test('study plans are stored below the signed-in user account', () => {
@@ -80,7 +84,6 @@ test('Guided Study reads long documents in full and stores source sections separ
 test('Guided Study has one dedicated dashboard and no legacy StudyHub panel', () => {
   const dashboard = read('studyhub-guided-dashboard.html');
   const androidDashboard = read('daraquiz-mobile/www/studyhub-guided-dashboard.html');
-  const studyhub = read('studyhub.html');
   assert.equal(dashboard, androidDashboard);
   assert.equal(read('js/aqs-study-plan.js'), read('daraquiz-mobile/www/js/aqs-study-plan.js'));
   assert.equal(read('js/aqs-firebase.js'), read('daraquiz-mobile/www/js/aqs-firebase.js'));
