@@ -337,6 +337,7 @@ body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
 @media(max-width:1050px){.gs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.gs-stats{gap:8px}.gs-stat{padding:11px;gap:8px;min-height:76px}.gs-stat-icon{width:36px;height:36px}.gs-stat strong{font-size:18px}.gs-stat span{font-size:10px}.gs-streak-days{gap:2px}}
 </style></head>
 <body class="dq-feature-page gs-page">
+<div hidden aria-hidden="true"><div id="gs-avatar">S</div></div>
 <div class="mobile-overlay" id="mobileOverlay" onclick="closeMenu()"></div>
 <aside class="sidebar" id="sidebar">
  <a class="brand" href="index.html"><span class="brand-mark">✦</span><span class="brand-name">StudyHub</span></a><div class="nav-label">YOUR LEARNING SPACE</div>
@@ -355,7 +356,15 @@ body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
  <article class="panel motivation"><div class="panel-head"><h2>🔥 Your Learning Streak</h2></div><div class="gs-streak-count"><span id="gs-streak-count">0</span> <small>day streak</small></div><div class="gs-streak-days" id="gs-streak-days"><div class="gs-streak-progress" id="gs-streak-progress"></div></div><div class="gs-head-copy"><h1 id="gs-greeting">Your Guided Study</h1><p>Current subject: <strong id="gs-subject">No active subject</strong></p></div><button class="small-btn" type="button" id="gs-motivation-create">Continue Learning →</button><div class="mountain" aria-hidden="true">⛰️</div></article>
 </section>
 <section class="bottom-grid">
- <article class="panel" id="gs-plans"><div class="panel-head"><h2>◷ My Study Plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div><div class="gs-notice" id="gs-notice" role="status"></div><div class="gs-plan-list" id="gs-plan-list"><div class="gs-empty">Loading your study plans…</div></div></article>
+ <article class="panel"><div class="panel-head"><h2>◷ Weekly Study Activity</h2><span class="empty-message">Last 7 days</span></div>
+<svg class="activity-chart" id="gs-chart" viewBox="0 0 600 190" role="img" aria-label="Guided Study activity over the last seven days" style="width:100%;height:auto;display:block">
+<path d="M25 25H580 M25 65H580 M25 105H580 M25 145H580" stroke="#e8e9f5" fill="none"/>
+<path id="gs-chart-area" d="M25 145 L25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145 Z" fill="#5422db" opacity=".09"/>
+<path id="gs-chart-line" d="M25 145 L118 145 L211 145 L304 145 L397 145 L490 145 L580 145" fill="none" stroke="#5422db" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="gs-chart-points"></g></svg>
+<div class="activity-labels" style="display:flex;justify-content:space-between;color:#68708d;font-size:10px;margin-top:4px"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+</article>
+<article class="panel" id="gs-plans"><div class="panel-head"><h2>◷ My Study Plans</h2><div class="gs-tabs"><button class="gs-tab active" type="button" data-filter="current">Current plans</button><button class="gs-tab" type="button" data-filter="finished">Finished plans</button></div></div><div class="gs-notice" id="gs-notice" role="status"></div><div class="gs-plan-list" id="gs-plan-list"><div class="gs-empty">Loading your study plans…</div></div></article>
  <article class="panel"><div class="panel-head"><h2>▥ Quick Stats</h2></div><div class="stats"><div class="stat"><i>📘</i><strong id="gs-quick-total">0</strong><small>Total Plans</small></div><div class="stat"><i>📚</i><strong id="gs-quick-current">0</strong><small>In Progress</small></div><div class="stat"><i>✅</i><strong id="gs-quick-finished">0</strong><small>Completed</small></div><div class="stat"><i>🔥</i><strong id="gs-quick-streak">0</strong><small>Day Streak</small></div></div><div class="empty-message" style="margin-top:14px">Your plan progress updates here as you complete lessons and topics.</div></article>
 </section>
 <div class="section-head"><h2>⚡ Guided Study Quick Access</h2><a href="#gs-plans">Explore your plans →</a></div>
