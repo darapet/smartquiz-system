@@ -1178,11 +1178,20 @@ async function handleAIConfig(request, env) {
         if (!/^[a-z0-9_-]{1,32}$/.test(id) || !raw || typeof raw !== 'object') continue;
         const keys = {};
         const rawPools = raw.keys && typeof raw.keys === 'object' ? raw.keys : {};
-        for (const provider of allowedProviders) {
-          const values = Array.isArray(rawPools[provider]) ? rawPools[provider] : [];
-          keys[provider] = values.map((value) => String(value || '').trim())
-            .filter((value) => value.length >= 10 && value.length <= 512 && !/[\r\n]/.test(value))
-            .slice(0, 50);
+        const cleanPool = (values) => (Array.isArray(values) ? values : [])
+          .map((value) => String(value || '').trim())
+          .filter((value) => value.length >= 10 && value.length <= 512 && !/[\r\n]/.test(value))
+          .slice(0, 50);
+        // New format keeps two independent 50-key pools per feature.
+        // Read the legacy provider-key map only for older saved configurations.
+        if (Array.isArray(rawPools.primary) || Array.isArray(rawPools.fallback)) {
+          keys.primary = cleanPool(rawPools.primary);
+          keys.fallback = cleanPool(rawPools.fallback);
+        } else {
+          const legacyProvider = allowedProviders.has(String(raw.primary || '').toLowerCase())
+            ? String(raw.primary).toLowerCase() : 'groq';
+          keys.primary = cleanPool(rawPools[legacyProvider]);
+          keys.fallback = [];
         }
         const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
         normalized[id] = {
@@ -1373,12 +1382,15 @@ async function runConfiguredAI(env, featureId, messages, options) {
     mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
   };
   const attempts = [
-    { provider: feature.primary, model: String(feature.model || '').trim() || providerDefaults[feature.primary] },
-    { provider: feature.fallback, model: String(feature.fallbackModel || '').trim() || providerDefaults[feature.fallback] }
-  ].filter((item, index, list) => item.provider && providerDefaults[item.provider] && (index === 0 || item.provider !== list[0].provider));
+    { role: 'primary', provider: feature.primary, model: String(feature.model || '').trim() || providerDefaults[feature.primary] },
+    { role: 'fallback', provider: feature.fallback, model: String(feature.fallbackModel || '').trim() || providerDefaults[feature.fallback] }
+  ].filter((item) => item.provider && providerDefaults[item.provider]);
   let lastError = null;
   for (const attempt of attempts) {
-    const keys = feature.keys && Array.isArray(feature.keys[attempt.provider]) ? feature.keys[attempt.provider].slice(0, 50) : [];
+    const pools = feature.keys || {};
+    const keys = Array.isArray(pools[attempt.role])
+      ? pools[attempt.role].slice(0, 50)
+      : (Array.isArray(pools[attempt.provider]) ? pools[attempt.provider].slice(0, 50) : []);
     for (const key of keys) {
       try {
         const result = await callConfiguredAIProvider(attempt.provider, attempt.model, key, messages, options);
@@ -1419,7 +1431,11 @@ async function handleAIStatus(request, env) {
       id,
       primary: feature.primary || '',
       fallback: feature.fallback || '',
-      keyCounts: Object.fromEntries(Object.entries(feature.keys || {}).map(([provider, keys]) => [provider, Array.isArray(keys) ? keys.length : 0]))
+      keyCounts: {
+        primary: Array.isArray(feature.keys && feature.keys.primary) ? feature.keys.primary.length : 0,
+        fallback: Array.isArray(feature.keys && feature.keys.fallback) ? feature.keys.fallback.length : 0,
+        total: ['primary','fallback'].reduce((sum, role) => sum + (Array.isArray(feature.keys && feature.keys[role]) ? feature.keys[role].length : 0), 0)
+      }
     }));
     return json(request, env, {
       features,
