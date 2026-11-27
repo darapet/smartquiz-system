@@ -1346,10 +1346,15 @@ async function runConfiguredAI(env, featureId, messages, options) {
   const stored = await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null);
   const feature = stored && stored.features && stored.features[featureId];
   if (!feature) return null;
+  const providerDefaults = {
+    openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
+    deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
+    mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
+  };
   const attempts = [
-    { provider: feature.primary, model: feature.model },
-    { provider: feature.fallback, model: feature.fallbackModel }
-  ].filter((item, index, list) => item.provider && (index === 0 || item.provider !== list[0].provider));
+    { provider: feature.primary, model: String(feature.model || '').trim() || providerDefaults[feature.primary] },
+    { provider: feature.fallback, model: String(feature.fallbackModel || '').trim() || providerDefaults[feature.fallback] }
+  ].filter((item, index, list) => item.provider && providerDefaults[item.provider] && (index === 0 || item.provider !== list[0].provider));
   let lastError = null;
   for (const attempt of attempts) {
     const keys = feature.keys && Array.isArray(feature.keys[attempt.provider]) ? feature.keys[attempt.provider].slice(0, 50) : [];
