@@ -6,6 +6,7 @@ on:
       - feat/ai-control-centre
     paths:
       - 'cloudflare-worker/**'
+      - 'functions/index.js'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
       - 'admin-ai.html'
@@ -14,6 +15,7 @@ on:
       - main
     paths:
       - 'cloudflare-worker/**'
+      - 'functions/index.js'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
       - 'admin-ai.html'
@@ -34,6 +36,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check cloudflare-worker/src/index.js
+          node --check functions/index.js
           node --check js/aqs-groq-key.js
           node --check js/aqs-quotes.js
       - name: Run Cloudflare Worker tests

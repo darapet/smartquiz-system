@@ -2961,6 +2961,19 @@ async function actionGetSettings() {
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
                 var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                /* Migrate the legacy Creator Image key pool out of the public settings doc.
+                   Write the private copy first; only then remove the old public field. */
+                var legacyCreatorImageKeys = Array.isArray(snap.data().creator_image_keys)
+                    ? snap.data().creator_image_keys.slice(0, 10)
+                    : [];
+                if (!Array.isArray(privateData.creator_image_keys) && legacyCreatorImageKeys.length) {
+                    await setDoc(doc(db, 'settings', 'private'), { creator_image_keys: legacyCreatorImageKeys }, { merge: true });
+                    privateData.creator_image_keys = legacyCreatorImageKeys;
+                }
+                if (Array.isArray(snap.data().creator_image_keys)
+                    && Array.isArray(privateData.creator_image_keys)) {
+                    await setDoc(doc(db, 'settings', 'main'), { creator_image_keys: deleteField() }, { merge: true });
+                }
                 /* Groq keys live in settings/main again. If an earlier build moved them into
                    settings/private, put them back so every page can use them. */
                 var mainGroqKeys = Array.isArray(snap.data().groq_keys) ? snap.data().groq_keys : [];
@@ -2985,9 +2998,12 @@ async function actionGetSettings() {
                     settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
                     settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
-                    /* AI Control Centre credentials/config are private and admin-only. */
-                    settings.ai_provider_config = privateSnap.data().ai_provider_config || {};
                 }
+                /* Secret service credentials stay in the admin-only settings/private document. */
+                settings.creator_image_keys = Array.isArray(privateData.creator_image_keys)
+                    ? privateData.creator_image_keys
+                    : (Array.isArray(settings.creator_image_keys) ? settings.creator_image_keys : []);
+                settings.ai_provider_config = privateData.ai_provider_config || {};
             }
             window._aqsSettingsLoadError = '';
             return { settings: settings };
@@ -3034,7 +3050,7 @@ async function actionSaveSettings(data) {
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || k === 'ai_provider_config') privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || k === 'ai_provider_config' || k === 'creator_image_keys') privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
@@ -3065,12 +3081,12 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 10; })
             .slice(0, 5);
     }
-    /* Trim and validate Creator Studio image-generation tokens (up to 5) */
-    if (Array.isArray(payload.creator_image_keys)) {
-        payload.creator_image_keys = payload.creator_image_keys
+    /* Trim and validate Creator Studio image-generation tokens (up to 10) */
+    if (Array.isArray(privatePayload.creator_image_keys)) {
+        privatePayload.creator_image_keys = privatePayload.creator_image_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 10; })
-            .slice(0, 5);
+            .slice(0, 10);
     }
     /* Trim and validate Quote Groq keys (up to 5) before saving */
     if (Array.isArray(payload.quoteGroqKeys)) {
@@ -3103,12 +3119,17 @@ async function actionSaveSettings(data) {
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
             if (k === 'ai_provider_config') privateMerge[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+            else if (k === 'creator_image_keys') privateMerge[k] = Array.isArray(v) ? v.map(function(key){ return typeof key === 'string' ? key.trim() : ''; }).filter(function(key){ return key.length > 10; }).slice(0, 10) : [];
             else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
             else privateMerge[k] = String(v || '').trim();
         });
         await setDoc(doc(db, 'settings', 'private'), privateMerge, { merge: true });
+        if ('creator_image_keys' in privatePayload) {
+            /* Remove the legacy public copy only after the private write succeeds. */
+            await setDoc(doc(db, 'settings', 'main'), { creator_image_keys: deleteField() }, { merge: true });
+        }
     }
     if ('brevo_api_key' in privatePayload) {
         var privateValue = String(privatePayload.brevo_api_key || '').trim();
