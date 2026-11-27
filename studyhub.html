@@ -468,6 +468,16 @@ Make it thorough, academically rigorous, and student-friendly.`;
 
   if(!raw){ shToast('⚠️ Could not generate notes. Check API keys.'); return; }
   _notesRaw=raw;
+  try {
+    var savedNotes = JSON.parse(localStorage.getItem('aqs_notes_v1') || '[]');
+    if (!Array.isArray(savedNotes)) savedNotes = [];
+    savedNotes.unshift({id:'note-'+Date.now(),title:topic,body:raw,depth:depth,level:level,at:Date.now()});
+    localStorage.setItem('aqs_notes_v1', JSON.stringify(savedNotes.slice(0,40)));
+    if (window.aqsTrackStudyHubActivity) window.aqsTrackStudyHubActivity('notes', topic);
+  } catch (saveError) {
+    console.warn('[StudyHub:Notes] Generated notes could not be saved:', saveError);
+    shToast('Notes generated, but could not be saved on this device. Copy or print them to keep a copy.');
+  }
   const out=document.getElementById('notes-output');
   out.innerHTML=shMarkdown(raw);
   out.style.display='';
@@ -524,7 +534,7 @@ function shFC_getDecks(){try{var d=JSON.parse(localStorage.getItem(_FC_STORE)||'
 function shFC_saveDeck(){
  if(!_fcCards.length)return;if(!_fcDeckId)_fcDeckId='fc-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
  var decks=shFC_getDecks().filter(function(d){return d.id!==_fcDeckId;});decks.unshift({id:_fcDeckId,title:_fcDeckTitle||'My flashcards',cards:_fcCards,updatedAt:Date.now()});
- try{localStorage.setItem(_FC_STORE,JSON.stringify(decks));}catch(e){shToast('⚠️ Device storage is full. This deck may not be saved.');}shFC_renderDeckList();
+ var saved=false;try{localStorage.setItem(_FC_STORE,JSON.stringify(decks));saved=true;}catch(e){shToast('⚠️ Device storage is full. This deck may not be saved.');}if(saved&&window.aqsTrackStudyHubActivity)window.aqsTrackStudyHubActivity('flashcards',_fcDeckTitle);shFC_renderDeckList();
 }
 function shFC_renderDeckList(){
  var box=document.getElementById('fc-deck-list');if(!box)return;box.innerHTML='';var decks=shFC_getDecks();
@@ -649,6 +659,16 @@ function shCalcGPA(){
   document.getElementById('gpa-total-qp').textContent=totalQP.toFixed(1);
   document.getElementById('gpa-courses-count').textContent=count;
   document.getElementById('gpa-result').style.display='';
+  try {
+    var savedGpa = JSON.parse(localStorage.getItem('aqs_gpa_v1') || '[]');
+    if (!Array.isArray(savedGpa)) savedGpa = [];
+    savedGpa.unshift({gpa:gpa.toFixed(2),cls:cls,at:Date.now(),totalCU:totalCU,totalQP:Number(totalQP.toFixed(1)),courses:count});
+    localStorage.setItem('aqs_gpa_v1', JSON.stringify(savedGpa.slice(0,40)));
+    if (window.aqsTrackStudyHubActivity) window.aqsTrackStudyHubActivity('gpa', 'GPA '+gpa.toFixed(2));
+  } catch (saveError) {
+    console.warn('[StudyHub:GPA] Result could not be saved:', saveError);
+    shToast('GPA calculated, but could not be saved on this device.');
+  }
 }
 
 function shGpaReset(){
@@ -661,6 +681,7 @@ function shGpaReset(){
 window.addEventListener('load',function(){shGpaAddRow();shGpaAddRow();shGpaAddRow();shFC_init();});
 </script>
 
+<script src="js/aqs-studyhub-activity.js?v=1"></script>
 <script src="js/aqs-studyhub-dashboard.js?v=3"></script>
 <script src="js/aqs-studyhub-history.js?v=4"></script>
 <script src="js/aqs-studyhub-analytics.js?v=11"></script>
