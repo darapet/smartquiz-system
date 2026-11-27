@@ -3102,7 +3102,8 @@ async function actionSaveSettings(data) {
         var privateMerge = {};
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
-            if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            if (k === 'ai_provider_config') privateMerge[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+            else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
             else privateMerge[k] = String(v || '').trim();
