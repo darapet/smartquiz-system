@@ -89,7 +89,10 @@ body{margin:0;padding:0;background:#ffffff;font-family:'Inter',sans-serif;displa
 .aqs-settings-card:has(#aqs-quizstudio-groq-key-1),
 .aqs-settings-card:has(#aqs-mistral-key-1),
 .aqs-settings-card:has(#aqs-hf-key-1),
-.aqs-settings-card:has(#aqs-quote-key-1){display:none!important}
+.aqs-settings-card:has(#aqs-quote-key-1),
+.aqs-settings-card:has(#aqs-creator-image-key-1),
+.aqs-settings-card:has(#aqs-gtts-key-1),
+.aqs-settings-card:has(#aqs-el-key-1){display:none!important}
 </style>
 <script>
 window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
@@ -223,22 +226,9 @@ window.addEventListener('DOMContentLoaded', function() {
             if (typeof window.setHFKeys === 'function') window.setHFKeys(hfkeys.filter(function(k){ return k && k.length > 10; }));
             window._AQS_HF_MODEL = s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3';
             setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
-            /* Load the dedicated AI Creator Studio image-generation pool */
-            var creatorImageKeys = Array.isArray(s.creator_image_keys) ? s.creator_image_keys : [];
-            for (var cii = 1; cii <= 10; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
+            /* Specialized AI credentials are managed only in AI Control Centre. */
             window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'gemini-3.1-flash-image';
-            setVal('aqs-creator-image-model', window._AQS_CREATOR_IMAGE_MODEL);
             setVal('aqs-creator-image-worker-url', s.creator_image_worker_url || 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image');
-            /* Load ElevenLabs TTS keys */
-            var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
-            for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
-            /* Expose active key globally so tts.js can pick it up */
-            window._AQS_EL_KEYS = elkeys.filter(function(k){ return k && k.length > 20; });
-            /* Load Gemini TTS keys */
-            var gtkeys = Array.isArray(s.gemini_tts_keys) ? s.gemini_tts_keys : [];
-            for (var gti = 1; gti <= 5; gti++) { setVal('aqs-gtts-key-' + gti, gtkeys[gti-1] || ''); }
-            window._AQS_GEMINI_TTS_KEYS = gtkeys.filter(function(k){ return k && k.length > 20; });
-            if (window.geminiTTS) window.geminiTTS.setKeys(window._AQS_GEMINI_TTS_KEYS);
         });
     });
 });
