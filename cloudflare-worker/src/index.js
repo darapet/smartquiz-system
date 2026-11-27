@@ -1220,7 +1220,7 @@ async function handleAIConfig(request, env) {
     if (special) {
       const cleanPool = (value, max) => Array.isArray(value)
         ? value.map((key) => String(key || '').trim())
-          .filter((key) => key.length >= 10 && key.length <= 512 && !/[\\r\\n]/.test(key))
+          .filter((key) => key.length >= 10 && key.length <= 512 && !/[\r\n]/.test(key))
           .slice(0, max) : [];
       const creatorImage = special.creatorImage && typeof special.creatorImage === 'object' ? special.creatorImage : {};
       const geminiTTS = special.geminiTTS && typeof special.geminiTTS === 'object' ? special.geminiTTS : {};
@@ -1604,7 +1604,7 @@ async function handleSpecialAIKeyTest(request, env) {
     const payload = await request.json().catch(() => ({}));
     const service = String(payload.service || '').toLowerCase();
     const key = String(payload.key || '').trim();
-    if (!['gemini_tts', 'elevenlabs', 'creator_image'].includes(service) || key.length < 10 || key.length > 512 || /[\\r\\n]/.test(key)) {
+    if (!['gemini_tts', 'elevenlabs', 'creator_image'].includes(service) || key.length < 10 || key.length > 512 || /[\r\n]/.test(key)) {
       return json(request, env, { error: 'A supported service and valid API key are required.' }, 400);
     }
     const started = Date.now();
