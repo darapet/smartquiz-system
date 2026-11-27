@@ -493,10 +493,56 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
     };
 
+    async function _workerAIRequest(featureId, bodyObj, extraOpts) {
+        var requestBody = Object.assign({}, bodyObj || {});
+        if (!Array.isArray(requestBody.messages) || requestBody.messages.length > 20) return null;
+        var totalChars = 0;
+        for (var messageIndex = 0; messageIndex < requestBody.messages.length; messageIndex++) {
+            var message = requestBody.messages[messageIndex];
+            if (!message || typeof message.content !== 'string' || message.content.length > 12000) return null;
+            totalChars += message.content.length;
+        }
+        if (totalChars > 30000) return null;
+        var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && window.firebase && window.firebase.auth) {
+            try { user = window.firebase.auth().currentUser || null; } catch(e) {}
+        }
+        if (!user || typeof user.getIdToken !== 'function') return null;
+        var token;
+        try { token = await user.getIdToken(); } catch(e) { return null; }
+        if (!token) return null;
+        requestBody.feature = featureId || 'main';
+        var options = Object.assign({}, extraOpts || {});
+        var headers = Object.assign({}, options.headers || {}, {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        });
+        delete options.headers;
+        options.method = 'POST';
+        options.headers = headers;
+        options.body = JSON.stringify(requestBody);
+        var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai', options);
+        return response;
+    }
+    async function _featureFetch(featureId, bodyObj, extraOpts, legacyFetch) {
+        try {
+            var workerResponse = await _workerAIRequest(featureId, bodyObj, extraOpts);
+            // A Worker response is authoritative, including upstream errors:
+            // the Worker has already tried the feature route and central main routes.
+            if (workerResponse) return workerResponse;
+        } catch(error) {
+            if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw error;
+            _aqsLog('warn', featureId + ' secure AI route unavailable; using existing provider pool.');
+        }
+        return legacyFetch(bodyObj, extraOpts);
+    }
+
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
      *  features. The provider chain is transparent to callers.         */
     window.groqFetch = async function(bodyObj, extraOpts) {
+        var secureResponse = await _featureFetch('main', bodyObj, extraOpts, async function(){ return null; });
+        if (secureResponse) return secureResponse;
         /* Wait for the Firebase key auto-loader to complete before checking
            key counts. This prevents false "not configured" errors that happen
            when groqFetch is called before the async Firestore read finishes.
@@ -830,7 +876,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
        available so a missing or exhausted dedicated slot does not stop it. */
     var _poolOpts = { quiz: { noFallback: false } };
-    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio', 'darasocial_post_slot'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
 
@@ -843,35 +889,40 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch       = function(b, o) { return _pools.quiz.fetch(b, o); };
-    window.challengeGroqFetch  = function(b, o) { return _pools.challenge.fetch(b, o); };
-    window.studyhubGroqFetch   = function(b, o) { return _pools.studyhub.fetch(b, o); };
-    window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
-    window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
-    window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
+    window.libGroqFetch        = function(b, o) { return _featureFetch('library', b, o, function(){ return window.groqFetch(b, o); }); };
+    window.quoteGroqFetch      = function(b, o) { return _featureFetch('quote', b, o, function(){ return window.groqFetch(b, o); }); };
+    window.quizGroqFetch       = function(b, o) { return _featureFetch('quiz', b, o, function(){ return _pools.quiz.fetch(b, o); }); };
+    window.challengeGroqFetch  = function(b, o) { return _featureFetch('challenge', b, o, function(){ return _pools.challenge.fetch(b, o); }); };
+    window.studyhubGroqFetch   = function(b, o) { return _featureFetch('studyhub', b, o, function(){ return _pools.studyhub.fetch(b, o); }); };
+    window.textdocsGroqFetch   = function(b, o) { return _featureFetch('textdocs', b, o, function(){ return _pools.textdocs.fetch(b, o); }); };
+    window.puzzleGroqFetch     = function(b, o) { return _featureFetch('puzzle', b, o, function(){ return _pools.puzzle.fetch(b, o); }); };
+    window.quizstudioGroqFetch = function(b, o) { return _featureFetch('quizstudio', b, o, function(){ return _pools.quizstudio.fetch(b, o); }); };
+    window.darasocialPostGroqFetch = function(b, o) { return _featureFetch('darasocial', b, o, function(){ return _pools.darasocial_post_slot.fetch(b, o); }); };
     /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
     window.aqsTranscribe = async function(audioBlob) {
-        var keys = _getGroqKeys();
-        if (!keys.length) {
-            if (window._aqsKeysReady) await window._aqsKeysReady;
-            keys = _getGroqKeys();
+        var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && window.firebase && window.firebase.auth) {
+            try { user = window.firebase.auth().currentUser || null; } catch(e) {}
         }
-        if (!keys.length) throw new Error('No Groq AI keys are set up. Add them in Admin Settings.');
-        var lastStatus = 0;
-        for (var i = 0; i < Math.min(keys.length, 4); i++) {
-            var fd = new FormData();
-            fd.append('file', audioBlob, 'rec.webm');
-            fd.append('model', 'whisper-large-v3-turbo');
-            fd.append('response_format', 'json');
-            var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-                method: 'POST',
-                headers: { Authorization: 'Bearer ' + keys[(Math.floor(Math.random() * keys.length) + i) % keys.length] },
-                body: fd
-            });
-            lastStatus = res.status;
-            if (res.ok) { var j = await res.json().catch(function(){ return {}; }); return String(j.text || '').trim(); }
-            if (res.status !== 429 && res.status !== 401 && res.status !== 403) break;
+        if (!user || typeof user.getIdToken !== 'function') {
+            throw new Error('Please sign in again before using voice input.');
         }
-        throw new Error('Speech to text failed (' + lastStatus + ').');
+        var token = await user.getIdToken();
+        if (!token) throw new Error('Your sign-in session has expired. Please sign in again.');
+        var fd = new FormData();
+        fd.append('file', audioBlob, 'recording.webm');
+        fd.append('model', 'whisper-large-v3-turbo');
+        fd.append('response_format', 'json');
+        var res = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/transcribe', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (!res.ok) {
+            var message = data && data.error ? data.error : 'Speech-to-text failed (' + res.status + ').';
+            throw new Error(message);
+        }
+        return String(data.text || '').trim();
     };
 })();
