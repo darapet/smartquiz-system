@@ -818,10 +818,17 @@ function cleanImageKeys(value) {
 }
 
 async function creatorImageSettings() {
-  const snapshot = await db.doc('settings/main').get();
-  const settings = snapshot.exists ? snapshot.data() : {};
+  const [mainSnapshot, privateSnapshot] = await Promise.all([
+    db.doc('settings/main').get(),
+    db.doc('settings/private').get(),
+  ]);
+  const settings = mainSnapshot.exists ? mainSnapshot.data() : {};
+  const privateSettings = privateSnapshot.exists ? privateSnapshot.data() : {};
+  const storedKeys = Array.isArray(privateSettings.creator_image_keys)
+    ? privateSettings.creator_image_keys
+    : settings.creator_image_keys;
   return {
-    keys: cleanImageKeys(settings.creator_image_keys),
+    keys: cleanImageKeys(storedKeys),
     model: typeof settings.creator_image_model === 'string' && settings.creator_image_model.trim()
       ? settings.creator_image_model.trim()
       : DEFAULT_CREATOR_IMAGE_MODEL,
