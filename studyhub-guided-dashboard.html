@@ -569,4 +569,107 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 .gs-review-card strong{font-size:12px;color:#1b2b4b;overflow-wrap:anywhere}
 @media(max-width:560px){.gs-wizard-card{padding:14px}.gs-wizard-step{gap:5px;font-size:9px}.gs-wizard-step b{width:25px;height:25px}.gs-wizard-actions .gs-submit{min-width:0;flex:1}.gs-review-card{grid-template-columns:1fr}.gs-read-progress-top{align-items:flex-start;flex-direction:column;gap:4px}.gs-read-progress-top span{text-align:left}}
 .gs-instructions-field{display:flex;flex-direction:column;gap:7px;margin:15px 0 4px;font-size:11px;font-weight:800;color:#46536d}.gs-instructions-field textarea{width:100%;box-sizing:border-box;border:1px solid #dfe6f2;border-radius:12px;padding:12px 13px;font:500 12px Inter,Arial,sans-serif;color:#1b2743;background:#fff;resize:vertical;line-height:1.6}.gs-instructions-field textarea:focus{outline:none;border-color:#1764e8;box-shadow:0 0 0 3px #1764e81a}</style>
+
+<style id="gs-create-page-redesign">
+/* Guided Study creation page — visual direction matched to Self Quiz Studio.
+   The dashboard Create button and all wizard behaviour remain unchanged. */
+#gs-create-modal{align-items:flex-start;justify-content:center;overflow-y:auto;padding:0;background:transparent}
+#gs-create-modal .gs-modal-backdrop{background:radial-gradient(circle at 88% 8%,rgba(84,34,219,.09),transparent 27%),#f7f8ff;backdrop-filter:none}
+#gs-create-modal .gs-modal-panel{width:min(1000px,calc(100% - 40px));max-height:none;overflow:visible;margin:48px auto 76px;padding:0;background:transparent;border-radius:0;box-shadow:none;color:#17183d}
+#gs-create-modal .gs-modal-head{position:relative;overflow:hidden;align-items:flex-start;min-height:190px;margin:0 0 22px;padding:34px 36px;border:0;border-radius:24px;background:linear-gradient(112deg,#15113c 0%,#4520bd 57%,#3478f6 100%);color:#fff;box-shadow:0 16px 34px rgba(57,39,154,.18)}
+#gs-create-modal .gs-modal-head:after{content:"✦";position:absolute;right:7%;top:8px;font-size:150px;line-height:1;color:rgba(255,255,255,.08);pointer-events:none;transform:rotate(12deg)}
+#gs-create-modal .gs-modal-head>div{position:relative;z-index:1}
+#gs-create-modal .gs-modal-kicker{color:#c9bbff;font-size:11px;letter-spacing:.16em;font-weight:850}
+#gs-create-modal .gs-modal-head h2{position:relative;z-index:1;max-width:700px;margin:12px 0;color:#fff;font-size:clamp(30px,5vw,44px);font-weight:850;letter-spacing:-1.5px;line-height:1.08}
+#gs-create-modal .gs-modal-head p{position:relative;z-index:1;max-width:620px;margin:0;color:#eeebff;font-size:14px;line-height:1.7}
+#gs-create-modal .gs-modal-close{position:relative;z-index:2;flex:none;width:40px;height:40px;border:1px solid #ffffff55;border-radius:12px;background:#ffffff18;color:#fff;font-size:24px}
+#gs-create-modal .gs-auth-notice{margin:0 0 16px;padding:18px 20px;border:1px solid #e3e9ff;border-radius:16px;background:#f4f6ff;color:#343653;line-height:1.6}
+#gs-create-modal .gs-auth-notice a{color:#5422db}
+#gs-create-modal .gs-create-form{display:block}
+#gs-create-modal .gs-wizard-progress{margin:0 0 16px;padding:17px 22px;border:1px solid #e6e8f3;border-radius:18px;background:#fff;box-shadow:0 7px 24px rgba(21,17,60,.045)}
+#gs-create-modal .gs-wizard-steps{gap:12px}
+#gs-create-modal .gs-wizard-step{gap:9px;color:#8a90a6;font-size:12px;font-weight:800}
+#gs-create-modal .gs-wizard-step b{width:34px;height:34px;background:#f0ebff;color:#5422db;font-size:12px}
+#gs-create-modal .gs-wizard-step.active{color:#5422db}
+#gs-create-modal .gs-wizard-step.active b{background:#5422db;color:#fff;box-shadow:0 4px 12px #5422db35}
+#gs-create-modal .gs-wizard-step.complete{color:#16845b}
+#gs-create-modal .gs-wizard-step.complete b{background:#eaf8f0;color:#16845b}
+#gs-create-modal .gs-wizard-line{height:2px;background:#e9e7f4}
+#gs-create-modal .gs-form-status{min-height:0;margin:0 0 13px;padding:0;color:#68708d;font-size:12px;line-height:1.5}
+#gs-create-modal .gs-form-status:empty{display:none}
+#gs-create-modal .gs-wizard-card{margin:0 0 16px;padding:26px;border:1px solid #e6e8f3;border-radius:20px;background:#fff;box-shadow:0 7px 24px rgba(21,17,60,.055)}
+#gs-create-modal .gs-wizard-card>.gs-modal-kicker{display:inline-block;color:#6d4be1;font-size:10px;letter-spacing:.14em}
+#gs-create-modal .gs-wizard-card h3{margin:9px 0 6px;color:#202044;font-size:21px;font-weight:850;letter-spacing:-.5px}
+#gs-create-modal .gs-wizard-card>.gs-form-help{margin:0 0 22px;color:#737b95;font-size:12px;line-height:1.65}
+#gs-create-modal .gs-form-grid{gap:16px}
+#gs-create-modal .gs-form-grid label,
+#gs-create-modal #sg-text-mode>label{display:flex;flex-direction:column;gap:8px;color:#343653;font-size:12px;font-weight:750}
+#gs-create-modal .gs-form-grid input,
+#gs-create-modal .gs-form-grid select,
+#gs-create-modal .gs-form-grid textarea,
+#gs-create-modal #sg-text-mode textarea,
+#gs-create-modal .gs-instructions-field textarea{
+ width:100%;min-height:47px;box-sizing:border-box;padding:12px 14px;border:1px solid #e1e4ef;border-radius:12px;background:#fbfcff;color:#202044;font:500 14px Inter,system-ui,sans-serif;box-shadow:none;transition:border-color .18s,box-shadow .18s
+}
+#gs-create-modal .gs-form-grid textarea,
+#gs-create-modal #sg-text-mode textarea{min-height:190px;resize:vertical;line-height:1.6}
+#gs-create-modal .gs-form-grid input:focus,
+#gs-create-modal .gs-form-grid select:focus,
+#gs-create-modal .gs-form-grid textarea:focus,
+#gs-create-modal #sg-text-mode textarea:focus,
+#gs-create-modal .gs-instructions-field textarea:focus{outline:0;border-color:#8c70ed;box-shadow:0 0 0 4px rgba(84,34,219,.10)}
+#gs-create-modal .gs-form-grid input::placeholder,
+#gs-create-modal #sg-text-mode textarea::placeholder,
+#gs-create-modal .gs-instructions-field textarea::placeholder{color:#9aa1b5}
+#gs-create-modal .gs-mode-switch{display:flex;gap:9px;padding:5px;margin:0 0 16px;border:1px solid #eceef6;border-radius:13px;background:#f5f6fc}
+#gs-create-modal .gs-mode-switch button{flex:1;min-height:42px;padding:10px 13px;border:0;border-radius:10px;background:transparent;color:#68708d;font-size:12px;font-weight:750}
+#gs-create-modal .gs-mode-switch button.active{background:#fff;border:0;color:#5422db;box-shadow:0 3px 10px rgba(21,17,60,.09)}
+#gs-create-modal .gs-upload-actions{gap:10px}
+#gs-create-modal .gs-upload-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1px solid #ded7f7;border-radius:11px;background:#f5f2ff;color:#5422db;font-size:12px;font-weight:800}
+#gs-create-modal .gs-upload-button:hover{border-color:#7656e8;background:#eee9ff}
+#gs-create-modal .gs-upload-row{margin-top:12px;padding:13px 14px;border:1px solid #e6e8f3;border-radius:11px;background:#fbfcff;color:#16845b}
+#gs-create-modal .gs-instructions-field{margin:19px 0 4px;color:#343653;font-size:12px}
+#gs-create-modal .gs-instructions-field textarea{min-height:105px}
+#gs-create-modal .gs-read-progress{margin:17px 0;padding:15px 16px;border:1px solid #e3e9ff;border-radius:13px;background:#f7f6ff}
+#gs-create-modal .gs-read-progress-top strong{color:#343653}
+#gs-create-modal .gs-read-progress-track span{background:linear-gradient(110deg,#5422db,#3478f6)}
+#gs-create-modal .gs-wizard-actions{margin-top:22px}
+#gs-create-modal .gs-wizard-back{min-height:46px;padding:0 18px;border:1px solid #e1e4ef;border-radius:12px;background:#fff;color:#5c6380;font-size:12px;font-weight:800}
+#gs-create-modal .gs-submit{min-height:46px;padding:0 19px;border:0;border-radius:12px;background:linear-gradient(110deg,#5422db,#3478f6);color:#fff;font-size:12px;font-weight:800;box-shadow:0 7px 16px rgba(84,34,219,.2)}
+#gs-create-modal .gs-submit:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(84,34,219,.25)}
+#gs-create-modal .gs-submit:disabled{opacity:.6;transform:none}
+#gs-create-modal .gs-review-card{gap:12px;margin:18px 0}
+#gs-create-modal .gs-review-card>div{gap:7px;padding:16px;border:1px solid #e6e8f3;border-radius:13px;background:#fbfcff}
+#gs-create-modal .gs-review-card small{color:#7b8299;font-size:10px;letter-spacing:.1em}
+#gs-create-modal .gs-review-card strong{color:#202044;font-size:13px;line-height:1.5}
+#gs-create-modal .gs-wizard-card[hidden]{display:none!important}
+@media(max-width:760px){
+ #gs-create-modal .gs-modal-panel{width:calc(100% - 28px);margin:25px auto 45px}
+ #gs-create-modal .gs-modal-head{min-height:0;padding:25px 22px;border-radius:19px;margin-bottom:18px}
+ #gs-create-modal .gs-modal-head:after{right:-3%;top:15px;font-size:100px}
+ #gs-create-modal .gs-modal-head h2{font-size:clamp(27px,8vw,36px);letter-spacing:-1.1px}
+ #gs-create-modal .gs-modal-head p{max-width:95%;font-size:12px}
+ #gs-create-modal .gs-wizard-progress{padding:14px}
+ #gs-create-modal .gs-wizard-step{gap:5px;font-size:10px}
+ #gs-create-modal .gs-wizard-step b{width:29px;height:29px}
+ #gs-create-modal .gs-wizard-card{padding:19px;border-radius:17px}
+ #gs-create-modal .gs-form-grid{grid-template-columns:1fr}
+ #gs-create-modal .gs-form-grid .wide{grid-column:auto}
+ #gs-create-modal .gs-wizard-actions{align-items:stretch}
+ #gs-create-modal .gs-wizard-actions .gs-submit{min-width:0;flex:1}
+ #gs-create-modal .gs-review-card{grid-template-columns:1fr}
+}
+@media(max-width:390px){
+ #gs-create-modal .gs-modal-panel{width:calc(100% - 22px)}
+ #gs-create-modal .gs-modal-head{padding:21px 17px}
+ #gs-create-modal .gs-wizard-card{padding:16px}
+ #gs-create-modal .gs-wizard-step{font-size:9px}
+ #gs-create-modal .gs-wizard-step b{width:25px;height:25px}
+ #gs-create-modal .gs-form-grid input,#gs-create-modal .gs-form-grid select,#gs-create-modal #sg-text-mode textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ #gs-create-modal *{scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+
 </body></html>
