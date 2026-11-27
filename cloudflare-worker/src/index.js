@@ -1283,6 +1283,94 @@ async function handleAIKeyTest(request, env) {
   }
 }
 
+
+const AI_PROVIDER_CONFIG_KEY = 'ai-provider-config';
+
+async function callConfiguredAIProvider(provider, model, apiKey, messages, options) {
+  const maxTokens = options.maxTokens;
+  const temperature = options.temperature;
+  let endpoint = '';
+  let headers = { 'Content-Type': 'application/json' };
+  let body = {};
+  if (provider === 'gemini') {
+    endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
+    const contents = messages.filter((item) => item.role !== 'system').map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content }]
+    }));
+    const system = messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n');
+    body = { contents, generationConfig: { maxOutputTokens: maxTokens, temperature }, ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}) };
+  } else if (provider === 'claude') {
+    endpoint = 'https://api.anthropic.com/v1/messages';
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+    body = {
+      model, max_tokens: maxTokens, temperature,
+      system: messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n'),
+      messages: messages.filter((item) => item.role !== 'system')
+    };
+  } else {
+    const endpoints = {
+      openai: 'https://api.openai.com/v1/chat/completions',
+      deepseek: 'https://api.deepseek.com/chat/completions',
+      groq: 'https://api.groq.com/openai/v1/chat/completions',
+      mistral: 'https://api.mistral.ai/v1/chat/completions',
+      huggingface: 'https://router.huggingface.co/v1/chat/completions'
+    };
+    endpoint = endpoints[provider];
+    headers.Authorization = 'Bearer ' + apiKey;
+    body = { model, messages, max_tokens: maxTokens, temperature };
+  }
+  const response = await fetch(endpoint, {
+    method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45000)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(String(result && result.error && (result.error.message || result.error) || result && result.message || 'AI provider request failed.').slice(0, 300));
+    error.status = response.status;
+    throw error;
+  }
+  if (provider === 'gemini') {
+    const text = (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts || []).map((part) => part.text || '').join('');
+    return { id: 'gemini-' + Date.now(), object: 'chat.completion', model, choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }] };
+  }
+  if (provider === 'claude') {
+    const text = (result.content || []).filter((part) => part.type === 'text').map((part) => part.text || '').join('');
+    return { id: result.id || 'claude-' + Date.now(), object: 'chat.completion', model, choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: result.stop_reason || 'stop' }] };
+  }
+  return result;
+}
+
+async function runConfiguredAI(env, featureId, messages, options) {
+  if (!env.EMAIL_CONFIG) return null;
+  const stored = await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null);
+  const feature = stored && stored.features && stored.features[featureId];
+  if (!feature) return null;
+  const attempts = [
+    { provider: feature.primary, model: feature.model },
+    { provider: feature.fallback, model: feature.fallbackModel }
+  ].filter((item, index, list) => item.provider && (index === 0 || item.provider !== list[0].provider));
+  let lastError = null;
+  for (const attempt of attempts) {
+    const keys = feature.keys && Array.isArray(feature.keys[attempt.provider]) ? feature.keys[attempt.provider].slice(0, 50) : [];
+    for (const key of keys) {
+      try {
+        const result = await callConfiguredAIProvider(attempt.provider, attempt.model, key, messages, options);
+        return { result, provider: attempt.provider, model: attempt.model };
+      } catch (error) {
+        lastError = error;
+        if (![401, 403, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
+      }
+    }
+  }
+  if (lastError) {
+    const error = new Error('Configured AI providers are unavailable: ' + lastError.message);
+    error.httpStatus = Number(lastError.status) || 502;
+    throw error;
+  }
+  return null;
+}
+
 async function handleAI(request, env) {
   if (request.method === 'OPTIONS') {
     if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') {
@@ -1328,6 +1416,14 @@ async function handleAI(request, env) {
       if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
       await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
     }
+
+    const featureId = String(payload.feature || 'main').toLowerCase();
+    if (!/^[a-z0-9_-]{1,32}$/.test(featureId)) return json(request, env, { error: 'Invalid AI feature identifier.' }, 400);
+    const configured = await runConfiguredAI(env, featureId, messages, {
+      maxTokens: Math.max(64, Math.min(6000, Number(payload.max_tokens) || 1200)),
+      temperature: Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7))
+    });
+    if (configured) return json(request, env, configured.result);
 
     const aiConfig = await getGroqAIConfig(env);
     const keys = aiConfig.keys.slice();
