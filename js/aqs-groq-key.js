@@ -495,7 +495,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     async function _workerAIRequest(featureId, bodyObj, extraOpts) {
         var requestBody = Object.assign({}, bodyObj || {});
-        if (requestBody.stream === true) return null; // Existing direct-provider stream handling remains intact.
         if (!Array.isArray(requestBody.messages) || requestBody.messages.length > 20) return null;
         var totalChars = 0;
         for (var messageIndex = 0; messageIndex < requestBody.messages.length; messageIndex++) {
