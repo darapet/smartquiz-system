@@ -313,7 +313,7 @@ function welcomeEmailContent({ name, unsubscribeUrl }) {
   const safeName = escapeEmailHtml(name || 'there');
   const loginUrl = `${SMARTQUIZ_BASE_URL}/login.html`;
   const quizUrl = `${SMARTQUIZ_BASE_URL}/quiz-setup.html`;
-  const studyUrl = `${SMARTQUIZ_BASE_URL}/studyhub.html`;
+  const studyUrl = `${SMARTQUIZ_BASE_URL}/studyhub-dashboard.html`;
   const tutorUrl = `${SMARTQUIZ_BASE_URL}/ai-teacher.html`;
   const libraryUrl = `${SMARTQUIZ_BASE_URL}/library.html`;
   const docsUrl = `${SMARTQUIZ_BASE_URL}/docs-gen.html`;
