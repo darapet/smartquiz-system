@@ -536,6 +536,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
         return legacyFetch(bodyObj, extraOpts);
     }
+    // Expose the shared router for legacy feature scripts that call it by name.
+    window._featureFetch = _featureFetch;
 
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
