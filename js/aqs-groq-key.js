@@ -900,27 +900,29 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.darasocialPostGroqFetch = function(b, o) { return _featureFetch('darasocial', b, o, function(){ return _pools.darasocial_post_slot.fetch(b, o); }); };
     /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
     window.aqsTranscribe = async function(audioBlob) {
-        var keys = _getGroqKeys();
-        if (!keys.length) {
-            if (window._aqsKeysReady) await window._aqsKeysReady;
-            keys = _getGroqKeys();
+        var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && window.firebase && window.firebase.auth) {
+            try { user = window.firebase.auth().currentUser || null; } catch(e) {}
         }
-        if (!keys.length) throw new Error('No Groq AI keys are set up. Add them in Admin Settings.');
-        var lastStatus = 0;
-        for (var i = 0; i < Math.min(keys.length, 4); i++) {
-            var fd = new FormData();
-            fd.append('file', audioBlob, 'rec.webm');
-            fd.append('model', 'whisper-large-v3-turbo');
-            fd.append('response_format', 'json');
-            var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-                method: 'POST',
-                headers: { Authorization: 'Bearer ' + keys[(Math.floor(Math.random() * keys.length) + i) % keys.length] },
-                body: fd
-            });
-            lastStatus = res.status;
-            if (res.ok) { var j = await res.json().catch(function(){ return {}; }); return String(j.text || '').trim(); }
-            if (res.status !== 429 && res.status !== 401 && res.status !== 403) break;
+        if (!user || typeof user.getIdToken !== 'function') {
+            throw new Error('Please sign in again before using voice input.');
         }
-        throw new Error('Speech to text failed (' + lastStatus + ').');
+        var token = await user.getIdToken();
+        if (!token) throw new Error('Your sign-in session has expired. Please sign in again.');
+        var fd = new FormData();
+        fd.append('file', audioBlob, 'recording.webm');
+        fd.append('model', 'whisper-large-v3-turbo');
+        fd.append('response_format', 'json');
+        var res = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/transcribe', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (!res.ok) {
+            var message = data && data.error ? data.error : 'Speech-to-text failed (' + res.status + ').';
+            throw new Error(message);
+        }
+        return String(data.text || '').trim();
     };
 })();
