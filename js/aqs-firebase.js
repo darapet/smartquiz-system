@@ -2968,8 +2968,11 @@ async function actionGetSettings() {
                     : [];
                 if (!Array.isArray(privateData.creator_image_keys) && legacyCreatorImageKeys.length) {
                     await setDoc(doc(db, 'settings', 'private'), { creator_image_keys: legacyCreatorImageKeys }, { merge: true });
-                    await setDoc(doc(db, 'settings', 'main'), { creator_image_keys: deleteField() }, { merge: true });
                     privateData.creator_image_keys = legacyCreatorImageKeys;
+                }
+                if (Array.isArray(snap.data().creator_image_keys)
+                    && Array.isArray(privateData.creator_image_keys)) {
+                    await setDoc(doc(db, 'settings', 'main'), { creator_image_keys: deleteField() }, { merge: true });
                 }
                 /* Groq keys live in settings/main again. If an earlier build moved them into
                    settings/private, put them back so every page can use them. */
@@ -2995,12 +2998,12 @@ async function actionGetSettings() {
                     settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
                     settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
-                    /* Secret service credentials stay in the admin-only settings/private document. */
-                    settings.creator_image_keys = Array.isArray(privateData.creator_image_keys)
-                        ? privateData.creator_image_keys
-                        : (Array.isArray(settings.creator_image_keys) ? settings.creator_image_keys : []);
-                    settings.ai_provider_config = privateData.ai_provider_config || {};
                 }
+                /* Secret service credentials stay in the admin-only settings/private document. */
+                settings.creator_image_keys = Array.isArray(privateData.creator_image_keys)
+                    ? privateData.creator_image_keys
+                    : (Array.isArray(settings.creator_image_keys) ? settings.creator_image_keys : []);
+                settings.ai_provider_config = privateData.ai_provider_config || {};
             }
             window._aqsSettingsLoadError = '';
             return { settings: settings };
