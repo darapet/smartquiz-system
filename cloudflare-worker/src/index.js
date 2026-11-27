@@ -1612,7 +1612,7 @@ async function handleSpecialAIKeyTest(request, env) {
     if (service === 'gemini_tts') {
       response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=' + encodeURIComponent(key), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK.' }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK.' }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } } }),
         signal: AbortSignal.timeout(25000)
       });
     } else if (service === 'elevenlabs') {
