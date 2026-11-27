@@ -1614,9 +1614,6 @@ async function handleAITranscribe(request, env) {
   if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
   try {
     const user = await verifyFirebaseAIUser(request, env);
-    const aiConfig = await getGroqAIConfig(env);
-    const apiKey = aiConfig.keys[0] || String(env.GROQ_API_KEY || '').trim();
-    if (!apiKey) return json(request, env, { error: 'No Groq API keys are configured. Add one in SmartQuiz Admin Settings.' }, 503);
     const incoming = await request.formData();
     const file = incoming.get('file');
     if (!file || typeof file.arrayBuffer !== 'function' || !file.size) return json(request, env, { error: 'An audio recording is required.' }, 400);
@@ -1628,23 +1625,59 @@ async function handleAITranscribe(request, env) {
       if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
       await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
     }
-    const form = new FormData();
-    form.append('file', file, file.name || 'recording.webm');
-    form.append('model', 'whisper-large-v3-turbo');
-    form.append('response_format', 'json');
-    const upstream = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + apiKey },
-      body: form,
-    });
-    const result = await upstream.json().catch(() => ({}));
-    if (!upstream.ok) {
-      const message = upstream.status === 429
-        ? 'Audio transcription is busy right now. Please wait and try again.'
-        : String(result && result.error && result.error.message || 'Audio transcription failed.').slice(0, 300);
-      return json(request, env, { error: message }, upstream.status);
+
+    // Audio transcription currently uses Groq Whisper. Read its credentials
+    // from the same central feature/main pools used by the text router.
+    const stored = env.EMAIL_CONFIG
+      ? await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null)
+      : null;
+    const features = stored && stored.features && typeof stored.features === 'object' ? stored.features : {};
+    const keys = [];
+    const addGroqKeys = (config) => {
+      if (!config || typeof config !== 'object') return;
+      for (const role of ['primary', 'fallback']) {
+        const provider = String(role === 'primary' ? config.primary : config.fallback || '').toLowerCase();
+        if (provider !== 'groq') continue;
+        const pool = config.keys && config.keys[role];
+        const values = pool && !Array.isArray(pool) ? pool.groq : (Array.isArray(pool) ? pool : []);
+        if (Array.isArray(values)) {
+          for (const value of values) {
+            const key = String(value || '').trim();
+            if (key.startsWith('gsk_') && key.length > 20 && !keys.includes(key)) keys.push(key);
+          }
+        }
+      }
+    };
+    addGroqKeys(features.studyhub);
+    addGroqKeys(features.main);
+
+    // Keep old Groq settings and the Worker secret as last-resort migration paths.
+    const legacy = await getGroqAIConfig(env);
+    for (const key of legacy.keys) if (!keys.includes(key)) keys.push(key);
+    const envKey = String(env.GROQ_API_KEY || '').trim();
+    if (envKey.startsWith('gsk_') && envKey.length > 20 && !keys.includes(envKey)) keys.push(envKey);
+    if (!keys.length) return json(request, env, { error: 'No Groq key is configured in StudyHub AI or Main AI. Select Groq for a primary/fallback route and save a key.' }, 503);
+
+    let upstream = null;
+    let result = {};
+    for (const apiKey of keys.slice(0, 100)) {
+      const form = new FormData();
+      form.append('file', file, file.name || 'recording.webm');
+      form.append('model', 'whisper-large-v3-turbo');
+      form.append('response_format', 'json');
+      upstream = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: form,
+      });
+      result = await upstream.json().catch(() => ({}));
+      if (upstream.ok) return json(request, env, result);
+      if (![401, 403, 429].includes(upstream.status)) break;
     }
-    return json(request, env, result);
+    const message = upstream && upstream.status === 429
+      ? 'Audio transcription is busy right now. Please wait and try again.'
+      : String(result && result.error && result.error.message || 'Audio transcription failed.').slice(0, 300);
+    return json(request, env, { error: message }, upstream ? upstream.status : 502);
   } catch (error) {
     return json(request, env, { error: error && error.message ? error.message : 'Audio transcription failed.' }, Number(error && error.httpStatus) || 500);
   }
