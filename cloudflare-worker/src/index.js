@@ -1218,6 +1218,19 @@ async function handleAIConfig(request, env) {
   }
 }
 
+async function recordAIProviderHealth(env, provider, result) {
+  if (!env.EMAIL_CONFIG || !provider) return;
+  const safe = {
+    provider,
+    ok: result.ok === true,
+    status: Number(result.status) || 0,
+    ms: Number(result.ms) || 0,
+    message: String(result.msg || '').replace(/[\\r\\n\\t]/g, ' ').slice(0, 160),
+    testedAt: Date.now()
+  };
+  await env.EMAIL_CONFIG.put('ai-provider-health:' + provider, JSON.stringify(safe));
+}
+
 async function handleAIKeyTest(request, env) {
   if (request.method === 'OPTIONS') {
     if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
@@ -1269,14 +1282,22 @@ async function handleAIKeyTest(request, env) {
       });
     } catch (networkError) {
       const timedOut = networkError && (networkError.name === 'TimeoutError' || networkError.name === 'AbortError');
-      return json(request, env, { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider.' });
+      const health = { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider.' };
+      await recordAIProviderHealth(env, provider, health);
+      return json(request, env, health);
     }
     const ms = Date.now() - started;
     const responseBody = await upstream.json().catch(() => ({}));
-    if (upstream.ok) return json(request, env, { ok: true, status: upstream.status, ms, msg: 'Key is active.' });
+    if (upstream.ok) {
+      const health = { ok: true, status: upstream.status, ms, msg: 'Key is active.' };
+      await recordAIProviderHealth(env, provider, health);
+      return json(request, env, health);
+    }
     const rawMessage = String(responseBody && responseBody.error && (responseBody.error.message || responseBody.error) || responseBody && responseBody.message || responseBody && responseBody.detail || 'Provider rejected the request.').replace(/[\\r\\n\\t]/g, ' ').slice(0, 140);
     const label = upstream.status === 401 || upstream.status === 403 ? 'Invalid or unauthorized key' : upstream.status === 429 ? 'Rate limited or quota exhausted' : 'Provider returned an error';
-    return json(request, env, { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage });
+    const health = { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage };
+    await recordAIProviderHealth(env, provider, health);
+    return json(request, env, health);
   } catch (error) {
     const status = Number(error && error.httpStatus) || 500;
     return json(request, env, { error: error && error.message ? error.message : 'AI key test failed.' }, status);
@@ -1374,6 +1395,41 @@ async function runConfiguredAI(env, featureId, messages, options) {
     throw error;
   }
   return null;
+}
+
+async function handleAIStatus(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST to read AI runtime status.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+    if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
+    const stored = env.EMAIL_CONFIG ? await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null) : null;
+    const health = {};
+    for (const provider of ['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface']) {
+      health[provider] = env.EMAIL_CONFIG
+        ? await env.EMAIL_CONFIG.get('ai-provider-health:' + provider, 'json').catch(() => null)
+        : null;
+    }
+    const features = Object.entries(stored && stored.features || {}).map(([id, feature]) => ({
+      id,
+      primary: feature.primary || '',
+      fallback: feature.fallback || '',
+      keyCounts: Object.fromEntries(Object.entries(feature.keys || {}).map(([provider, keys]) => [provider, Array.isArray(keys) ? keys.length : 0]))
+    }));
+    return json(request, env, {
+      features,
+      health,
+      rateLimit: { perUserPerMinute: 12, enforcement: 'active' },
+      checkedAt: Date.now()
+    });
+  } catch (error) {
+    return json(request, env, { error: error && error.message ? error.message : 'Could not read AI runtime status.' }, Number(error && error.httpStatus) || 500);
+  }
 }
 
 async function handleAI(request, env) {
@@ -1527,6 +1583,9 @@ export default {
     }
     if (url.pathname === '/api/ai/test' || url.pathname === '/api/ai/test/') {
       return handleAIKeyTest(request, env);
+    }
+    if (url.pathname === '/api/ai/status' || url.pathname === '/api/ai/status/') {
+      return handleAIStatus(request, env);
     }
     if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
       return handleAITranscribe(request, env);
