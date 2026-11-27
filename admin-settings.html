@@ -76,6 +76,20 @@ body{margin:0;padding:0;background:#ffffff;font-family:'Inter',sans-serif;displa
 
 /* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
 @media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
+
+/* Chat-model API keys and provider pools now live in AI Control Centre. */
+.aqs-settings-card:has(#aqs-pool-status-grid),
+.aqs-settings-card:has(#aqs-groq-key-1),
+.aqs-settings-card:has(#aqs-lib-key-1),
+.aqs-settings-card:has(#aqs-quiz-groq-key-1),
+.aqs-settings-card:has(#aqs-challenge-groq-key-1),
+.aqs-settings-card:has(#aqs-studyhub-groq-key-1),
+.aqs-settings-card:has(#aqs-textdocs-groq-key-1),
+.aqs-settings-card:has(#aqs-puzzle-groq-key-1),
+.aqs-settings-card:has(#aqs-quizstudio-groq-key-1),
+.aqs-settings-card:has(#aqs-mistral-key-1),
+.aqs-settings-card:has(#aqs-hf-key-1),
+.aqs-settings-card:has(#aqs-quote-key-1){display:none!important}
 </style>
 <script>
 window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
@@ -292,6 +306,26 @@ window.addEventListener('DOMContentLoaded', function() {
 <div class="aqs-admin-header">
     <h1>⚙️ General Settings</h1><p style="color:#64748b;margin-top:6px;">Email, authentication, appearance and application configuration. <a href="admin-ai.html" style="color:#315ee8;font-weight:700;">Open AI Control Centre →</a></p>
 </div>
+<div style="padding:13px 16px;margin:0 0 18px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;color:#334155;font-size:.84rem;line-height:1.55;">
+ <strong>Chat AI provider settings have moved.</strong> Manage Groq, Mistral, Hugging Face and the new AI providers in the <a href="admin-ai.html" style="color:#315ee8;font-weight:700;">AI Control Centre</a>. Specialized image-generation and voice/TTS settings are still being migrated and remain below for now.
+</div>
+<script>
+(function(){
+ function hideLegacySocialKeySlots(){
+  var first=document.getElementById('aqs-dsocial-post-key-1');
+  if(!first)return;
+  var grid=first.parentElement&&first.parentElement.parentElement;
+  if(!grid)return;
+  grid.style.display='none';
+  var description=grid.previousElementSibling;
+  if(description)description.style.display='none';
+  var heading=description&&description.previousElementSibling;
+  if(heading)heading.style.display='none';
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hideLegacySocialKeySlots,{once:true});
+ else hideLegacySocialKeySlots();
+})();
+</script>
 
 <!-- Email / Brevo — placed first so it is immediately visible -->
 <div class="aqs-settings-card" id="brevo-email-settings">
