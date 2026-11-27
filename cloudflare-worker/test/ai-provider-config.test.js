@@ -53,21 +53,25 @@ function mockFetch({ openaiStatus = 200 } = {}) {
   return { calls, restore() { globalThis.fetch = original; } };
 }
 
-async function syncConfig(env, featureConfig) {
+async function syncConfigs(env, configs) {
   const response = await worker.fetch(new Request('https://worker.test/api/ai/config', {
     method: 'POST',
     headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ai_provider_config: { main: featureConfig } }),
+    body: JSON.stringify({ ai_provider_config: configs }),
   }), env);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).saved, true);
 }
 
-async function generate(env) {
+async function syncConfig(env, featureConfig) {
+  return syncConfigs(env, { main: featureConfig });
+}
+
+async function generate(env, feature = 'main') {
   return worker.fetch(new Request('https://worker.test/api/ai', {
     method: 'POST',
     headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feature: 'main', messages: [{ role: 'user', content: 'Say hello.' }] }),
+    body: JSON.stringify({ feature, messages: [{ role: 'user', content: 'Say hello.' }] }),
   }), env);
 }
 
@@ -107,6 +111,52 @@ test('AI Control Centre falls back when the primary provider is rate limited', a
       'https://api.openai.com/v1/chat/completions',
       'https://api.groq.com/openai/v1/chat/completions',
     ]);
+  } finally {
+    mock.restore();
+  }
+});
+
+
+test('feature AI uses the central main primary when its own routes are unavailable', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ openaiStatus: 429 });
+  try {
+    await syncConfigs(env, {
+      main: {
+        primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '',
+        keys: { primary: { groq: ['gsk-main-primary-key-123456789'] }, fallback: {} },
+      },
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: '',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: {} },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.calls, [
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+    ]);
+  } finally {
+    mock.restore();
+  }
+});
+
+test('feature AI uses the central main primary even when the feature has no saved config', async () => {
+  const env = makeEnv();
+  const mock = mockFetch();
+  try {
+    await syncConfig(env, {
+      primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '',
+      keys: { primary: { groq: ['gsk-main-primary-key-123456789'] }, fallback: {} },
+    });
+    const response = await generate(env, 'library');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.calls, ['https://api.groq.com/openai/v1/chat/completions']);
   } finally {
     mock.restore();
   }
