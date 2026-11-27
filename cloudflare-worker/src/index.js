@@ -1558,7 +1558,11 @@ async function handleGeminiTTS(request, env) {
     if (!keys.length) return json(request, env, { error: 'Gemini TTS is not configured. Please use the browser voice.' }, 503);
     const models = [String(service.model || 'gemini-2.5-flash-preview-tts'), 'gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'].filter((model, index, list) => model && list.indexOf(model) === index);
     let lastStatus = 502, lastMessage = 'Gemini TTS is temporarily unavailable.';
-    for (const key of keys) {
+    const rotationKey = 'ai-tts-rotation:gemini';
+    const rotationStart = Number(await env.EMAIL_CONFIG.get(rotationKey)) || 0;
+    const orderedKeys = keys.map((_, index) => keys[(rotationStart + index) % keys.length]);
+    await env.EMAIL_CONFIG.put(rotationKey, String((rotationStart + 1) % keys.length), { expirationTtl: 86400 });
+    for (const key of orderedKeys) {
       for (const model of models) {
         const prompt = style ? style + ': ' + text : text;
         let upstream;
