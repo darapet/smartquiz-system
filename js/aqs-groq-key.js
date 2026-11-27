@@ -528,7 +528,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
     async function _featureFetch(featureId, bodyObj, extraOpts, legacyFetch) {
         try {
             var workerResponse = await _workerAIRequest(featureId, bodyObj, extraOpts);
-            if (workerResponse && (workerResponse.ok || ![502, 503, 504].includes(workerResponse.status))) return workerResponse;
+            // A Worker response is authoritative, including upstream errors:
+            // the Worker has already tried the feature route and central main routes.
+            if (workerResponse) return workerResponse;
         } catch(error) {
             if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw error;
             _aqsLog('warn', featureId + ' secure AI route unavailable; using existing provider pool.');
