@@ -3,11 +3,15 @@ name: AI Control Centre checks
 on:
   push:
     branches:
-      - feat/ai-control-centre
+      - feat/ai-special-services-secure
     paths:
       - 'cloudflare-worker/**'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
+      - 'js/aqs-firebase.js'
+      - 'js/aqs-gemini-tts.js'
+      - 'functions/index.js'
+      - 'admin-settings.html'
       - 'admin-ai.html'
   pull_request:
     branches:
@@ -16,6 +20,10 @@ on:
       - 'cloudflare-worker/**'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
+      - 'js/aqs-firebase.js'
+      - 'js/aqs-gemini-tts.js'
+      - 'functions/index.js'
+      - 'admin-settings.html'
       - 'admin-ai.html'
 
 permissions:
@@ -36,6 +44,10 @@ jobs:
           node --check cloudflare-worker/src/index.js
           node --check js/aqs-groq-key.js
           node --check js/aqs-quotes.js
+          node --check --input-type=module < js/aqs-firebase.js
+          node --check js/aqs-gemini-tts.js
+          node --check functions/index.js
+          node -e "const fs=require('fs'); for (const f of ['admin-ai.html','admin-settings.html']) { const html=fs.readFileSync(f,'utf8'); for (const m of html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)) if (m[1].trim()) new Function(m[1]); }"
       - name: Run Cloudflare Worker tests
         working-directory: cloudflare-worker
         run: npm test

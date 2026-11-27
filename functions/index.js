@@ -818,13 +818,24 @@ function cleanImageKeys(value) {
 }
 
 async function creatorImageSettings() {
-  const snapshot = await db.doc('settings/main').get();
-  const settings = snapshot.exists ? snapshot.data() : {};
+  const [privateSnapshot, legacySnapshot] = await Promise.all([
+    db.doc('settings/private').get(),
+    db.doc('settings/main').get(),
+  ]);
+  const privateSettings = privateSnapshot.exists ? privateSnapshot.data() : {};
+  const legacySettings = legacySnapshot.exists ? legacySnapshot.data() : {};
+  const services = privateSettings.ai_special_services && typeof privateSettings.ai_special_services === 'object'
+    ? privateSettings.ai_special_services : {};
+  const image = services.creatorImage && typeof services.creatorImage === 'object' ? services.creatorImage : {};
   return {
-    keys: cleanImageKeys(settings.creator_image_keys),
-    model: typeof settings.creator_image_model === 'string' && settings.creator_image_model.trim()
-      ? settings.creator_image_model.trim()
-      : DEFAULT_CREATOR_IMAGE_MODEL,
+    keys: cleanImageKeys(image.keys || privateSettings.creator_image_keys || legacySettings.creator_image_keys),
+    model: typeof image.model === 'string' && image.model.trim()
+      ? image.model.trim()
+      : typeof privateSettings.creator_image_model === 'string' && privateSettings.creator_image_model.trim()
+        ? privateSettings.creator_image_model.trim()
+        : typeof legacySettings.creator_image_model === 'string' && legacySettings.creator_image_model.trim()
+          ? legacySettings.creator_image_model.trim()
+          : DEFAULT_CREATOR_IMAGE_MODEL,
   };
 }
 

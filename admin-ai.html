@@ -22,7 +22,7 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 .aic-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.aic-btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:#edf1f7;color:#23364f}.aic-btn.primary{background:var(--ai-blue);color:#fff}.aic-btn:disabled{opacity:.55;cursor:wait}
 .aic-status{font-size:.8rem;color:var(--ai-muted);align-self:center}.aic-feature-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .aic-feature{padding:14px;cursor:pointer;text-align:left;color:var(--ai-ink)}.aic-feature strong{display:block;margin-bottom:5px}.aic-feature small{color:var(--ai-muted)}
-.aic-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.aic-health-item{border:1px solid var(--ai-line);border-radius:10px;padding:10px 12px;background:#fbfcfe;min-width:0}.aic-health-item strong{display:block;font-size:.82rem}.aic-health-item small{display:block;color:var(--ai-muted);font-size:.72rem;margin-top:4px;overflow-wrap:anywhere}.aic-health-good{color:#12815c}.aic-health-bad{color:#b54747}@media(max-width:650px){.aic-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
+.aic-special-panel{margin:20px 0}.aic-special-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.aic-special-card{border:1px solid var(--ai-line);border-radius:14px;padding:15px;min-width:0;background:#fbfcff}.aic-special-card h3{font-size:.95rem;margin:0 0 6px}.aic-special-card p{font-size:.77rem;color:var(--ai-muted);line-height:1.45;min-height:35px}.aic-special-card label{display:block;font-size:.74rem;font-weight:750;margin:10px 0 5px}.aic-special-card>input{width:100%;box-sizing:border-box;padding:9px;border:1px solid #dce4ef;border-radius:8px;background:#fff;color:var(--ai-ink)}.aic-special-slots{display:grid;gap:7px;margin-top:12px}.aic-special-slot{display:grid;grid-template-columns:45px minmax(0,1fr) auto;align-items:center;gap:7px}.aic-special-slot small{font-size:.7rem;color:var(--ai-muted)}.aic-special-slot input{width:100%;min-width:0;box-sizing:border-box;padding:8px;border:1px solid #dce4ef;border-radius:8px}.aic-special-count{display:block;margin-top:9px;color:var(--ai-muted);font-size:.72rem}@media(max-width:850px){.aic-special-grid{grid-template-columns:1fr}}.aic-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.aic-health-item{border:1px solid var(--ai-line);border-radius:10px;padding:10px 12px;background:#fbfcfe;min-width:0}.aic-health-item strong{display:block;font-size:.82rem}.aic-health-item small{display:block;color:var(--ai-muted);font-size:.72rem;margin-top:4px;overflow-wrap:anywhere}.aic-health-good{color:#12815c}.aic-health-bad{color:#b54747}@media(max-width:650px){.aic-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
 @media(max-width:850px){.aic-layout{grid-template-columns:1fr}.aic-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.aic-wrap{padding:16px 12px 40px}.aic-hero{padding:20px;display:block}.aic-provider-row,.aic-keygrid,.aic-feature-list{grid-template-columns:1fr}.aic-stats{gap:8px}.aic-stat{padding:13px}}
 
@@ -330,6 +330,15 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 <div id="aic-provider-cards" class="aic-provider-cards"></div>
 <div class="aic-section-heading aic-feature-heading"><div><span class="aic-eyebrow">FEATURE WORKSPACES</span><h2>Choose an AI feature</h2><p>Each feature has its own provider settings and its own 100 key slots.</p></div></div>
 <div id="aic-feature-cards" class="aic-feature-cards"></div>
+<section class="aic-panel aic-special-panel" id="aic-special-services">
+ <div class="aic-panel-heading"><div><span class="aic-eyebrow">SPECIALIZED AI</span><h2>Image generation & voice services</h2><p class="aic-sub">Manage credentials for Creator Studio image generation, Gemini TTS and optional ElevenLabs TTS. API keys stay server-side.</p></div></div>
+ <div class="aic-special-grid">
+  <article class="aic-special-card"><h3>🎨 Creator Studio image generation</h3><p>Gemini image API key pool · up to 10 keys</p><label for="aic-image-model">Image model</label><input id="aic-image-model" value="gemini-3.1-flash-image"><div id="aic-image-slots" class="aic-special-slots"></div><small id="aic-image-count">0 / 10 saved</small></article>
+  <article class="aic-special-card"><h3>🎙️ Gemini text-to-speech</h3><p>Server-side neural voice generation · up to 5 keys</p><label for="aic-gtts-model">TTS model</label><input id="aic-gtts-model" value="gemini-2.5-flash-preview-tts"><div id="aic-gtts-slots" class="aic-special-slots"></div><small id="aic-gtts-count">0 / 5 saved</small></article>
+  <article class="aic-special-card"><h3>🔊 ElevenLabs text-to-speech</h3><p>Optional provider · up to 5 keys · public TTS integration remains disabled</p><label for="aic-el-model">ElevenLabs model</label><input id="aic-el-model" value="eleven_multilingual_v2"><label for="aic-el-voice">Default voice ID</label><input id="aic-el-voice" value="21m00Tcm4TlvDq8ikWAM"><div id="aic-el-slots" class="aic-special-slots"></div><small id="aic-el-count">0 / 5 saved</small></article>
+ </div>
+ <div class="aic-actions"><button type="button" class="aic-btn primary" id="aic-special-save">Save specialized services</button><button type="button" class="aic-btn" id="aic-special-test">Test entered keys</button><span class="aic-status" id="aic-special-status" aria-live="polite"></span></div>
+</section>
 <section class="aic-panel aic-runtime-panel"><div class="aic-panel-heading"><div><h2>Runtime health</h2><p class="aic-sub">Latest provider tests and the enforced request limit.</p></div><span class="aic-live-pill">Live status</span></div><div id="aic-runtime-health" class="aic-health-grid"><span class="aic-status">Waiting for secure runtime status…</span></div></section>
 </section>
 <section id="aic-feature-view" hidden>
@@ -386,6 +395,12 @@ var features=[
 ];
 var config={},active='main',activeRole='primary',loaded=false;
 var testResults={};
+var specialMigrated=false;
+var specialConfig={
+ creatorImage:{keys:[],model:'gemini-3.1-flash-image'},
+ geminiTTS:{keys:[],model:'gemini-2.5-flash-preview-tts'},
+ elevenLabs:{keys:[],model:'eleven_multilingual_v2',voiceId:'21m00Tcm4TlvDq8ikWAM'}
+};
 var $=function(id){return document.getElementById(id)};
 function optionList(el){el.innerHTML=providers.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')}
 function provider(id){return providers.find(function(p){return p.id===id})||providers[0]}
@@ -520,9 +535,88 @@ function renderTestResults(){
   return '<article class="aic-test-result"><div class="aic-test-result-top"><strong class="aic-test-result-key">Slot '+r.slot+' · '+safe(provider(r.provider).name)+'</strong><span class="aic-test-result-status '+(r.ok?'good':'bad')+'"><i class="dot"></i>'+(r.ok?'Test passed':'Test failed')+'</span></div><div class="aic-test-result-meta">'+(r.status?'<span>HTTP '+safe(r.status)+'</span>':'')+(r.ms?'<span>'+safe(r.ms)+' ms</span>':'')+'<span>'+(r.role==='primary'?'Primary route':'Fallback route')+'</span></div><p class="aic-test-result-message '+(r.ok?'good':'bad')+'">'+safe(r.msg||(r.ok?'Provider accepted this key.':'The provider test did not pass.'))+'</p></article>';
  }).join('');
 }
+function normalizeSpecialPool(value,max){return Array.isArray(value)?value.map(function(k){return typeof k==='string'?k.trim():''}).filter(function(k){return k.length>10}).slice(0,max):[]}
+function loadSpecialServices(settings){
+ var hasSaved=settings.ai_special_services&&typeof settings.ai_special_services==='object'&&Object.keys(settings.ai_special_services).length>0;
+ specialMigrated=!hasSaved&&!!([settings.creator_image_keys,settings.gemini_tts_keys,settings.elevenlabs_keys].some(function(pool){return Array.isArray(pool)&&pool.length>0}));
+ var saved=hasSaved?settings.ai_special_services:{},image=saved.creatorImage||{},gtts=saved.geminiTTS||{},el=saved.elevenLabs||{};
+ specialConfig.creatorImage={keys:normalizeSpecialPool(image.keys&&image.keys.length?image.keys:settings.creator_image_keys,10),model:String(image.model||settings.creator_image_model||'gemini-3.1-flash-image')};
+ specialConfig.geminiTTS={keys:normalizeSpecialPool(gtts.keys&&gtts.keys.length?gtts.keys:settings.gemini_tts_keys,5),model:String(gtts.model||'gemini-2.5-flash-preview-tts')};
+ specialConfig.elevenLabs={keys:normalizeSpecialPool(el.keys&&el.keys.length?el.keys:settings.elevenlabs_keys,5),model:String(el.model||'eleven_multilingual_v2'),voiceId:String(el.voiceId||'21m00Tcm4TlvDq8ikWAM')};
+ $('aic-image-model').value=specialConfig.creatorImage.model;$('aic-gtts-model').value=specialConfig.geminiTTS.model;
+ $('aic-el-model').value=specialConfig.elevenLabs.model;$('aic-el-voice').value=specialConfig.elevenLabs.voiceId;
+ renderSpecialSlots();
+}
+function renderSpecialSlots(){
+ [['creatorImage','image',10],['geminiTTS','gtts',5],['elevenLabs','el',5]].forEach(function(row){
+  var service=row[0],prefix=row[1],max=row[2],pool=specialConfig[service].keys||[];
+  $('aic-'+prefix+'-slots').innerHTML=Array.from({length:max},function(_,i){
+   var exists=!!pool[i];
+   return '<div class="aic-special-slot"><small>Slot '+(i+1)+'</small><input type="password" autocomplete="new-password" data-special="'+service+'" data-slot="'+i+'" placeholder="'+(exists?'Saved key — blank keeps it':'Paste API key')+'"><span>'+(exists?'<button type="button" data-special-remove="'+service+'" data-slot="'+i+'" style="border:0;background:transparent;color:#b54747;cursor:pointer">Remove</button>':'<small>Empty</small>')+'</span></div>';
+  }).join('');
+  $('aic-'+prefix+'-count').textContent=pool.filter(Boolean).length+' / '+max+' saved';
+ });
+ document.querySelectorAll('[data-special-remove]').forEach(function(button){button.addEventListener('click',function(){specialConfig[button.dataset.specialRemove].keys[Number(button.dataset.slot)]='';renderSpecialSlots();stats()})});
+}
+function collectSpecialServices(){
+ document.querySelectorAll('[data-special]').forEach(function(input){var value=input.value.trim();if(value)specialConfig[input.dataset.special].keys[Number(input.dataset.slot)]=value});
+ specialConfig.creatorImage.model=$('aic-image-model').value.trim()||'gemini-3.1-flash-image';
+ specialConfig.geminiTTS.model=$('aic-gtts-model').value.trim()||'gemini-2.5-flash-preview-tts';
+ specialConfig.elevenLabs.model=$('aic-el-model').value.trim()||'eleven_multilingual_v2';
+ specialConfig.elevenLabs.voiceId=$('aic-el-voice').value.trim()||'21m00Tcm4TlvDq8ikWAM';
+ Object.keys(specialConfig).forEach(function(id){specialConfig[id].keys=specialConfig[id].keys.slice(0,id==='creatorImage'?10:5)});
+ return specialConfig;
+}
+async function getAdminToken(){
+ var user=window._aqsFirebaseUser||window._aqsAuthUser||null;
+ if(!user&&window._aqsAuthResolved!==true)await new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;resolve()};document.addEventListener('aqs:firebase:ready',finish,{once:true});setTimeout(finish,8000)});
+ user=window._aqsFirebaseUser||window._aqsAuthUser||user;
+ if(!user||typeof user.getIdToken!=='function')throw new Error('Admin session is not ready. Sign in again.');
+ return user.getIdToken();
+}
+async function syncSpecialServices(){
+ var token=await getAdminToken();
+ var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({ai_special_services:specialConfig}),signal:AbortSignal.timeout(20000)});
+ var data=await response.json().catch(function(){return {}});
+ if(!response.ok||!data.saved)throw new Error(data.error||'Specialized service sync failed.');
+}
+$('aic-special-save').addEventListener('click',function(){
+ var btn=this;btn.disabled=true;$('aic-special-status').textContent='Saving credentials privately…';collectSpecialServices();
+ var payload={ai_special_services:specialConfig,creator_image_keys:specialConfig.creatorImage.keys,creator_image_model:specialConfig.creatorImage.model,gemini_tts_keys:specialConfig.geminiTTS.keys,elevenlabs_keys:specialConfig.elevenLabs.keys};
+ window.aqsAjax(Object.assign({action:'aqs_save_settings'},payload),async function(res){
+  if(!res||!res.success){btn.disabled=false;$('aic-special-status').textContent=(res&&res.data)||'Private settings save failed';return}
+  $('aic-special-status').textContent='Saved privately. Syncing secure runtime…';
+  try{await syncSpecialServices();$('aic-special-status').textContent='Saved privately and synced. Image and Gemini TTS services now use server-side credentials.';$('aic-save-state').textContent='Special services saved + synced'}
+  catch(error){$('aic-special-status').textContent='Saved in Firestore, but Worker sync failed: '+error.message}
+  btn.disabled=false;renderSpecialSlots();stats();loadRuntimeStatus();
+ });
+});
+$('aic-special-test').addEventListener('click',async function(){
+ collectSpecialServices();var tests=[];
+ document.querySelectorAll('[data-special]').forEach(function(input){if(input.value.trim())tests.push({service:input.dataset.special,slot:Number(input.dataset.slot)+1,key:input.value.trim()})});
+ if(!tests.length){
+  [['creatorImage','creator_image'],['geminiTTS','gemini_tts'],['elevenLabs','elevenlabs']].forEach(function(pair){
+   (specialConfig[pair[0]].keys||[]).forEach(function(key,index){if(key)tests.push({service:pair[0],serviceId:pair[1],slot:index+1,key:key})});
+  });
+ }
+ if(!tests.length){$('aic-special-status').textContent='No saved or entered keys are available to test.';return}
+ var btn=this;btn.disabled=true;
+ try{
+  var token=await getAdminToken(),results=[];
+  for(var i=0;i<tests.length;i++){
+   var t=tests[i];$('aic-special-status').textContent='Testing '+t.service+' key '+t.slot+' ('+(i+1)+'/'+tests.length+')…';
+   var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test-special',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({service:t.serviceId|| (t.service==='creatorImage'?'creator_image':t.service==='geminiTTS'?'gemini_tts':'elevenlabs'),key:t.key}),signal:AbortSignal.timeout(30000)});
+   var data=await response.json().catch(function(){return {}});
+   results.push(t.service+' slot '+t.slot+': '+(data.ok?'Active':'Failed — '+(data.msg||data.error||'Test failed'))+(data.ms?' ('+data.ms+'ms)':''));
+  }
+  $('aic-special-status').textContent=results.join(' · ');
+ }catch(error){$('aic-special-status').textContent=error.message||'Specialized key test failed.'}
+ btn.disabled=false;loadRuntimeStatus();
+});
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});['primary','fallback'].forEach(function(role){Object.keys(keys[role]||{}).forEach(function(pid){n+=(keys[role][pid]||[]).filter(Boolean).length;});});});
-$('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
+Object.keys(specialConfig).forEach(function(id){n+=(specialConfig[id].keys||[]).filter(Boolean).length});
+$('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length+3;$('aic-key-count').textContent=n;
 }
 async function loadRuntimeStatus(){
  var target=$('aic-runtime-health');
@@ -542,6 +636,10 @@ async function loadRuntimeStatus(){
    var counts=f.keyCounts||{},total=Object.keys(counts).reduce(function(n,k){return n+(Number(counts[k])||0)},0);
    cards.push('<div class="aic-health-item"><strong>'+String(f.id).replace(/[<>&"]/g,'')+'</strong><small>Primary: '+(f.primary||'—')+' · Fallback: '+(f.fallback||'—')+' · '+total+' keys</small></div>');
   });
+  Object.keys(data.specialServices||{}).forEach(function(serviceId){
+   var service=data.specialServices[serviceId]||{},health=service.health;
+   cards.push('<div class="aic-health-item"><strong>'+serviceId+'</strong><small>'+Number(service.configuredKeys||0)+' key(s) configured · '+String(service.model||'').replace(/[<>&"]/g,'')+'</small>'+(health?'<small class="'+(health.ok?'aic-health-good':'aic-health-bad')+'">'+(health.ok?'Last key test passed':'Last key test failed')+' · HTTP '+health.status+' · '+health.ms+'ms</small>':'')+'</div>');
+  });
   Object.keys(data.health||{}).forEach(function(providerId){
    var h=data.health[providerId];if(!h)return;
    cards.push('<div class="aic-health-item"><strong>'+provider(providerId).name+'</strong><small class="'+(h.ok?'aic-health-good':'aic-health-bad')+'">'+(h.ok?'Key test passed':'Key test failed')+' · HTTP '+h.status+' · '+h.ms+'ms</small><small>'+String(h.message||'').replace(/[<>&"]/g,'')+'</small></div>');
@@ -555,6 +653,7 @@ if(typeof window.aqsAjax!=='function')return setTimeout(load,250);
 window.aqsAjax({action:'aqs_get_settings'},function(res){
 if(!res||!res.success){$('aic-save-state').textContent='Could not load settings';return}
 var settings=(res.data&&res.data.settings)||{};
+loadSpecialServices(settings);
 var existing=settings.ai_provider_config;
 config=existing&&typeof existing==='object'?existing:{};
 var migrated=0;
@@ -588,6 +687,7 @@ features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=(migrated||keySchemaMigrated)?'Key pools migrated — saving securely':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported into the primary key pool. Fallback has its own separate 50 slots.';
 routeFromUrl();renderDashboard();stats();loadRuntimeStatus();
+if(specialMigrated){$('aic-special-status').textContent='Legacy image and voice keys found. Moving them into private AI service storage…';setTimeout(function(){if(loaded)$('aic-special-save').click()},150)}
 if(migrated||keySchemaMigrated){$('aic-status').textContent='Migrating existing key pools into separate primary and fallback storage…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
 }
@@ -607,7 +707,8 @@ $('aic-current-model').addEventListener('change',function(){var c=config[active]
 $('aic-save').addEventListener('click',function(){
 if(!loaded)return;var c=config[active];c.keyOwner=currentProvider(c);
 var btn=this;btn.disabled=true;$('aic-status').textContent='Saving securely…';
-window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},async function(res){
+collectSpecialServices();
+window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config,ai_special_services:specialConfig,creator_image_keys:specialConfig.creatorImage.keys,creator_image_model:specialConfig.creatorImage.model,gemini_tts_keys:specialConfig.geminiTTS.keys,elevenlabs_keys:specialConfig.elevenLabs.keys},async function(res){
  btn.disabled=false;
  if(!res||!res.success){$('aic-status').textContent=(res&&res.data)||'Firestore save failed';$('aic-save-state').textContent='Save failed';return}
  $('aic-status').textContent='Saved privately. Syncing secure AI runtime…';
@@ -617,7 +718,7 @@ window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},async func
   user=window._aqsFirebaseUser||window._aqsAuthUser||user;
   if(!user||typeof user.getIdToken!=='function')throw new Error('Admin session not ready for runtime sync. Reload and save again.');
   var token=await user.getIdToken();
-  var sync=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({ai_provider_config:config}),signal:AbortSignal.timeout(20000)});
+  var sync=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({ai_provider_config:config,ai_special_services:specialConfig}),signal:AbortSignal.timeout(20000)});
   var data=await sync.json().catch(function(){return {}});
   if(!sync.ok||!data.saved)throw new Error(data.error||'Cloudflare runtime sync failed.');
   $('aic-status').textContent='Saved securely and synced to AI runtime ('+data.featureCount+' feature(s), '+data.keyCount+' key(s)).';
