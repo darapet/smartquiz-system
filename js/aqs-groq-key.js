@@ -880,6 +880,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
+    window.libGroqFetch        = function(b, o) { return _featureFetch('library', b, o, function(){ return window.groqFetch(b, o); }); };
     window.quizGroqFetch       = function(b, o) { return _featureFetch('quiz', b, o, function(){ return _pools.quiz.fetch(b, o); }); };
     window.challengeGroqFetch  = function(b, o) { return _featureFetch('challenge', b, o, function(){ return _pools.challenge.fetch(b, o); }); };
     window.studyhubGroqFetch   = function(b, o) { return _featureFetch('studyhub', b, o, function(){ return _pools.studyhub.fetch(b, o); }); };
