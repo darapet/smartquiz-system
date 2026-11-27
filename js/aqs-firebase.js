@@ -2986,7 +2986,7 @@ async function actionGetSettings() {
                     catch (restoreError) { console.warn('[aqs] Could not restore Groq keys to settings/main:', restoreError.message); }
                 }
                 settings.groq_keys = mainGroqKeys;
-                if (privateSnap.exists()) {
+                if (privateSnap.exists() || Object.keys(legacyPrivate).length) {
                     settings.brevo_api_key = privateData.brevo_api_key || '';
                     ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
                         settings[k] = privateSnap.data()[k] || '';
