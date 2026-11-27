@@ -29,6 +29,8 @@ on:
       - 'daraquiz-mobile/www/studyhub-flashcards-dashboard.html'
       - 'daraquiz-mobile/www/studyhub-notes-dashboard.html'
       - 'daraquiz-mobile/www/studyhub-gpa-dashboard.html'
+      - 'daraquiz-mobile/www/css/studyhub-feature-dashboards.css'
+      - 'daraquiz-mobile/www/js/studyhub-feature-dashboards.js'
       - 'functions/test/studyhub-guided.test.js'
       - '.github/workflows/challenge-backend-check.yml'
   pull_request:
@@ -58,6 +60,8 @@ on:
       - 'daraquiz-mobile/www/studyhub-flashcards-dashboard.html'
       - 'daraquiz-mobile/www/studyhub-notes-dashboard.html'
       - 'daraquiz-mobile/www/studyhub-gpa-dashboard.html'
+      - 'daraquiz-mobile/www/css/studyhub-feature-dashboards.css'
+      - 'daraquiz-mobile/www/js/studyhub-feature-dashboards.js'
       - 'functions/test/studyhub-guided.test.js'
       - '.github/workflows/challenge-backend-check.yml'
 
