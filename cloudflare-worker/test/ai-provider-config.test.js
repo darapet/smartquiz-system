@@ -219,7 +219,7 @@ test('transcription reads the central StudyHub Groq key instead of the legacy ke
       method: 'POST', headers: { Authorization: 'Bearer test-token' }, body: form,
     }), env);
     const data = await response.json();
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, data.error || 'Unexpected transcription response');
     assert.equal(data.text, 'Central transcription works');
     assert.equal(calls.length, 1);
     assert.equal(calls[0].authorization, 'Bearer gsk-studyhub-transcribe-key-123456789');
