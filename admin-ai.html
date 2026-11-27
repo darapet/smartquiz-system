@@ -224,6 +224,8 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 .aic-key-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 13px}.aic-key-heading h2{margin:0 0 4px!important;font-size:1rem!important}.aic-key-heading .aic-sub{margin:0!important}
 .aic-capacity-pill{flex:0 0 auto;padding:7px 10px;border:1px solid #e5e1ff;border-radius:999px;background:#f5f2ff;color:#6650c8;font-size:.7rem;font-weight:800}
 @media(max-width:650px){.aic-role-switch{gap:7px;padding:5px}.aic-role-tab{padding:12px 9px;gap:8px}.aic-role-tab strong{font-size:.76rem}.aic-role-tab small{font-size:.65rem}.aic-provider-workspace{padding:12px}.aic-provider-workspace .aic-provider-row{grid-template-columns:1fr!important}.aic-key-heading{align-items:flex-start}.aic-capacity-pill{font-size:.64rem;padding:6px 8px}}
+
+.aic-key-present{display:inline-flex;align-items:center;gap:5px;color:#168567;font-size:.69rem;font-weight:800;letter-spacing:.08em}.aic-key-empty{color:#9aa3b6;font-size:.69rem;font-weight:700}.aic-key input::placeholder{color:#8d96aa;opacity:1;letter-spacing:.04em;font-size:.76rem}
 </style></head>
 <body data-aqs-page="admin-settings" data-aqs-page-group="admin">
 <button class="aic-mobile-menu" id="aic-mobile-menu" type="button" aria-label="Open admin navigation" aria-expanded="false">☰</button><div class="aic-sidebar-backdrop" id="aic-sidebar-backdrop"></div>
@@ -288,7 +290,17 @@ function provider(id){return providers.find(function(p){return p.id===id})||prov
 function currentProvider(c){return activeRole==='primary'?c.primary:(c.fallback||'')}
 function currentModel(c){return activeRole==='primary'?c.model:(c.fallbackModel||'')}
 function renderModelOptions(providerId){var models=provider(providerId).models||[];$('aic-current-models').innerHTML=models.map(function(model){return '<option value="'+model+'"></option>'}).join('')}
-function ensureFeature(id){if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-120b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{}};if(!config[id].keys)config[id].keys={}}
+function ensureFeature(id){
+ if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-120b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{primary:[],fallback:[]}};
+ var c=config[id];if(!c.keys||typeof c.keys!=='object')c.keys={};
+ // Migrate the old provider-key pools to the primary route only; never share them with fallback.
+ if(!Array.isArray(c.keys.primary)||!Array.isArray(c.keys.fallback)){
+  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:[];
+  c.keys={primary:primaryPool.slice(0,50),fallback:[]};
+ }
+ c.keys.primary=Array.isArray(c.keys.primary)?c.keys.primary.slice(0,50):[];
+ c.keys.fallback=Array.isArray(c.keys.fallback)?c.keys.fallback.slice(0,50):[];
+}
 function renderNav(){
 $('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
 $('aic-feature-nav').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){active=b.dataset.feature;renderNav();renderFeature()})});
@@ -315,13 +327,17 @@ renderModelOptions(selected);
 renderKeys();
 }
 function renderKeys(){
-var c=config[active],owner=currentProvider(c),arr=(c.keys[owner]||[]);
-$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){var val=arr[i]||'';return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span>'+(val?'Saved':'Empty')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?'Saved key — leave blank to keep it':'Paste '+provider(owner).name+' key')+'" value=""></div>'}).join('');
-$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);c.keys[owner]=c.keys[owner]||[];if(input.value.trim())c.keys[owner][idx]=input.value.trim();})});
-$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[owner]=c.keys[owner]||[];c.keys[owner][idx]='';renderKeys();stats()})});
+var c=config[active],owner=currentProvider(c),role=activeRole,arr=c.keys[role]||[];
+$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){
+ var val=arr[i]||'',mask=val?'••••••••••••••••':'';
+ return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span class="'+(val?'aic-key-present':'aic-key-empty')+'">'+(val?'● Key stored':'Empty slot')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?mask+'  (enter new key to replace)':'Paste '+provider(owner).name+' key')+'" value="" aria-label="'+(role==='primary'?'Primary':'Fallback')+' API key slot '+(i+1)+'"></div>';
+}).join('');
+$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);if(!c.keys[role])c.keys[role]=[];if(input.value.trim())c.keys[role][idx]=input.value.trim();})});
+$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[role][idx]='';renderKeys();stats()})});
+$('aic-key-description').textContent='Separate '+(role==='primary'?'primary':'fallback')+' key pool for '+provider(owner).name+'. '+arr.filter(Boolean).length+' of 50 slots are in use.';
 }
 function stats(){
-var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
+var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});n+=(keys.primary||[]).filter(Boolean).length+(keys.fallback||[]).filter(Boolean).length;});
 $('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
 }
 async function loadRuntimeStatus(){
@@ -385,7 +401,7 @@ if(!existing||!Object.keys(existing).length){
 }
 features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
-if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported from General Settings. Save a feature to store them in the new secure runtime.';
+if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported into the primary key pool. Fallback has its own separate 50 slots.';
 renderNav();renderFeature();stats();loadRuntimeStatus();
 if(migrated){$('aic-status').textContent='Migrating existing AI key pools into the secure runtime…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
@@ -440,7 +456,7 @@ async function testProviderKey(owner,key,model){
 $('aic-test').addEventListener('click',async function(){
  var owner=currentProvider(config[active]),inputs=[].slice.call($('aic-key-grid').querySelectorAll('input'));
  var entered=inputs.filter(function(x){return x.value.trim()}).map(function(x){return {slot:Number(x.dataset.slot)+1,key:x.value.trim()}});
- var saved=(config[active].keys[owner]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
+ var saved=(config[active].keys[activeRole]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
  var tests=entered.length?entered:saved;
  if(!tests.length){$('aic-status').textContent='No key to test. Enter a key or save one first.';return}
  var p=provider(owner),model=currentModel(config[active]);
