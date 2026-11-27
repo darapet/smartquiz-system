@@ -401,7 +401,7 @@ if(!existing||!Object.keys(existing).length){
   }
   Object.keys(pools).forEach(function(pid){
    var values=Array.isArray(pools[pid])?pools[pid].filter(function(k){return typeof k==='string'&&k.trim().length>=10}):[];
-   if(values.length&&!config[f.id].keys[pid]){config[f.id].keys[pid]=values.slice(0,50);migrated+=values.length}
+   if(values.length&&!config[f.id].keys.primary[pid]){config[f.id].keys.primary[pid]=values.slice(0,50);migrated+=values.length}
   });
  });
 }
