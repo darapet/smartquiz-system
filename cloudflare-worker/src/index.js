@@ -1656,7 +1656,7 @@ async function handleAITranscribe(request, env) {
     for (const key of legacy.keys) if (!keys.includes(key)) keys.push(key);
     const envKey = String(env.GROQ_API_KEY || '').trim();
     if (envKey.startsWith('gsk_') && envKey.length > 20 && !keys.includes(envKey)) keys.push(envKey);
-    if (!keys.length) return json(request, env, { error: 'No Groq key is configured in StudyHub AI or Main AI. Select Groq for a primary/fallback route and save a key.' }, 503);
+    if (!keys.length) return json(request, env, { error: 'No Groq key is configured in StudyHub AI or Main AI. Select Groq for a primary/fallback route and save a key.', diagnostic: { configFound: !!stored, featureIds: Object.keys(features), studyhubPrimaryGroqCount: Array.isArray(features.studyhub && features.studyhub.keys && features.studyhub.keys.primary && features.studyhub.keys.primary.groq) ? features.studyhub.keys.primary.groq.length : -1, mainPrimaryGroqCount: Array.isArray(features.main && features.main.keys && features.main.keys.primary && features.main.keys.primary.groq) ? features.main.keys.primary.groq.length : -1 } }, 503);
 
     let upstream = null;
     let result = {};
