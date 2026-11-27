@@ -84,7 +84,19 @@
       async function _quoteFetch(prompt) {
           await _loadQuoteKeys();
 
-          /* 1. Try dedicated quote keys (Groq) */
+          /* 1. Use the dedicated server-side Quote AI route when available. */
+          if (typeof window.quoteGroqFetch === 'function') {
+              try {
+                  var secureRes = await window.quoteGroqFetch({
+                      messages: [{ role: 'user', content: prompt }],
+                      max_tokens: 5500,
+                      temperature: 1.1
+                  });
+                  if (secureRes && secureRes.ok) { _lastQuoteErr = ''; return await secureRes.json(); }
+              } catch(e) { _lastQuoteErr = 'secure_route_error'; }
+          }
+
+          /* 2. Legacy dedicated quote keys remain as a compatibility fallback. */
           if (_QK.length) {
               var start;
               try { start = parseInt(localStorage.getItem(_QK_IDX_LS) || '0') || 0; } catch(e) { start = 0; }

@@ -1168,15 +1168,67 @@ async function handleAIConfig(request, env) {
     if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
     if (!env.EMAIL_CONFIG) return json(request, env, { error: 'Cloudflare KV storage is not configured.' }, 503);
     const payload = await request.json().catch(() => ({}));
-    const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
-    const keys = rawKeys.map((key) => String(key || '').trim()).filter((key) => key.startsWith('gsk_') && key.length > 20).slice(0, 20);
-    if (rawKeys.length && !keys.length) return json(request, env, { error: 'No valid Groq API keys were supplied. Check the Groq keys in Admin Settings.' }, 400);
-    const model = String(payload.groq_model || '').trim().slice(0, 100);
-    await env.EMAIL_CONFIG.put(GROQ_AI_CONFIG_KEY, JSON.stringify({ keys, model, updatedAt: Date.now(), updatedBy: user.email }));
-    return json(request, env, { saved: true, keyCount: keys.length, model });
+    const allowedProviders = new Set(['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface']);
+    const normalized = {};
+    const source = payload && payload.ai_provider_config && typeof payload.ai_provider_config === 'object'
+      ? payload.ai_provider_config : null;
+    if (source) {
+      for (const [featureId, raw] of Object.entries(source).slice(0, 30)) {
+        const id = String(featureId || '').toLowerCase();
+        if (!/^[a-z0-9_-]{1,32}$/.test(id) || !raw || typeof raw !== 'object') continue;
+        const keys = {};
+        const rawPools = raw.keys && typeof raw.keys === 'object' ? raw.keys : {};
+        for (const provider of allowedProviders) {
+          const values = Array.isArray(rawPools[provider]) ? rawPools[provider] : [];
+          keys[provider] = values.map((value) => String(value || '').trim())
+            .filter((value) => value.length >= 10 && value.length <= 512 && !/[\r\n]/.test(value))
+            .slice(0, 50);
+        }
+        const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
+        normalized[id] = {
+          primary: provider(raw.primary) || 'groq',
+          model: String(raw.model || '').trim().slice(0, 120),
+          fallback: provider(raw.fallback),
+          fallbackModel: String(raw.fallbackModel || '').trim().slice(0, 120),
+          keys,
+          updatedAt: Date.now()
+        };
+      }
+      await env.EMAIL_CONFIG.put('ai-provider-config', JSON.stringify({
+        features: normalized,
+        updatedAt: Date.now(),
+        updatedBy: user.email
+      }));
+    }
+
+    // Keep the established Groq sync contract working for older admin pages.
+    if (Array.isArray(payload.groq_keys) || Object.prototype.hasOwnProperty.call(payload, 'groq_model')) {
+      const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
+      const keys = rawKeys.map((key) => String(key || '').trim()).filter((key) => key.startsWith('gsk_') && key.length > 20).slice(0, 20);
+      if (rawKeys.length && !keys.length) return json(request, env, { error: 'No valid Groq API keys were supplied. Check the Groq keys in Admin Settings.' }, 400);
+      const model = String(payload.groq_model || '').trim().slice(0, 100);
+      await env.EMAIL_CONFIG.put(GROQ_AI_CONFIG_KEY, JSON.stringify({ keys, model, updatedAt: Date.now(), updatedBy: user.email }));
+    }
+    const featureCount = Object.keys(normalized).length;
+    const keyCount = Object.values(normalized).reduce((sum, feature) =>
+      sum + Object.values(feature.keys).reduce((count, values) => count + values.length, 0), 0);
+    return json(request, env, { saved: true, featureCount, keyCount });
   } catch (error) {
     return json(request, env, { error: error && error.message ? error.message : 'Could not sync AI settings.' }, Number(error && error.httpStatus) || 500);
   }
+}
+
+async function recordAIProviderHealth(env, provider, result) {
+  if (!env.EMAIL_CONFIG || !provider) return;
+  const safe = {
+    provider,
+    ok: result.ok === true,
+    status: Number(result.status) || 0,
+    ms: Number(result.ms) || 0,
+    message: String(result.msg || '').replace(/[\r\n\t]/g, ' ').slice(0, 160),
+    testedAt: Date.now()
+  };
+  await env.EMAIL_CONFIG.put('ai-provider-health:' + provider, JSON.stringify(safe));
 }
 
 async function handleAIKeyTest(request, env) {
@@ -1193,34 +1245,190 @@ async function handleAIKeyTest(request, env) {
     const payload = await request.json().catch(() => ({}));
     const provider = String(payload.provider || '').trim().toLowerCase();
     const key = String(payload.key || '').trim();
-    if (!['groq', 'mistral'].includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
-    if (key.length < 20 || key.length > 512 || /[\r\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
-    const model = provider === 'groq'
-      ? (String(payload.model || env.GROQ_MODEL || 'openai/gpt-oss-20b').trim().slice(0, 100) || 'openai/gpt-oss-20b')
-      : (String(payload.model || 'mistral-small-latest').trim().slice(0, 100) || 'mistral-small-latest');
-    const endpoint = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.mistral.ai/v1/chat/completions';
+    const supported = ['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface'];
+    if (!supported.includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
+    if (key.length < 10 || key.length > 512 || /[\r\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
+    const defaults = {
+      openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
+      deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
+      mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
+    };
+    const model = String(payload.model || defaults[provider]).trim().slice(0, 120) || defaults[provider];
+    let endpoint, headers = { 'Content-Type': 'application/json' }, body;
+    if (provider === 'gemini') {
+      endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+      body = { contents: [{ parts: [{ text: 'Reply with OK.' }] }], generationConfig: { maxOutputTokens: 4 } };
+    } else if (provider === 'claude') {
+      endpoint = 'https://api.anthropic.com/v1/messages';
+      headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01';
+      body = { model, max_tokens: 4, messages: [{ role: 'user', content: 'Reply with OK.' }] };
+    } else {
+      const endpoints = {
+        openai: 'https://api.openai.com/v1/chat/completions',
+        deepseek: 'https://api.deepseek.com/chat/completions',
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+        mistral: 'https://api.mistral.ai/v1/chat/completions',
+        huggingface: 'https://router.huggingface.co/v1/chat/completions'
+      };
+      endpoint = endpoints[provider];
+      headers.Authorization = 'Bearer ' + key;
+      body = { model, messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 4, temperature: 0 };
+    }
     const started = Date.now();
     let upstream;
     try {
       upstream = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 3, temperature: 0 }),
-        signal: AbortSignal.timeout(15000),
+        method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(18000)
       });
     } catch (networkError) {
       const timedOut = networkError && (networkError.name === 'TimeoutError' || networkError.name === 'AbortError');
-      return json(request, env, { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider. Try again shortly.' });
+      const health = { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider.' };
+      await recordAIProviderHealth(env, provider, health);
+      return json(request, env, health);
     }
     const ms = Date.now() - started;
-    const body = await upstream.json().catch(() => ({}));
-    if (upstream.ok) return json(request, env, { ok: true, status: upstream.status, ms, msg: 'Key is active.' });
-    const rawMessage = String(body && body.error && (body.error.message || body.error) || body && body.message || 'Provider rejected the request.').replace(/[\r\n\t]/g, ' ').slice(0, 140);
+    const responseBody = await upstream.json().catch(() => ({}));
+    if (upstream.ok) {
+      const health = { ok: true, status: upstream.status, ms, msg: 'Key is active.' };
+      await recordAIProviderHealth(env, provider, health);
+      return json(request, env, health);
+    }
+    const rawMessage = String(responseBody && responseBody.error && (responseBody.error.message || responseBody.error) || responseBody && responseBody.message || responseBody && responseBody.detail || 'Provider rejected the request.').replace(/[\r\n\t]/g, ' ').slice(0, 140);
     const label = upstream.status === 401 || upstream.status === 403 ? 'Invalid or unauthorized key' : upstream.status === 429 ? 'Rate limited or quota exhausted' : 'Provider returned an error';
-    return json(request, env, { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage });
+    const health = { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage };
+    await recordAIProviderHealth(env, provider, health);
+    return json(request, env, health);
   } catch (error) {
     const status = Number(error && error.httpStatus) || 500;
     return json(request, env, { error: error && error.message ? error.message : 'AI key test failed.' }, status);
+  }
+}
+
+
+const AI_PROVIDER_CONFIG_KEY = 'ai-provider-config';
+
+async function callConfiguredAIProvider(provider, model, apiKey, messages, options) {
+  const maxTokens = options.maxTokens;
+  const temperature = options.temperature;
+  let endpoint = '';
+  let headers = { 'Content-Type': 'application/json' };
+  let body = {};
+  if (provider === 'gemini') {
+    endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
+    const contents = messages.filter((item) => item.role !== 'system').map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content }]
+    }));
+    const system = messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n');
+    body = { contents, generationConfig: { maxOutputTokens: maxTokens, temperature }, ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}) };
+  } else if (provider === 'claude') {
+    endpoint = 'https://api.anthropic.com/v1/messages';
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+    body = {
+      model, max_tokens: maxTokens, temperature,
+      system: messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n'),
+      messages: messages.filter((item) => item.role !== 'system')
+    };
+  } else {
+    const endpoints = {
+      openai: 'https://api.openai.com/v1/chat/completions',
+      deepseek: 'https://api.deepseek.com/chat/completions',
+      groq: 'https://api.groq.com/openai/v1/chat/completions',
+      mistral: 'https://api.mistral.ai/v1/chat/completions',
+      huggingface: 'https://router.huggingface.co/v1/chat/completions'
+    };
+    endpoint = endpoints[provider];
+    headers.Authorization = 'Bearer ' + apiKey;
+    body = { model, messages, max_tokens: maxTokens, temperature };
+  }
+  const response = await fetch(endpoint, {
+    method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45000)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(String(result && result.error && (result.error.message || result.error) || result && result.message || 'AI provider request failed.').slice(0, 300));
+    error.status = response.status;
+    throw error;
+  }
+  if (provider === 'gemini') {
+    const text = (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts || []).map((part) => part.text || '').join('');
+    return { id: 'gemini-' + Date.now(), object: 'chat.completion', model, choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }] };
+  }
+  if (provider === 'claude') {
+    const text = (result.content || []).filter((part) => part.type === 'text').map((part) => part.text || '').join('');
+    return { id: result.id || 'claude-' + Date.now(), object: 'chat.completion', model, choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: result.stop_reason || 'stop' }] };
+  }
+  return result;
+}
+
+async function runConfiguredAI(env, featureId, messages, options) {
+  if (!env.EMAIL_CONFIG) return null;
+  const stored = await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null);
+  const feature = stored && stored.features && stored.features[featureId];
+  if (!feature) return null;
+  const providerDefaults = {
+    openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
+    deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
+    mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
+  };
+  const attempts = [
+    { provider: feature.primary, model: String(feature.model || '').trim() || providerDefaults[feature.primary] },
+    { provider: feature.fallback, model: String(feature.fallbackModel || '').trim() || providerDefaults[feature.fallback] }
+  ].filter((item, index, list) => item.provider && providerDefaults[item.provider] && (index === 0 || item.provider !== list[0].provider));
+  let lastError = null;
+  for (const attempt of attempts) {
+    const keys = feature.keys && Array.isArray(feature.keys[attempt.provider]) ? feature.keys[attempt.provider].slice(0, 50) : [];
+    for (const key of keys) {
+      try {
+        const result = await callConfiguredAIProvider(attempt.provider, attempt.model, key, messages, options);
+        return { result, provider: attempt.provider, model: attempt.model };
+      } catch (error) {
+        lastError = error;
+        if (![401, 403, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
+      }
+    }
+  }
+  if (lastError) {
+    const error = new Error('Configured AI providers are unavailable: ' + lastError.message);
+    error.httpStatus = Number(lastError.status) || 502;
+    throw error;
+  }
+  return null;
+}
+
+async function handleAIStatus(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST to read AI runtime status.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+    if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
+    const stored = env.EMAIL_CONFIG ? await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null) : null;
+    const health = {};
+    for (const provider of ['openai', 'gemini', 'claude', 'deepseek', 'groq', 'mistral', 'huggingface']) {
+      health[provider] = env.EMAIL_CONFIG
+        ? await env.EMAIL_CONFIG.get('ai-provider-health:' + provider, 'json').catch(() => null)
+        : null;
+    }
+    const features = Object.entries(stored && stored.features || {}).map(([id, feature]) => ({
+      id,
+      primary: feature.primary || '',
+      fallback: feature.fallback || '',
+      keyCounts: Object.fromEntries(Object.entries(feature.keys || {}).map(([provider, keys]) => [provider, Array.isArray(keys) ? keys.length : 0]))
+    }));
+    return json(request, env, {
+      features,
+      health,
+      rateLimit: { perUserPerMinute: 12, enforcement: 'active' },
+      checkedAt: Date.now()
+    });
+  } catch (error) {
+    return json(request, env, { error: error && error.message ? error.message : 'Could not read AI runtime status.' }, Number(error && error.httpStatus) || 500);
   }
 }
 
@@ -1269,6 +1477,14 @@ async function handleAI(request, env) {
       if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
       await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
     }
+
+    const featureId = String(payload.feature || 'main').toLowerCase();
+    if (!/^[a-z0-9_-]{1,32}$/.test(featureId)) return json(request, env, { error: 'Invalid AI feature identifier.' }, 400);
+    const configured = await runConfiguredAI(env, featureId, messages, {
+      maxTokens: Math.max(64, Math.min(6000, Number(payload.max_tokens) || 1200)),
+      temperature: Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7))
+    });
+    if (configured) return json(request, env, configured.result);
 
     const aiConfig = await getGroqAIConfig(env);
     const keys = aiConfig.keys.slice();
@@ -1367,6 +1583,9 @@ export default {
     }
     if (url.pathname === '/api/ai/test' || url.pathname === '/api/ai/test/') {
       return handleAIKeyTest(request, env);
+    }
+    if (url.pathname === '/api/ai/status' || url.pathname === '/api/ai/status/') {
+      return handleAIStatus(request, env);
     }
     if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
       return handleAITranscribe(request, env);

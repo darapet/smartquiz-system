@@ -2985,6 +2985,8 @@ async function actionGetSettings() {
                     settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
                     settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
+                    /* AI Control Centre credentials/config are private and admin-only. */
+                    settings.ai_provider_config = privateSnap.data().ai_provider_config || {};
                 }
             }
             window._aqsSettingsLoadError = '';
@@ -3028,11 +3030,11 @@ async function actionSaveSettings(data) {
         'puzzle_groq_keys',
         'quizstudio_groq_keys','darasocial_post_slot',
         'darasocial_course_enabled','darasocial_course_interval_minutes','darasocial_course_last_post_at','darasocial_news_enabled','darasocial_news_interval_hours','darasocial_news_last_post_at','darasocial_course_index','darasocial_news_index',
-        'gemini_tts_keys'
+        'gemini_tts_keys','ai_provider_config'
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || k === 'ai_provider_config') privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
@@ -3100,7 +3102,8 @@ async function actionSaveSettings(data) {
         var privateMerge = {};
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
-            if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            if (k === 'ai_provider_config') privateMerge[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+            else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
             else privateMerge[k] = String(v || '').trim();
