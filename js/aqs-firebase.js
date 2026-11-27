@@ -2985,6 +2985,8 @@ async function actionGetSettings() {
                     settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
                     settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
+                    /* AI Control Centre credentials/config are private and admin-only. */
+                    settings.ai_provider_config = privateSnap.data().ai_provider_config || {};
                 }
             }
             window._aqsSettingsLoadError = '';
@@ -3028,11 +3030,11 @@ async function actionSaveSettings(data) {
         'puzzle_groq_keys',
         'quizstudio_groq_keys','darasocial_post_slot',
         'darasocial_course_enabled','darasocial_course_interval_minutes','darasocial_course_last_post_at','darasocial_news_enabled','darasocial_news_interval_hours','darasocial_news_last_post_at','darasocial_course_index','darasocial_news_index',
-        'gemini_tts_keys'
+        'gemini_tts_keys','ai_provider_config'
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || k === 'ai_provider_config') privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
