@@ -1533,7 +1533,8 @@ async function handleAI(request, env) {
     if (!/^[a-z0-9_-]{1,32}$/.test(featureId)) return json(request, env, { error: 'Invalid AI feature identifier.' }, 400);
     const configured = await runConfiguredAI(env, featureId, messages, {
       maxTokens: Math.max(64, Math.min(6000, Number(payload.max_tokens) || 1200)),
-      temperature: Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7))
+      temperature: Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7)),
+      stream: payload.stream === true
     });
     if (configured) {
       if (payload.stream === true) {
