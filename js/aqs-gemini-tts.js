@@ -58,10 +58,10 @@
 
     /* ── Key management ───────────────────────────────────────────── */
     function setKeys(arr) {
-        if (!Array.isArray(arr)) return;
-        _keys = arr.filter(function (k) { return k && String(k).trim().length > 20; })
-                   .map(function (k) { return String(k).trim(); });
-        window._AQS_GEMINI_TTS_KEYS = _keys;
+        /* Compatibility shim: never retain or publish API keys in browser memory. */
+        _keys = [];
+        _serverConfigured = Array.isArray(arr) && arr.length > 0;
+        window._AQS_GEMINI_TTS_KEYS = [];
     }
 
     function activeKeys() {
