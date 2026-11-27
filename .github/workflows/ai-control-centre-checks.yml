@@ -1,0 +1,41 @@
+name: AI Control Centre checks
+
+on:
+  push:
+    branches:
+      - feat/ai-control-centre
+    paths:
+      - 'cloudflare-worker/**'
+      - 'js/aqs-groq-key.js'
+      - 'js/aqs-quotes.js'
+      - 'admin-ai.html'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'cloudflare-worker/**'
+      - 'js/aqs-groq-key.js'
+      - 'js/aqs-quotes.js'
+      - 'admin-ai.html'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: |
+          node --check cloudflare-worker/src/index.js
+          node --check js/aqs-groq-key.js
+          node --check js/aqs-quotes.js
+      - name: Run Cloudflare Worker tests
+        working-directory: cloudflare-worker
+        run: npm test
