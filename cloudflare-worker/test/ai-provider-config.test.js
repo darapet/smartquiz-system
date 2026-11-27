@@ -213,6 +213,9 @@ test('transcription reads the central StudyHub Groq key instead of the legacy ke
       main: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-main-transcribe-key-123456789'] }, fallback: {} } },
       studyhub: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-studyhub-transcribe-key-123456789'] }, fallback: {} } },
     });
+    const savedConfig = await env.EMAIL_CONFIG.get('ai-provider-config', 'json');
+    assert.ok(savedConfig && savedConfig.features && savedConfig.features.studyhub, JSON.stringify(savedConfig));
+    assert.deepEqual(savedConfig.features.studyhub.keys.primary.groq, ['gsk-studyhub-transcribe-key-123456789']);
     const form = new FormData();
     form.append('file', new Blob(['audio bytes'], { type: 'audio/webm' }), 'voice.webm');
     const response = await worker.fetch(new Request('https://worker.test/api/ai/transcribe', {
