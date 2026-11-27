@@ -99,7 +99,7 @@ $('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEve
 }
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
-$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
+$('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
 }
 function load(){
 if(typeof window.aqsAjax!=='function')return setTimeout(load,250);
@@ -125,6 +125,10 @@ if(!existing||!Object.keys(existing).length){
  features.forEach(function(f){
   ensureFeature(f.id);
   var pools=legacy[f.id]||{};
+  if(f.id!=='main'){
+   pools.mistral=Array.isArray(settings.mistral_keys)?settings.mistral_keys:[];
+   pools.huggingface=Array.isArray(settings.hf_keys)?settings.hf_keys:[];
+  }
   Object.keys(pools).forEach(function(pid){
    var values=Array.isArray(pools[pid])?pools[pid].filter(function(k){return typeof k==='string'&&k.trim().length>=10}):[];
    if(values.length&&!config[f.id].keys[pid]){config[f.id].keys[pid]=values.slice(0,50);migrated+=values.length}
