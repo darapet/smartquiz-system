@@ -78,7 +78,7 @@
       {name:'AI Notes',icon:'📝',value:n.length,sub:'Saved study notes',href:'studyhub-notes-dashboard.html'},
       {name:'Study Planner',icon:'🗓️',value:p.length,sub:'Saved study plans',href:'studyhub-guided-dashboard.html'},
       {name:'AI Assistant',icon:'✧',value:a.length,sub:'Saved conversations',href:'ai-teacher.html'},
-      {name:'GPA Calculator',icon:'📊',value:g.length,sub:'Saved GPA calculations',href:'studyhub.html'}
+      {name:'GPA Calculator',icon:'📊',value:g.length,sub:'Saved GPA calculations',href:'studyhub-gpa-create.html'}
     ];
   }
   function chartBars(ev){
