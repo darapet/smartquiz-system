@@ -672,4 +672,64 @@ window.shGuidedCloseCreateModal=function(){var m=document.getElementById('gs-cre
 }
 </style>
 
+
+<style id="gs-create-fullscreen-fix">
+/* Make the creation wizard a true full-screen workspace, not a floating popup. */
+#gs-create-modal{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  box-sizing:border-box!important;
+  display:none;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  padding:0!important;
+  margin:0!important;
+  background:#f7f8ff!important;
+  z-index:99999!important;
+  isolation:isolate;
+}
+#gs-create-modal.open{display:flex!important}
+#gs-create-modal .gs-modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  z-index:0!important;
+  background:#f7f8ff!important;
+  pointer-events:none;
+  backdrop-filter:none!important;
+}
+#gs-create-modal .gs-modal-panel{
+  position:relative!important;
+  z-index:1!important;
+  flex:0 0 auto!important;
+  width:min(1000px,calc(100% - 40px))!important;
+  max-width:1000px!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  margin:38px auto 56px!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
+body:has(#gs-create-modal.open){overflow:hidden!important}
+@media(max-width:760px){
+  #gs-create-modal .gs-modal-panel{
+    width:calc(100% - 28px)!important;
+    margin:18px auto 32px!important;
+  }
+}
+@media(max-width:390px){
+  #gs-create-modal .gs-modal-panel{
+    width:calc(100% - 22px)!important;
+    margin:12px auto 24px!important;
+  }
+}
+</style>
+
 </body></html>
