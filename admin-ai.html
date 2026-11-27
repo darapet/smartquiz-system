@@ -46,7 +46,7 @@ body{background:var(--ai-bg)!important;color:var(--ai-ink)}
 <h2 style="margin-top:8px">Provider key slots</h2><p class="aic-sub">Choose a key owner above. Up to 50 slots are available for that provider in this feature.</p>
 <div class="aic-keygrid" id="aic-key-grid"></div>
 <div class="aic-actions"><button class="aic-btn primary" id="aic-save">Save feature configuration</button><button class="aic-btn" id="aic-test">Test entered key</button><span class="aic-status" id="aic-status" aria-live="polite"></span></div>
-<div class="aic-notice">Provider switching is saved as configuration first. The live AI request engine must have a server-side adapter for a provider before that provider can safely serve users. Existing Groq / Mistral / Hugging Face routes remain unchanged while adapters are added and verified. Credentials in this new control centre are stored in the admin-only Firestore private settings document.</div>
+<div class="aic-notice">Configured text/chat requests are routed through the Cloudflare Worker using the selected provider and fallback. Streaming requests, multimodal prompts, image generation and voice/TTS still use their existing specialized routes while those integrations are migrated. API keys entered here are stored in the admin-only Firestore private settings document and synced to Worker KV; they are not sent to student browsers.</div>
 </div></section></div></div></main>
 <script>window._AQS_ADMIN_MODE=true;window._AQS_ADMIN_SETTINGS_MODE=true;window.AQS={ajax_url:"firebase",nonce:"",is_admin:true,plugin_url:"./"};</script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
