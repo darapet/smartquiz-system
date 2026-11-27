@@ -107,6 +107,7 @@ body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
 }
 
 </style>
+<link rel="stylesheet" href="css/aqs-studyhub-dashboard-tracker.css?v=1">
 </head>
 <body>
 <div class="mobile-overlay" id="mobileOverlay" onclick="closeMenu()"></div>
@@ -129,7 +130,7 @@ body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
  <header class="topbar">
   <button class="menu-btn" type="button" aria-label="Open menu" onclick="openMenu()">☰</button>
   <label class="search"><span>⌕</span><input id="toolSearch" type="search" placeholder="Search study tools or topics…" autocomplete="off"></label>
-  <div class="topright"><button class="bell" type="button" aria-label="Notifications" onclick="location.href='studyhub.html'">♧</button><div class="profile"><span class="avatar">S</span><span class="profile-name">Student<small>StudyHub learner</small></span></div></div>
+  <div class="topright"><button class="bell" type="button" aria-label="Notifications" onclick="location.href='#studyhubTracker'">♧</button><div class="profile"><span class="avatar">S</span><span class="profile-name">Student<small>StudyHub learner</small></span></div></div>
  </header>
  <section class="hero"><h1>Welcome to <em>StudyHub!</em> 👋</h1><p>Keep learning, keep practising, and make every study session count.</p><a class="primary" href="studyhub-guided-dashboard.html">▶ &nbsp; Start Studying Now →</a><div class="hero-art" aria-hidden="true">🎓📚</div></section>
  <div class="section-head"><h2>⚡ Quick Access</h2><a href="#study-tools">Explore all tools →</a></div>
@@ -141,13 +142,14 @@ body{color:var(--ink);background:var(--bg);letter-spacing:-.01em}
   <a class="tool" href="studyhub-guided-dashboard.html" data-search="study planner schedule plan"><span class="tool-icon">🗓️</span><strong>Study Planner</strong><small>Plan your study</small><span class="arrow">➜</span></a>
  </section>
  <section class="grid-main">
-  <article class="panel"><div class="panel-head"><h2>📊 Your Progress Overview</h2><a href="studyhub.html">View Activity →</a></div><div class="progress-wrap"><div class="ring"><div><strong>—</strong><small>Overall Progress</small></div></div><div class="metrics"><div class="metric"><i>📘</i><span><b>—</b><small>Topics Studied</small></span></div><div class="metric"><i>✅</i><span><b>—</b><small>Questions Answered</small></span></div><div class="metric"><i>◷</i><span><b>—</b><small>Study Time</small></span></div></div><div class="success"><span class="trophy">🌱</span><strong>Your progress starts here</strong><p>Complete a study session or quiz to begin building your learning record.</p><span style="font-size:21px;color:#12a66a">↗</span></div></div></article>
+  <article class="panel"><div class="panel-head"><h2>📊 Your Progress Overview</h2><a href="#studyhubTracker">View Activity →</a></div><div class="progress-wrap"><div class="ring"><div><strong>—</strong><small>Overall Progress</small></div></div><div class="metrics"><div class="metric"><i>📘</i><span><b>—</b><small>Topics Studied</small></span></div><div class="metric"><i>✅</i><span><b>—</b><small>Questions Answered</small></span></div><div class="metric"><i>◷</i><span><b>—</b><small>Study Time</small></span></div></div><div class="success"><span class="trophy">🌱</span><strong>Your progress starts here</strong><p>Complete a study session or quiz to begin building your learning record.</p><span style="font-size:21px;color:#12a66a">↗</span></div></div></article>
   <article class="panel motivation"><div class="panel-head"><h2>⭐ A little motivation</h2></div><blockquote>“Small steps every day lead to big results.”</blockquote><p>Stay consistent. Your effort adds up.</p><a class="small-btn" href="studyhub-guided-dashboard.html">Study More →</a><div class="mountain" aria-hidden="true">⛰️</div></article>
  </section>
  <section class="bottom-grid">
-  <article class="panel"><div class="panel-head"><h2>◷ Recent Activity</h2><a href="studyhub.html">View History →</a></div><div class="empty-row">Your recent quizzes, notes and study sessions will appear here.</div></article>
+  <article class="panel"><div class="panel-head"><h2>◷ Recent Activity</h2><a href="#studyhubTracker">View History →</a></div><div class="empty-row">Your recent quizzes, notes and study sessions will appear here.</div></article>
   <article class="panel"><div class="panel-head"><h2>▥ Quick Stats</h2></div><div class="stats"><div class="stat"><i>📘</i><strong>—</strong><small>Topics Studied</small></div><div class="stat"><i>✅</i><strong>—</strong><small>Questions</small></div><div class="stat"><i>◷</i><strong>—</strong><small>Study Time</small></div><div class="stat"><i>⭐</i><strong>—</strong><small>Best Score</small></div></div></article>
  </section>
+ <section id="studyhubTracker" aria-live="polite"></section>
 </div></main>
 <script>
 function openMenu(){document.getElementById('sidebar').classList.add('open');document.getElementById('mobileOverlay').classList.add('show')}
@@ -155,5 +157,9 @@ function closeMenu(){document.getElementById('sidebar').classList.remove('open')
 document.getElementById('toolSearch').addEventListener('input',function(){var q=this.value.trim().toLowerCase();document.querySelectorAll('#quickTools .tool').forEach(function(card){card.hidden=!!q&&!((card.innerText+' '+(card.dataset.search||'')).toLowerCase().includes(q))})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu()});
 </script>
+<script>window.AQS={ajax_url:"firebase",nonce:"",auth_nonce:"",home_url:"index.html",create_page_url:"quiz-setup.html",studio_url:"studio.html",challenge_url:"challenge.html",user_dashboard_url:"user-dashboard.html",dashboard_url:"dashboard.html",take_url:"take-quiz.html",is_logged_in:true,is_host:true,is_admin:false,groq_key:"",plugin_url:"./"};</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+<script src="js/aqs-studyhub-dashboard-tracker.js?v=1"></script>
 </body>
 </html>
