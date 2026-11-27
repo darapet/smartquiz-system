@@ -5,35 +5,15 @@ body.self-quiz-page{
   background:radial-gradient(circle at 88% 8%,rgba(84,34,219,.09),transparent 27%),#f7f8ff!important;
   color:#17183d!important;font-family:Inter,system-ui,sans-serif;min-width:320px;
 }
-/* Keep the primary site header only; suppress duplicate page/category/mobile bars. */
+/* Self Quiz is a focused workspace: remove every navigation bar on this page. */
+body.self-quiz-page .aqs-site-header,
 body.self-quiz-page .aqs-phase2-page-header,
 body.self-quiz-page #dara-category-nav,
-body.self-quiz-page .aqs-bottom-nav{display:none!important}
+body.self-quiz-page .aqs-bottom-nav,
+body.self-quiz-page nav,
+body.self-quiz-page [class*="nav-bar"],
+body.self-quiz-page [class*="navbar"]{display:none!important}
 body.self-quiz-page.aqs-bottom-nav-page{padding-bottom:0!important}
-body.self-quiz-page .aqs-site-header{
-  position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96)!important;
-  border:0!important;border-bottom:1px solid #e8e9f5!important;
-  box-shadow:0 5px 20px rgba(21,17,60,.06)!important;backdrop-filter:blur(14px);
-}
-body.self-quiz-page .aqs-site-header-inner{
-  width:min(100% - 40px,1320px);min-height:76px;margin:0 auto;padding:10px 0;
-  display:flex;align-items:center;justify-content:space-between;gap:22px;
-}
-body.self-quiz-page .aqs-site-logo{display:flex;align-items:center;gap:10px;flex:none;text-decoration:none}
-body.self-quiz-page .aqs-site-logo svg{width:38px;height:38px}
-body.self-quiz-page .aqs-site-logo-name{font-size:17px;font-weight:850;color:#17183d!important;letter-spacing:-.5px}
-body.self-quiz-page .aqs-site-logo-sub{display:block;font-size:10px;color:#68708d!important;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
-body.self-quiz-page .aqs-site-nav{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}
-body.self-quiz-page .aqs-site-nav-link{
-  display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 13px;
-  border-radius:11px;color:#505875!important;font-size:12px;font-weight:700;text-decoration:none;
-  transition:background .18s,color .18s,transform .18s;
-}
-body.self-quiz-page .aqs-site-nav-link:hover,
-body.self-quiz-page .aqs-site-nav-link.aqs-site-nav-highlight{
-  color:#5422db!important;background:#f0ebff!important;
-}
-body.self-quiz-page .aqs-site-nav-more-toggle{border-radius:11px!important;color:#505875!important}
 body.self-quiz-page .self-quiz-shell{width:min(100% - 40px,1000px);max-width:1000px;margin:0 auto;padding:48px 0 76px;color:#17183d}
 body.self-quiz-page .self-quiz-hero{
   position:relative;overflow:hidden;margin:0 0 27px;padding:34px 36px;border-radius:24px;
@@ -128,10 +108,6 @@ body.self-quiz-page .overall-status{margin:0 0 17px;color:#737b95!important;font
 body.self-quiz-page #start-quiz{width:100%;justify-content:center;min-height:52px;font-size:14px}
 body.self-quiz-page .self-toast{z-index:1000;background:#17133f;color:#fff;padding:13px 18px;border-radius:13px;max-width:calc(100% - 28px);text-align:center}
 @media(max-width:760px){
-  body.self-quiz-page .aqs-site-header-inner{width:calc(100% - 28px);min-height:66px;gap:12px;align-items:flex-start;flex-direction:column}
-  body.self-quiz-page .aqs-site-nav{width:100%;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:2px 0 5px;scrollbar-width:none}
-  body.self-quiz-page .aqs-site-nav::-webkit-scrollbar{display:none}
-  body.self-quiz-page .aqs-site-nav-link{flex:0 0 auto;min-height:36px;padding:0 11px;font-size:11px;white-space:nowrap}
   body.self-quiz-page .self-quiz-shell{width:calc(100% - 28px);padding:25px 0 45px}
   body.self-quiz-page .self-quiz-hero{padding:25px 22px;border-radius:19px;margin-bottom:18px}
   body.self-quiz-page .self-quiz-hero:after{right:-3%;top:15px;font-size:100px}
@@ -149,7 +125,6 @@ body.self-quiz-page .self-toast{z-index:1000;background:#17133f;color:#fff;paddi
   body.self-quiz-page .source-switch button{font-size:11px}
 }
 @media(max-width:390px){
-  body.self-quiz-page .aqs-site-header-inner{width:calc(100% - 22px)}
   body.self-quiz-page .self-quiz-shell{width:calc(100% - 22px)}
   body.self-quiz-page .self-quiz-card,body.self-quiz-page .section-card{padding:16px!important}
   body.self-quiz-page .step-number{width:37px;height:37px}
