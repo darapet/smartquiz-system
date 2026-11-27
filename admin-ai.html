@@ -165,6 +165,7 @@ features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported from General Settings. Save a feature to store them in the new secure runtime.';
 renderNav();renderFeature();stats();loadRuntimeStatus();
+if(migrated){$('aic-status').textContent='Migrating existing AI key pools into the secure runtime…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
 }
 $('aic-key-owner').addEventListener('change',function(){config[active].keyOwner=this.value;renderKeys()});
@@ -194,7 +195,7 @@ window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},async func
   $('aic-status').textContent='Saved in Firestore, but runtime sync failed: '+error.message;
   $('aic-save-state').textContent='Sync needed';
  }
- stats();
+ stats();loadRuntimeStatus();
 });
 });
 async function testProviderKey(owner,key,model){
