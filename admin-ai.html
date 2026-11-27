@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Control Centre — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-admin.css"><style>
+:root{--ai-bg:#f4f7fb;--ai-card:#fff;--ai-ink:#13243a;--ai-muted:#66758a;--ai-line:#e4eaf2;--ai-blue:#315ee8;--ai-purple:#7654e8;--ai-green:#15966b}
+body{background:var(--ai-bg)!important;color:var(--ai-ink)}
+.aic-wrap{max-width:1220px;margin:0 auto;padding:28px 24px 60px}
+.aic-hero{background:linear-gradient(120deg,#13243a,#273d68 60%,#4b42a5);border-radius:22px;padding:28px;color:white;display:flex;justify-content:space-between;gap:20px;align-items:center;box-shadow:0 16px 42px #142c4b22}
+.aic-hero h1{font-size:1.65rem;margin:0 0 8px}.aic-hero p{margin:0;color:#d9e4f5;max-width:650px;line-height:1.55}
+.aic-chip{display:inline-flex;padding:7px 11px;border-radius:999px;background:#ffffff1c;border:1px solid #ffffff35;font-size:.75rem}
+.aic-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+.aic-stat,.aic-panel,.aic-feature{background:var(--ai-card);border:1px solid var(--ai-line);border-radius:16px;padding:17px;box-shadow:0 5px 20px #1a355508}
+.aic-stat small{display:block;color:var(--ai-muted);font-size:.76rem}.aic-stat strong{display:block;font-size:1.45rem;margin-top:6px}
+.aic-layout{display:grid;grid-template-columns:245px minmax(0,1fr);gap:16px}
+.aic-nav{display:flex;flex-direction:column;gap:7px}
+.aic-nav button{border:1px solid transparent;background:transparent;text-align:left;padding:12px;border-radius:11px;color:var(--ai-ink);font-weight:650;cursor:pointer}
+.aic-nav button.active{background:#e9efff;border-color:#d7e1ff;color:#244ed2}
+.aic-main{min-width:0}.aic-panel h2{margin:0 0 6px;font-size:1.15rem}.aic-sub{color:var(--ai-muted);font-size:.83rem;margin:0 0 18px}
+.aic-provider-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.aic-field label{display:block;font-size:.78rem;font-weight:700;margin-bottom:6px}.aic-field select,.aic-field input{width:100%;padding:10px 11px;border:1px solid #dce4ef;border-radius:9px;background:#fff;color:var(--ai-ink);box-sizing:border-box}
+.aic-keygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:440px;overflow:auto;padding:2px}
+.aic-key{border:1px solid var(--ai-line);border-radius:10px;padding:9px;background:#fbfcfe}.aic-key label{font-size:.72rem;color:var(--ai-muted);display:flex;justify-content:space-between;margin-bottom:6px}
+.aic-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.aic-btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:#edf1f7;color:#23364f}.aic-btn.primary{background:var(--ai-blue);color:#fff}.aic-btn:disabled{opacity:.55;cursor:wait}
+.aic-status{font-size:.8rem;color:var(--ai-muted);align-self:center}.aic-feature-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.aic-feature{padding:14px;cursor:pointer;text-align:left;color:var(--ai-ink)}.aic-feature strong{display:block;margin-bottom:5px}.aic-feature small{color:var(--ai-muted)}
+.aic-notice{background:#fff8e8;border:1px solid #f4dfae;color:#775315;border-radius:12px;padding:12px 14px;font-size:.8rem;line-height:1.5;margin-top:14px}
+@media(max-width:850px){.aic-layout{grid-template-columns:1fr}.aic-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.aic-wrap{padding:16px 12px 40px}.aic-hero{padding:20px;display:block}.aic-provider-row,.aic-keygrid,.aic-feature-list{grid-template-columns:1fr}.aic-stats{gap:8px}.aic-stat{padding:13px}}
+</style></head>
+<body data-aqs-page="admin-settings" data-aqs-page-group="admin">
+<header class="aqs-phase2-page-header"><a href="admin-settings.html" class="aqs-phase2-back">← General Settings</a><span class="aqs-phase2-page-title">AI Control Centre</span></header>
+<aside class="aqs-admin-sidebar"><div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div><nav class="aqs-admin-nav">
+<a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a><a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a><a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a><a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> General Settings</a><a href="admin-ai.html" class="active"><span class="aqs-nav-icon">🤖</span> AI Control Centre</a><a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a><a href="admin-update.html"><span class="aqs-nav-icon">🚀</span> App Updates</a><a href="admin.html"><span class="aqs-nav-icon">🛡️</span> Admin Panel</a>
+</nav></aside>
+<main class="aqs-admin-content"><div class="aic-wrap">
+<section class="aic-hero"><div><span class="aic-chip">AI OPERATIONS</span><h1>AI Control Centre</h1><p>Manage providers, credentials, model preferences and fallback plans independently for each AI feature.</p></div><div class="aic-chip" id="aic-save-state">Connecting to settings…</div></section>
+<div class="aic-stats"><div class="aic-stat"><small>AI features</small><strong id="aic-feature-count">9</strong></div><div class="aic-stat"><small>Providers configured</small><strong id="aic-provider-count">0</strong></div><div class="aic-stat"><small>Saved key slots</small><strong id="aic-key-count">0</strong></div><div class="aic-stat"><small>Maximum per provider / feature</small><strong>50</strong></div></div>
+<div class="aic-layout"><aside class="aic-panel"><h2>AI feature pages</h2><p class="aic-sub">Choose a feature to manage its provider and fallback.</p><nav class="aic-nav" id="aic-feature-nav"></nav></aside>
+<section class="aic-main"><div class="aic-panel"><h2 id="aic-feature-title">Main AI</h2><p class="aic-sub" id="aic-feature-desc">Shared AI provider configuration.</p>
+<div class="aic-provider-row">
+<div class="aic-field"><label for="aic-primary">Primary provider</label><select id="aic-primary"></select></div>
+<div class="aic-field"><label for="aic-model">Primary model</label><input id="aic-model" placeholder="Choose a provider first"></div>
+<div class="aic-field"><label for="aic-fallback">Fallback provider</label><select id="aic-fallback"></select></div>
+</div>
+<div class="aic-provider-row"><div class="aic-field"><label for="aic-fallback-model">Fallback model</label><input id="aic-fallback-model" placeholder="Fallback model"></div><div class="aic-field"><label for="aic-key-owner">Key owner / server</label><select id="aic-key-owner"></select></div><div class="aic-field"><label>Slot capacity</label><input value="50 maximum" disabled></div></div>
+<h2 style="margin-top:8px">Provider key slots</h2><p class="aic-sub">Choose a key owner above. Up to 50 slots are available for that provider in this feature.</p>
+<div class="aic-keygrid" id="aic-key-grid"></div>
+<div class="aic-actions"><button class="aic-btn primary" id="aic-save">Save feature configuration</button><button class="aic-btn" id="aic-test">Test entered key</button><span class="aic-status" id="aic-status" aria-live="polite"></span></div>
+<div class="aic-notice">Provider switching is saved as configuration first. The live AI request engine must have a server-side adapter for a provider before that provider can safely serve users. Existing Groq / Mistral / Hugging Face routes remain unchanged while adapters are added and verified. Credentials in this new control centre are stored in the admin-only Firestore private settings document.</div>
+</div></section></div></div></main>
+<script>window._AQS_ADMIN_SETTINGS_MODE=true;</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/aqs-firebase.js"></script>
+<script>
+(function(){
+'use strict';
+var providers=[
+{id:'openai',name:'OpenAI',models:['gpt-4.1-mini','gpt-4.1','gpt-4o-mini','gpt-4o']},
+{id:'gemini',name:'Google Gemini',models:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash']},
+{id:'claude',name:'Anthropic Claude',models:['claude-sonnet-4-5','claude-haiku-4-5','claude-opus-4-1']},
+{id:'deepseek',name:'DeepSeek',models:['deepseek-chat','deepseek-reasoner']},
+{id:'groq',name:'Groq',models:['openai/gpt-oss-20b','openai/gpt-oss-120b','qwen/qwen3.8-27b']},
+{id:'mistral',name:'Mistral',models:['mistral-small-latest','mistral-medium-latest','mistral-large-latest']},
+{id:'huggingface',name:'Hugging Face',models:['openai/gpt-oss-20b']}
+];
+var features=[
+{id:'main',name:'Main AI',desc:'Default shared AI route used by features without a dedicated override.'},
+{id:'library',name:'Library AI',desc:'Library search, summaries and learning assistance.'},
+{id:'quiz',name:'Quiz AI',desc:'Quiz creation and question generation.'},
+{id:'challenge',name:'Challenge AI',desc:'Challenge mode question and response generation.'},
+{id:'studyhub',name:'StudyHub AI',desc:'Study plans, tutoring and learning support.'},
+{id:'textdocs',name:'Text-to-Docs AI',desc:'Document and text conversion workflows.'},
+{id:'puzzle',name:'Puzzle AI',desc:'Puzzle generation and related tasks.'},
+{id:'quizstudio',name:'Quiz Studio AI',desc:'Quiz Studio creation and editing.'},
+{id:'darasocial',name:'Dara Social AI',desc:'Social content and publishing assistance.'}
+];
+var config={},active='main',loaded=false;
+var $=function(id){return document.getElementById(id)};
+function optionList(el,includeEmpty){el.innerHTML=(includeEmpty?'<option value="">None</option>':'')+providers.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')}
+function provider(id){return providers.find(function(p){return p.id===id})||providers[0]}
+function ensureFeature(id){if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-20b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{}};if(!config[id].keys)config[id].keys={}}
+function renderNav(){
+$('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
+$('aic-feature-nav').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){active=b.dataset.feature;renderNav();renderFeature()})});
+}
+function renderFeature(){
+ensureFeature(active);var c=config[active],f=features.find(function(x){return x.id===active});
+$('aic-feature-title').textContent=f.name;$('aic-feature-desc').textContent=f.desc;
+optionList($('aic-primary'),false);optionList($('aic-fallback'),true);optionList($('aic-key-owner'),false);
+$('aic-primary').value=c.primary;$('aic-fallback').value=c.fallback||'';$('aic-key-owner').value=c.keyOwner||c.primary;
+$('aic-model').value=c.model||'';$('aic-fallback-model').value=c.fallbackModel||'';
+renderKeys();
+}
+function renderKeys(){
+var c=config[active],owner=$('aic-key-owner').value||c.primary,arr=(c.keys[owner]||[]);
+$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){var val=arr[i]||'';return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span>'+(val?'Saved':'Empty')+'</span></label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?'Saved key — leave blank to keep it':'Paste '+provider(owner).name+' key')+'" value=""></div>'}).join('');
+$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);c.keys[owner]=c.keys[owner]||[];if(input.value.trim())c.keys[owner][idx]=input.value.trim();})});
+}
+function stats(){
+var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
+$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
+}
+function load(){
+if(typeof window.aqsAjax!=='function')return setTimeout(load,250);
+window.aqsAjax({action:'aqs_get_settings'},function(res){
+if(!res||!res.success){$('aic-save-state').textContent='Could not load settings';return}
+config=(res.data&&res.data.settings&&res.data.settings.ai_provider_config)||{};
+features.forEach(function(f){ensureFeature(f.id)});
+loaded=true;$('aic-save-state').textContent='Settings loaded';renderNav();renderFeature();stats();
+});
+}
+$('aic-key-owner').addEventListener('change',function(){config[active].keyOwner=this.value;renderKeys()});
+$('aic-primary').addEventListener('change',function(){config[active].primary=this.value;if(!config[active].keyOwner)config[active].keyOwner=this.value;});
+$('aic-fallback').addEventListener('change',function(){config[active].fallback=this.value;});
+$('aic-model').addEventListener('change',function(){config[active].model=this.value;});
+$('aic-fallback-model').addEventListener('change',function(){config[active].fallbackModel=this.value;});
+$('aic-save').addEventListener('click',function(){
+if(!loaded)return;var c=config[active];c.primary=$('aic-primary').value;c.fallback=$('aic-fallback').value;c.model=$('aic-model').value.trim();c.fallbackModel=$('aic-fallback-model').value.trim();c.keyOwner=$('aic-key-owner').value;
+var btn=this;btn.disabled=true;$('aic-status').textContent='Saving securely…';
+window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},function(res){btn.disabled=false;$('aic-status').textContent=res&&res.success?'Saved for '+features.find(function(f){return f.id===active}).name:(res&&res.data||'Save failed');$('aic-save-state').textContent=res&&res.success?'Saved':'Save failed';stats()});
+});
+$('aic-test').addEventListener('click',async function(){
+var owner=$('aic-key-owner').value,inp=$('aic-key-grid').querySelector('input'),key=inp&&inp.value.trim();
+if(!key){$('aic-status').textContent='Enter a key in Slot 1 to test it.';return}
+$('aic-status').textContent='Testing provider credentials…';
+/* These tests deliberately do not save or log the credential. Browser CORS policies may block a direct test; server-side tests are required for reliable diagnostics. */
+var p=provider(owner),url='',headers={},method='GET';
+if(owner==='openai'){url='https://api.openai.com/v1/models';headers.Authorization='Bearer '+key}
+else if(owner==='deepseek'){url='https://api.deepseek.com/models';headers.Authorization='Bearer '+key}
+else if(owner==='groq'){url='https://api.groq.com/openai/v1/models';headers.Authorization='Bearer '+key}
+else if(owner==='mistral'){url='https://api.mistral.ai/v1/models';headers.Authorization='Bearer '+key}
+else if(owner==='huggingface'){url='https://huggingface.co/api/whoami-v2';headers.Authorization='Bearer '+key}
+else if(owner==='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key)}
+else if(owner==='claude'){url='https://api.anthropic.com/v1/models';headers['x-api-key']=key;headers['anthropic-version']='2023-06-01'}
+try{var response=await fetch(url,{method:method,headers:headers});$('aic-status').textContent=response.ok?'Provider accepted the key (HTTP '+response.status+').':'Provider returned HTTP '+response.status+'. Check key permissions, account status or rate limits.'}
+catch(e){$('aic-status').textContent='Test could not reach provider from browser (often CORS). This is not proof the key is invalid; a server-side test adapter is needed.'}
+});
+document.addEventListener('aqs:firebase:ready',load,{once:true});if(window._aqsFirebaseReady)load();
+})();
+</script></body></html>
