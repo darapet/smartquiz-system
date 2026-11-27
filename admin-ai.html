@@ -471,11 +471,11 @@ function renderKeys(){
    if(value)arr[idx]=value;
    input.value='';
    renderKeys();
-   stats();
+   stats();renderDashboard();
   });
  });
  $('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){
-  button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);arr[idx]='';renderKeys();stats()});
+  button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);arr[idx]='';renderKeys();stats();renderDashboard()});
  });
  $('aic-key-description').textContent='Only '+provider(owner).name+' keys for the '+(role==='primary'?'Primary':'Fallback')+' route are shown here. '+arr.filter(Boolean).length+' of 50 slots are in use.';
 }
@@ -560,7 +560,7 @@ $('aic-current-provider').addEventListener('change',function(){
  else{c.fallback=next;if(c.fallbackModel&&!provider(next).models.includes(c.fallbackModel))c.fallbackModel='';}
  // Re-render the complete route workspace so provider, model and its own 50 slots stay in sync.
  renderFeature();
- stats();
+ stats();renderDashboard();
 });
 $('aic-current-model').addEventListener('change',function(){var c=config[active];if(activeRole==='primary')c.model=this.value.trim();else c.fallbackModel=this.value.trim();});
 $('aic-save').addEventListener('click',function(){
