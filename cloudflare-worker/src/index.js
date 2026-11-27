@@ -1448,9 +1448,9 @@ async function handleAIStatus(request, env) {
     }
     const special = env.EMAIL_CONFIG ? await env.EMAIL_CONFIG.get(AI_SPECIAL_CONFIG_KEY, 'json').catch(() => null) : null;
     const specialServices = {
-      creatorImage: { configuredKeys: Array.isArray(special && special.creatorImage && special.creatorImage.keys) ? special.creatorImage.keys.length : 0, model: String(special && special.creatorImage && special.creatorImage.model || '') },
-      geminiTTS: { configuredKeys: Array.isArray(special && special.geminiTTS && special.geminiTTS.keys) ? special.geminiTTS.keys.length : 0, model: String(special && special.geminiTTS && special.geminiTTS.model || '') },
-      elevenLabs: { configuredKeys: Array.isArray(special && special.elevenLabs && special.elevenLabs.keys) ? special.elevenLabs.keys.length : 0, model: String(special && special.elevenLabs && special.elevenLabs.model || '') }
+      creatorImage: { configuredKeys: Array.isArray(special && special.creatorImage && special.creatorImage.keys) ? special.creatorImage.keys.length : 0, model: String(special && special.creatorImage && special.creatorImage.model || ''), health: await env.EMAIL_CONFIG?.get('ai-special-health:creator_image', 'json').catch(() => null) || null },
+      geminiTTS: { configuredKeys: Array.isArray(special && special.geminiTTS && special.geminiTTS.keys) ? special.geminiTTS.keys.length : 0, model: String(special && special.geminiTTS && special.geminiTTS.model || ''), health: await env.EMAIL_CONFIG?.get('ai-special-health:gemini_tts', 'json').catch(() => null) || null },
+      elevenLabs: { configuredKeys: Array.isArray(special && special.elevenLabs && special.elevenLabs.keys) ? special.elevenLabs.keys.length : 0, model: String(special && special.elevenLabs && special.elevenLabs.model || ''), health: await env.EMAIL_CONFIG?.get('ai-special-health:elevenlabs', 'json').catch(() => null) || null }
     };
     const features = Object.entries(stored && stored.features || {}).map(([id, feature]) => ({
       id,
