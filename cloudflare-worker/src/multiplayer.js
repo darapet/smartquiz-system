@@ -208,6 +208,15 @@ async function chatOnce(url, key, body, timeoutMs) {
 
 /* Sends a chat request to the AI providers. `vision` sends the request to Groq's image model only. */
 async function askModel(fs, messages, deps, env, { vision = false, maxTokens = 4096 } = {}) {
+  // Multiplayer text generation follows the same Quiz -> Main primary/fallback
+  // routing as the rest of SmartQuiz. Image-reading keeps its vision-specific route.
+  if (!vision && typeof deps.runConfiguredAI === 'function') {
+    const configured = await deps.runConfiguredAI('quiz', messages, { maxTokens, temperature: 0.5 });
+    if (configured && configured.result) {
+      const content = String((((configured.result.choices || [])[0] || {}).message || {}).content || '');
+      if (content.trim().length >= 20) return content;
+    }
+  }
   const settings = await aiSettings(fs);
   /* Groq keys live in Worker storage (same place as /api/ai). Old Firestore keys still work as a fallback. */
   const stored = deps.getGroqConfig ? await deps.getGroqConfig(env).catch(() => ({ keys: [], model: '' })) : { keys: [], model: '' };
