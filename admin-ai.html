@@ -65,6 +65,7 @@ var providers=[
 ];
 var features=[
 {id:'main',name:'Main AI',desc:'Default shared AI route used by features without a dedicated override.'},
+{id:'quote',name:'Quote AI',desc:'Daily educational and motivational quote generation.'},
 {id:'library',name:'Library AI',desc:'Library search, summaries and learning assistance.'},
 {id:'quiz',name:'Quiz AI',desc:'Quiz creation and question generation.'},
 {id:'challenge',name:'Challenge AI',desc:'Challenge mode question and response generation.'},
@@ -104,9 +105,36 @@ function load(){
 if(typeof window.aqsAjax!=='function')return setTimeout(load,250);
 window.aqsAjax({action:'aqs_get_settings'},function(res){
 if(!res||!res.success){$('aic-save-state').textContent='Could not load settings';return}
-config=(res.data&&res.data.settings&&res.data.settings.ai_provider_config)||{};
+var settings=(res.data&&res.data.settings)||{};
+var existing=settings.ai_provider_config;
+config=existing&&typeof existing==='object'?existing:{};
+var migrated=0;
+if(!existing||!Object.keys(existing).length){
+ var legacy={
+  main:{groq:settings.groq_keys||[],mistral:settings.mistral_keys||[],huggingface:settings.hf_keys||[]},
+  quote:{groq:settings.quoteGroqKeys||[]},
+  library:{groq:settings.lib_groq_keys||[]},
+  quiz:{groq:settings.quiz_groq_keys||[]},
+  challenge:{groq:settings.challenge_groq_keys||[]},
+  studyhub:{groq:settings.studyhub_groq_keys||[]},
+  textdocs:{groq:settings.textdocs_groq_keys||[]},
+  puzzle:{groq:settings.puzzle_groq_keys||[]},
+  quizstudio:{groq:settings.quizstudio_groq_keys||[]},
+  darasocial:{groq:settings.darasocial_post_slot||[]}
+ };
+ features.forEach(function(f){
+  ensureFeature(f.id);
+  var pools=legacy[f.id]||{};
+  Object.keys(pools).forEach(function(pid){
+   var values=Array.isArray(pools[pid])?pools[pid].filter(function(k){return typeof k==='string'&&k.trim().length>=10}):[];
+   if(values.length&&!config[f.id].keys[pid]){config[f.id].keys[pid]=values.slice(0,50);migrated+=values.length}
+  });
+ });
+}
 features.forEach(function(f){ensureFeature(f.id)});
-loaded=true;$('aic-save-state').textContent='Settings loaded';renderNav();renderFeature();stats();
+loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
+if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported from General Settings. Save a feature to store them in the new secure runtime.';
+renderNav();renderFeature();stats();
 });
 }
 $('aic-key-owner').addEventListener('change',function(){config[active].keyOwner=this.value;renderKeys()});
