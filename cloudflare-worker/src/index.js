@@ -1176,6 +1176,7 @@ async function handleAIConfig(request, env) {
       for (const [featureId, raw] of Object.entries(source).slice(0, 30)) {
         const id = String(featureId || '').toLowerCase();
         if (!/^[a-z0-9_-]{1,32}$/.test(id) || !raw || typeof raw !== 'object') continue;
+        const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
         const keys = {};
         const rawPools = raw.keys && typeof raw.keys === 'object' ? raw.keys : {};
         const cleanPool = (values) => (Array.isArray(values) ? values : [])
@@ -1197,7 +1198,6 @@ async function handleAIConfig(request, env) {
           keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === legacyProvider ? cleanPool(rawPools[legacyProvider]) : []]));
           keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id, []]));
         }
-        const provider = (value) => allowedProviders.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : '';
         normalized[id] = {
           primary: provider(raw.primary) || 'groq',
           model: String(raw.model || '').trim().slice(0, 120),
