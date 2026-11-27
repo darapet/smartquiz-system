@@ -16,12 +16,14 @@ function closeMenu(){document.getElementById('sidebar').classList.remove('open')
 document.getElementById('menu-btn').addEventListener('click',openMenu);
 document.getElementById('mobile-overlay').addEventListener('click',closeMenu);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMenu();closeNote()}});
-function closeNote(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
-function showNote(note){currentNote=note;document.getElementById('note-modal-title').textContent=note.title||'Saved study note';document.getElementById('note-modal-body').textContent=note.body||'No note content was saved.';modal.classList.add('open');modal.setAttribute('aria-hidden','false')}
-document.getElementById('note-modal-close').addEventListener('click',closeNote);
-modal.addEventListener('click',function(e){if(e.target===modal)closeNote()});
-document.getElementById('note-copy').addEventListener('click',function(){if(!currentNote)return;var text=String(currentNote.body||'');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){this.textContent='Copied';}.bind(this)).catch(function(){alert('Copy is not available in this browser.');})}});
-document.getElementById('note-print').addEventListener('click',function(){if(!currentNote)return;var w=window.open('','_blank');if(!w)return;var safe=esc(currentNote.body||'').replace(/\n/g,'<br>');w.document.write('<!doctype html><html><head><title>'+esc(currentNote.title||'Study notes')+'</title><style>body{font:15px/1.8 Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#18233d}h1{font:700 24px Arial}</style></head><body><h1>'+esc(currentNote.title||'Study notes')+'</h1>'+safe+'</body></html>');w.document.close();w.focus();w.print()});
+function closeNote(){if(!modal)return;modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
+function showNote(note){if(!modal)return;currentNote=note;document.getElementById('note-modal-title').textContent=note.title||'Saved study note';document.getElementById('note-modal-body').textContent=note.body||'No note content was saved.';modal.classList.add('open');modal.setAttribute('aria-hidden','false')}
+if(modal){
+ document.getElementById('note-modal-close').addEventListener('click',closeNote);
+ modal.addEventListener('click',function(e){if(e.target===modal)closeNote()});
+ document.getElementById('note-copy').addEventListener('click',function(){if(!currentNote)return;var text=String(currentNote.body||'');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){this.textContent='Copied';}.bind(this)).catch(function(){alert('Copy is not available in this browser.');})}});
+ document.getElementById('note-print').addEventListener('click',function(){if(!currentNote)return;var w=window.open('','_blank');if(!w)return;var safe=esc(currentNote.body||'').replace(/\n/g,'<br>');w.document.write('<!doctype html><html><head><title>'+esc(currentNote.title||'Study notes')+'</title><style>body{font:15px/1.8 Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#18233d}h1{font:700 24px Arial}</style></head><body><h1>'+esc(currentNote.title||'Study notes')+'</h1>'+safe+'</body></html>');w.document.close();w.focus();w.print()});
+}
 function setStats(items){
  var second=0,third=0,fourth=0;
  if(isNotes){
