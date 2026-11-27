@@ -15,6 +15,7 @@ on:
       - main
     paths:
       - 'cloudflare-worker/**'
+      - 'functions/index.js'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
       - 'admin-ai.html'
