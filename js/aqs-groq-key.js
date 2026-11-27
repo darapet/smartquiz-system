@@ -536,6 +536,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
         return legacyFetch(bodyObj, extraOpts);
     }
+    /* The feature-specific key-pool code is in a separate IIFE below.
+       Export this bridge explicitly so those wrappers do not reference a
+       private lexical binding from this closure. */
+    window._aqsFeatureFetch = _featureFetch;
 
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
@@ -889,15 +893,15 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.libGroqFetch        = function(b, o) { return _featureFetch('library', b, o, function(){ return window.groqFetch(b, o); }); };
-    window.quoteGroqFetch      = function(b, o) { return _featureFetch('quote', b, o, function(){ return window.groqFetch(b, o); }); };
-    window.quizGroqFetch       = function(b, o) { return _featureFetch('quiz', b, o, function(){ return _pools.quiz.fetch(b, o); }); };
-    window.challengeGroqFetch  = function(b, o) { return _featureFetch('challenge', b, o, function(){ return _pools.challenge.fetch(b, o); }); };
-    window.studyhubGroqFetch   = function(b, o) { return _featureFetch('studyhub', b, o, function(){ return _pools.studyhub.fetch(b, o); }); };
-    window.textdocsGroqFetch   = function(b, o) { return _featureFetch('textdocs', b, o, function(){ return _pools.textdocs.fetch(b, o); }); };
-    window.puzzleGroqFetch     = function(b, o) { return _featureFetch('puzzle', b, o, function(){ return _pools.puzzle.fetch(b, o); }); };
-    window.quizstudioGroqFetch = function(b, o) { return _featureFetch('quizstudio', b, o, function(){ return _pools.quizstudio.fetch(b, o); }); };
-    window.darasocialPostGroqFetch = function(b, o) { return _featureFetch('darasocial', b, o, function(){ return _pools.darasocial_post_slot.fetch(b, o); }); };
+    window.libGroqFetch        = function(b, o) { return window._aqsFeatureFetch('library', b, o, function(){ return window.groqFetch(b, o); }); };
+    window.quoteGroqFetch      = function(b, o) { return window._aqsFeatureFetch('quote', b, o, function(){ return window.groqFetch(b, o); }); };
+    window.quizGroqFetch       = function(b, o) { return window._aqsFeatureFetch('quiz', b, o, function(){ return _pools.quiz.fetch(b, o); }); };
+    window.challengeGroqFetch  = function(b, o) { return window._aqsFeatureFetch('challenge', b, o, function(){ return _pools.challenge.fetch(b, o); }); };
+    window.studyhubGroqFetch   = function(b, o) { return window._aqsFeatureFetch('studyhub', b, o, function(){ return _pools.studyhub.fetch(b, o); }); };
+    window.textdocsGroqFetch   = function(b, o) { return window._aqsFeatureFetch('textdocs', b, o, function(){ return _pools.textdocs.fetch(b, o); }); };
+    window.puzzleGroqFetch     = function(b, o) { return window._aqsFeatureFetch('puzzle', b, o, function(){ return _pools.puzzle.fetch(b, o); }); };
+    window.quizstudioGroqFetch = function(b, o) { return window._aqsFeatureFetch('quizstudio', b, o, function(){ return _pools.quizstudio.fetch(b, o); }); };
+    window.darasocialPostGroqFetch = function(b, o) { return window._aqsFeatureFetch('darasocial', b, o, function(){ return _pools.darasocial_post_slot.fetch(b, o); }); };
     /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
     window.aqsTranscribe = async function(audioBlob) {
         var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
