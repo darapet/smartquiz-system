@@ -4,8 +4,8 @@
 var labels={overview:'Overview',notes:'AI Notes',flashcards:'Flashcards',gpa:'GPA Calculator'};
 var tools=[
  {id:'guided',icon:'🎓',name:'Guided Study',desc:'Create a learning plan, follow AI lessons and track your progress.',tag:'AI tutor',action:'Open Guided Study',href:'studyhub-guided-dashboard.html'},
- {id:'notes',icon:'📝',name:'AI Notes',desc:'Generate structured notes from your course topics and save your study material.',tag:'Smart notebook'},
- {id:'flashcards',icon:'🗂️',name:'Flashcards',desc:'Create revision decks from topics, notes or PDFs and practise recall.',tag:'Active recall'},
+ {id:'notes',icon:'📝',name:'AI Notes',desc:'Generate structured notes from your course topics and save your study material.',tag:'Smart notebook',href:'studyhub-notes-dashboard.html'},
+ {id:'flashcards',icon:'🗂️',name:'Flashcards',desc:'Create revision decks from topics, notes or PDFs and practise recall.',tag:'Active recall',href:'studyhub-flashcards-dashboard.html'},
  {id:'gpa',icon:'📊',name:'GPA Calculator',desc:'Calculate semester GPA and inspect your course performance.',tag:'Grade tracker'}
 ];
 function el(tag,cls,txt){var n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;}
@@ -78,7 +78,7 @@ function install(){
   nav.innerHTML='';
   var home=el('button','sh-nav-item','⌂  Overview');home.type='button';home.dataset.tab='overview';home.addEventListener('click',function(){window.shTab('overview');if(window.shMenuClose)window.shMenuClose()});nav.append(home);
   var guide=el('a','sh-nav-item','🎓  Guided Study');guide.href='studyhub-guided-dashboard.html';nav.append(guide);
-  ['notes','flashcards','gpa'].forEach(function(id){var t=tools.find(function(x){return x.id===id});var n=el('button','sh-nav-item',t.icon+'  '+t.name);n.type='button';n.dataset.tab=id;n.addEventListener('click',function(){window.shTab(id);if(window.shMenuClose)window.shMenuClose()});nav.append(n)});
+  ['notes','flashcards','gpa'].forEach(function(id){var t=tools.find(function(x){return x.id===id});if(t.href){var n=el('a','sh-nav-item',t.icon+'  '+t.name);n.href=t.href;nav.append(n)}else{var n=el('button','sh-nav-item',t.icon+'  '+t.name);n.type='button';n.dataset.tab=id;n.addEventListener('click',function(){window.shTab(id);if(window.shMenuClose)window.shMenuClose()});nav.append(n)}});
   nav.append(el('div','sh-nav-divider'));var ai=el('a','sh-nav-item','🤖  AI Teacher');ai.href='ai-teacher.html';nav.append(ai);
  }
  var baseTab=window.shTab;
