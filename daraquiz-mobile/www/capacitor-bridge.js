@@ -211,7 +211,7 @@
   ══════════════════════════════════════════════════ */
   var NAV_ITEMS = [
     { id: 'nav-home',    label: 'Home',    href: 'index.html',        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
-    { id: 'nav-learn', label: 'Learn', href: 'studyhub.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15M8 7h8M8 11h8"/></svg>' },
+    { id: 'nav-learn', label: 'Learn', href: 'studyhub-dashboard.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15M8 7h8M8 11h8"/></svg>' },
     { id: 'nav-create', label: 'Create', href: 'quiz-setup.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>' },
     { id: 'nav-library', label: 'Library', href: 'library.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
     { id: 'nav-social',  label: 'Dara Social', href: 'social.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.5 4v-4.4A3.5 3.5 0 0 1 4 12.5z"/><path d="m8 8 3 2.2L16 7"/></svg>' },
@@ -226,7 +226,7 @@
 
   function getActiveNavId(page) {
     if (!page || page === 'index.html' || page === '') return 'nav-home';
-    if (page === 'studyhub.html' || page === 'dara-edu.html') return 'nav-learn';
+    if (page === 'studyhub-dashboard.html' || page === 'dara-edu.html') return 'nav-learn';
     if (page === 'create-quiz.html' || page === 'quiz-setup.html' || page === 'self-quiz.html') return 'nav-create';
     if (page.indexOf('library') === 0) return 'nav-library';
     if (page === 'social.html' || page === 'studyco-meet.html') return 'nav-social';
