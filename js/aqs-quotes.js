@@ -96,23 +96,11 @@
               } catch(e) { _lastQuoteErr = 'secure_route_error'; }
           }
 
-          /* 2. Legacy dedicated quote keys remain as a compatibility fallback. */
-          if (_QK.length) {
-              var start;
-              try { start = parseInt(localStorage.getItem(_QK_IDX_LS) || '0') || 0; } catch(e) { start = 0; }
-              for (var attempt = 0; attempt < _QK.length; attempt++) {
-                  var idx = (start + attempt) % _QK.length;
-                  if (_QK_RL[idx] && Date.now() < _QK_RL[idx]) { _lastQuoteErr = 'rate_limit'; continue; }
-                  var result = await _tryKeyAllModels(_QK[idx], prompt);
-                  if (result) {
-                      try { localStorage.setItem(_QK_IDX_LS, String((idx + 1) % _QK.length)); } catch(e) {}
-                      return result;
-                  }
-                  if (_lastQuoteErr === 'rate_limit') { _QK_RL[idx] = Date.now() + 65000; }
-              }
-          }
+          /* The secure Quote route already tries Quote primary/fallback, then
+             the central Main primary/fallback. Do not bypass that route with
+             browser-held legacy keys if the configured chain is unavailable. */
 
-          /* 2. Fall back to the main groqFetch chain (Groq → Mistral → HuggingFace) */
+          /* Fall back to the central Main route as a final shared attempt. */
           if (typeof window.groqFetch === 'function') {
               try {
                   var fallbackRes = await window.groqFetch({
