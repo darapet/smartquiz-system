@@ -210,12 +210,12 @@ test('transcription reads the central StudyHub Groq key instead of the legacy ke
   };
   try {
     await syncConfigs(env, {
-      main: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-main-transcribe-key-123456789'] }, fallback: {} } },
-      studyhub: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk-studyhub-transcribe-key-123456789'] }, fallback: {} } },
+      main: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk_main_transcribe_key_123456789'] }, fallback: {} } },
+      studyhub: { primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '', keys: { primary: { groq: ['gsk_studyhub_transcribe_key_123456789'] }, fallback: {} } },
     });
     const savedConfig = await env.EMAIL_CONFIG.get('ai-provider-config', 'json');
     assert.ok(savedConfig && savedConfig.features && savedConfig.features.studyhub, JSON.stringify(savedConfig));
-    assert.deepEqual(savedConfig.features.studyhub.keys.primary.groq, ['gsk-studyhub-transcribe-key-123456789']);
+    assert.deepEqual(savedConfig.features.studyhub.keys.primary.groq, ['gsk_studyhub_transcribe_key_123456789']);
     const form = new FormData();
     form.append('file', new Blob(['audio bytes'], { type: 'audio/webm' }), 'voice.webm');
     const response = await worker.fetch(new Request('https://worker.test/api/ai/transcribe', {
@@ -225,7 +225,7 @@ test('transcription reads the central StudyHub Groq key instead of the legacy ke
     assert.equal(response.status, 200, JSON.stringify(data));
     assert.equal(data.text, 'Central transcription works');
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].authorization, 'Bearer gsk-studyhub-transcribe-key-123456789');
+    assert.equal(calls[0].authorization, 'Bearer gsk_studyhub_transcribe_key_123456789');
   } finally {
     globalThis.fetch = original;
   }
