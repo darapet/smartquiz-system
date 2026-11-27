@@ -119,21 +119,34 @@ if(!loaded)return;var c=config[active];c.primary=$('aic-primary').value;c.fallba
 var btn=this;btn.disabled=true;$('aic-status').textContent='Saving securely…';
 window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},function(res){btn.disabled=false;$('aic-status').textContent=res&&res.success?'Saved for '+features.find(function(f){return f.id===active}).name:(res&&res.data||'Save failed');$('aic-save-state').textContent=res&&res.success?'Saved':'Save failed';stats()});
 });
+async function testProviderKey(owner,key,model){
+ var user=window._aqsFirebaseUser||window._aqsAuthUser||null;
+ if(!user&&window._aqsAuthResolved!==true)await new Promise(function(resolve){var done=false,finish=function(){if(done)return;done=true;resolve()};document.addEventListener('aqs:firebase:ready',finish,{once:true});setTimeout(finish,8000)});
+ user=window._aqsFirebaseUser||window._aqsAuthUser||user;
+ if(!user||typeof user.getIdToken!=='function')throw new Error('Admin session not ready. Sign in again and reload.');
+ var token=await user.getIdToken();
+ var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({key:key,provider:owner,model:model||''}),signal:AbortSignal.timeout(22000)});
+ var data=await response.json().catch(function(){return {}});
+ if(!response.ok&&!data.status)throw new Error(data.error||'Worker key test failed (HTTP '+response.status+').');
+ return data;
+}
 $('aic-test').addEventListener('click',async function(){
-var owner=$('aic-key-owner').value,inp=$('aic-key-grid').querySelector('input'),key=inp&&inp.value.trim();
-if(!key){$('aic-status').textContent='Enter a key in Slot 1 to test it.';return}
-$('aic-status').textContent='Testing provider credentials…';
-/* These tests deliberately do not save or log the credential. Browser CORS policies may block a direct test; server-side tests are required for reliable diagnostics. */
-var p=provider(owner),url='',headers={},method='GET';
-if(owner==='openai'){url='https://api.openai.com/v1/models';headers.Authorization='Bearer '+key}
-else if(owner==='deepseek'){url='https://api.deepseek.com/models';headers.Authorization='Bearer '+key}
-else if(owner==='groq'){url='https://api.groq.com/openai/v1/models';headers.Authorization='Bearer '+key}
-else if(owner==='mistral'){url='https://api.mistral.ai/v1/models';headers.Authorization='Bearer '+key}
-else if(owner==='huggingface'){url='https://huggingface.co/api/whoami-v2';headers.Authorization='Bearer '+key}
-else if(owner==='gemini'){url='https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key)}
-else if(owner==='claude'){url='https://api.anthropic.com/v1/models';headers['x-api-key']=key;headers['anthropic-version']='2023-06-01'}
-try{var response=await fetch(url,{method:method,headers:headers});$('aic-status').textContent=response.ok?'Provider accepted the key (HTTP '+response.status+').':'Provider returned HTTP '+response.status+'. Check key permissions, account status or rate limits.'}
-catch(e){$('aic-status').textContent='Test could not reach provider from browser (often CORS). This is not proof the key is invalid; a server-side test adapter is needed.'}
+ var owner=$('aic-key-owner').value,inputs=[].slice.call($('aic-key-grid').querySelectorAll('input'));
+ var entered=inputs.filter(function(x){return x.value.trim()}).map(function(x){return {slot:Number(x.dataset.slot)+1,key:x.value.trim()}});
+ var saved=(config[active].keys[owner]||[]).map(function(key,index){return key?{slot:index+1,key:key}:null}).filter(Boolean);
+ var tests=entered.length?entered:saved;
+ if(!tests.length){$('aic-status').textContent='No key to test. Enter a key or save one first.';return}
+ var p=provider(owner),model=owner===$('aic-primary').value?$('aic-model').value:$('aic-fallback-model').value;
+ var btn=this;btn.disabled=true;var results=[];
+ for(var i=0;i<tests.length;i++){
+  $('aic-status').textContent='Testing '+p.name+' key '+tests[i].slot+' ('+(i+1)+'/'+tests.length+')…';
+  try{var result=await testProviderKey(owner,tests[i].key,model);results.push({ok:result.ok===true,status:result.status,msg:result.msg,ms:result.ms,slot:tests[i].slot})}
+  catch(e){results.push({ok:false,msg:e.message,slot:tests[i].slot})}
+ }
+ btn.disabled=false;
+ var good=results.filter(function(x){return x.ok}).length;
+ $('aic-status').textContent=good+'/'+results.length+' key(s) working. '+results.map(function(x){return 'Slot '+x.slot+': '+(x.ok?'Active':x.msg||'Failed')+(x.ms?' ('+x.ms+'ms)':'')}).join(' · ');
+ stats();
 });
 document.addEventListener('aqs:firebase:ready',load,{once:true});if(window._aqsFirebaseReady)load();
 })();
