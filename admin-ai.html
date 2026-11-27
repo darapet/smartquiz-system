@@ -291,21 +291,39 @@ function currentProvider(c){return activeRole==='primary'?c.primary:(c.fallback|
 function currentModel(c){return activeRole==='primary'?c.model:(c.fallbackModel||'')}
 function renderModelOptions(providerId){var models=provider(providerId).models||[];$('aic-current-models').innerHTML=models.map(function(model){return '<option value="'+model+'"></option>'}).join('')}
 var keySchemaMigrated=false;
+function cleanKeySlots(values){
+ return (Array.isArray(values)?values:[]).slice(0,50).map(function(value){
+  return typeof value==='string'&&value.trim().length>=10?value.trim():'';
+ });
+}
 function ensureFeature(id){
  if(!config[id])config[id]={primary:'groq',model:'openai/gpt-oss-120b',fallback:'mistral',fallbackModel:'mistral-small-latest',keys:{primary:{},fallback:{}}};
- var c=config[id];if(!c.keys||typeof c.keys!=='object')c.keys={};
- // Migrate both the original provider-key map and the intermediate role-array format.
- if(!c.keys.primary||Array.isArray(c.keys.primary)||!c.keys.fallback||Array.isArray(c.keys.fallback)){
-  var old=c.keys,primaryPool=Array.isArray(old[c.primary])?old[c.primary]:(Array.isArray(old.primary)?old.primary:[]),fallbackPool=Array.isArray(old.fallback)?old.fallback:(c.fallback&&c.fallback!==c.primary&&Array.isArray(old[c.fallback])?old[c.fallback]:[]);
-  c.keys={primary:{},fallback:{}};
-  if(primaryPool.length)c.keys.primary[c.primary]=primaryPool.slice(0,50);
-  if(fallbackPool.length&&c.fallback)c.keys.fallback[c.fallback]=fallbackPool.slice(0,50);
-  keySchemaMigrated=true;
+ var c=config[id],old=c.keys&&typeof c.keys==='object'?c.keys:{};
+ var roleMap=old.primary&&typeof old.primary==='object'&&!Array.isArray(old.primary)&&old.fallback&&typeof old.fallback==='object'&&!Array.isArray(old.fallback);
+ var next={primary:{},fallback:{}};
+ if(roleMap){
+  // Preserve each route/provider pool exactly where it belongs.
+  ['primary','fallback'].forEach(function(role){
+   Object.keys(old[role]).forEach(function(pid){
+    if(providers.some(function(p){return p.id===pid}))next[role][pid]=cleanKeySlots(old[role][pid]);
+   });
+  });
+ }else{
+  // One-time migration from the original provider map or temporary route arrays.
+  var primaryValues=Array.isArray(old.primary)?old.primary:(Array.isArray(old[c.primary])?old[c.primary]:[]);
+  var fallbackValues=Array.isArray(old.fallback)?old.fallback:(c.fallback&&c.fallback!==c.primary&&Array.isArray(old[c.fallback])?old[c.fallback]:[]);
+  if(c.primary)next.primary[c.primary]=cleanKeySlots(primaryValues);
+  if(c.fallback)next.fallback[c.fallback]=cleanKeySlots(fallbackValues);
+  if(primaryValues.length||fallbackValues.length||Object.keys(old).length)keySchemaMigrated=true;
  }
- ['primary','fallback'].forEach(function(role){
-  if(!c.keys[role]||typeof c.keys[role]!=='object'||Array.isArray(c.keys[role]))c.keys[role]={};
-  Object.keys(c.keys[role]).forEach(function(pid){c.keys[role][pid]=Array.isArray(c.keys[role][pid])?c.keys[role][pid].slice(0,50):[];});
- });
+ c.keys=next;
+}
+function keyPool(feature,role,providerId){
+ if(!feature.keys||typeof feature.keys!=='object')feature.keys={primary:{},fallback:{}};
+ if(!feature.keys[role]||typeof feature.keys[role]!=='object'||Array.isArray(feature.keys[role]))feature.keys[role]={};
+ if(!Array.isArray(feature.keys[role][providerId]))feature.keys[role][providerId]=[];
+ feature.keys[role][providerId]=cleanKeySlots(feature.keys[role][providerId]);
+ return feature.keys[role][providerId];
 }
 function renderNav(){
 $('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
@@ -333,14 +351,25 @@ renderModelOptions(selected);
 renderKeys();
 }
 function renderKeys(){
-var c=config[active],owner=currentProvider(c),role=activeRole,arr=(c.keys[role]&&c.keys[role][owner])||[];
-$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){
- var val=arr[i]||'',mask=val?'••••••••••••••••':'';
- return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span class="'+(val?'aic-key-present':'aic-key-empty')+'">'+(val?'● Key stored':'Empty slot')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?mask+'  (enter new key to replace)':'Paste '+provider(owner).name+' key')+'" value="" aria-label="'+(role==='primary'?'Primary':'Fallback')+' API key slot '+(i+1)+'"></div>';
-}).join('');
-$('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);if(!c.keys[role])c.keys[role]={};if(!c.keys[role][owner])c.keys[role][owner]=[];if(input.value.trim())c.keys[role][owner][idx]=input.value.trim();})});
-$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[role][owner][idx]='';renderKeys();stats()})});
-$('aic-key-description').textContent='Separate '+(role==='primary'?'primary':'fallback')+' key pool for '+provider(owner).name+'. '+arr.filter(Boolean).length+' of 50 slots are in use.';
+ var c=config[active],owner=currentProvider(c),role=activeRole;
+ var arr=keyPool(c,role,owner);
+ $('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){
+  var val=arr[i]||'',mask=val?'••••••••••••••••':'';
+  return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span class="'+(val?'aic-key-present':'aic-key-empty')+'">'+(val?'● Key stored':'Empty slot')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?mask+'  (enter new key to replace)':'Paste '+provider(owner).name+' key')+'" value="" aria-label="'+(role==='primary'?'Primary':'Fallback')+' '+provider(owner).name+' API key slot '+(i+1)+'"></div>';
+ }).join('');
+ $('aic-key-grid').querySelectorAll('input').forEach(function(input){
+  input.addEventListener('change',function(){
+   var idx=Number(input.dataset.slot),value=input.value.trim();
+   if(value)arr[idx]=value;
+   input.value='';
+   renderKeys();
+   stats();
+  });
+ });
+ $('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){
+  button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);arr[idx]='';renderKeys();stats()});
+ });
+ $('aic-key-description').textContent='Only '+provider(owner).name+' keys for the '+(role==='primary'?'Primary':'Fallback')+' route are shown here. '+arr.filter(Boolean).length+' of 50 slots are in use.';
 }
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){var c=config[fid]||{},keys=c.keys||{};[c.primary,c.fallback].forEach(function(pid){if(pid)p[pid]=true});['primary','fallback'].forEach(function(role){Object.keys(keys[role]||{}).forEach(function(pid){n+=(keys[role][pid]||[]).filter(Boolean).length;});});});
@@ -416,11 +445,11 @@ $('aic-primary-tab').addEventListener('click',function(){setRole('primary')});
 $('aic-fallback-tab').addEventListener('click',function(){setRole('fallback')});
 $('aic-current-provider').addEventListener('change',function(){
  var c=config[active],next=this.value;
- if(activeRole==='primary'){c.primary=next;renderModelOptions(next);if(c.model&&!provider(next).models.includes(c.model)){c.model='';$('aic-current-model').value='';}}
- else{c.fallback=next;renderModelOptions(next);if(c.fallbackModel&&!provider(next).models.includes(c.fallbackModel)){c.fallbackModel='';$('aic-current-model').value='';}}
- $('aic-key-description').textContent='These key slots belong only to '+provider(next).name+'. Switch tabs to manage the other route.';
- $('aic-model-hint').textContent=provider(next).models.length+' suggested model IDs. You can also type a model ID supported by '+provider(next).name+'.';
- renderKeys();
+ if(activeRole==='primary'){c.primary=next;if(c.model&&!provider(next).models.includes(c.model))c.model='';}
+ else{c.fallback=next;if(c.fallbackModel&&!provider(next).models.includes(c.fallbackModel))c.fallbackModel='';}
+ // Re-render the complete route workspace so provider, model and its own 50 slots stay in sync.
+ renderFeature();
+ stats();
 });
 $('aic-current-model').addEventListener('change',function(){var c=config[active];if(activeRole==='primary')c.model=this.value.trim();else c.fallbackModel=this.value.trim();});
 $('aic-save').addEventListener('click',function(){
