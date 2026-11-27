@@ -111,21 +111,10 @@
 
   /* ── transcription (Groq whisper) ──────────────────────────────────────── */
   function transcribe(blob, mime) {
-    var key = groqKey();
-    if (!key) return Promise.reject(new Error('No AI key configured yet — please try again in a moment.'));
-    var ext = mime.indexOf('mp4') > -1 ? 'mp4' : mime.indexOf('ogg') > -1 ? 'ogg' : 'webm';
-    var fd = new FormData();
-    fd.append('file', blob, 'voice.' + ext);
-    fd.append('model', 'whisper-large-v3-turbo');
-    fd.append('response_format', 'json');
-    return fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + key },
-      body: fd
-    }).then(function (r) {
-      if (!r.ok) return r.text().then(function (t) { throw new Error('Transcription failed (' + r.status + ') ' + t.slice(0, 120)); });
-      return r.json();
-    }).then(function (d) { return ((d && d.text) || '').trim(); });
+    if (typeof window.aqsTranscribe !== 'function') {
+      return Promise.reject(new Error('Secure voice service is not ready. Please reload and try again.'));
+    }
+    return window.aqsTranscribe(blob);
   }
 
   /* ── recorder with silence detection ───────────────────────────────────── */
