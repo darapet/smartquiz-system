@@ -95,8 +95,9 @@ renderKeys();
 }
 function renderKeys(){
 var c=config[active],owner=$('aic-key-owner').value||c.primary,arr=(c.keys[owner]||[]);
-$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){var val=arr[i]||'';return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span>'+(val?'Saved':'Empty')+'</span></label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?'Saved key — leave blank to keep it':'Paste '+provider(owner).name+' key')+'" value=""></div>'}).join('');
+$('aic-key-grid').innerHTML=Array.from({length:50},function(_,i){var val=arr[i]||'';return '<div class="aic-key"><label><span>Slot '+(i+1)+'</span><span>'+(val?'Saved':'Empty')+'</span>'+(val?'<button type="button" data-remove-slot="'+i+'" style="border:0;background:transparent;color:#b54747;font-size:.7rem;cursor:pointer">Remove</button>':'')+'</label><input type="password" autocomplete="new-password" data-slot="'+i+'" placeholder="'+(val?'Saved key — leave blank to keep it':'Paste '+provider(owner).name+' key')+'" value=""></div>'}).join('');
 $('aic-key-grid').querySelectorAll('input').forEach(function(input){input.addEventListener('change',function(){var idx=Number(input.dataset.slot);c.keys[owner]=c.keys[owner]||[];if(input.value.trim())c.keys[owner][idx]=input.value.trim();})});
+$('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){button.addEventListener('click',function(){var idx=Number(button.dataset.removeSlot);c.keys[owner]=c.keys[owner]||[];c.keys[owner][idx]='';renderKeys();stats()})});
 }
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
