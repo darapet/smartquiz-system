@@ -3281,14 +3281,24 @@ async function actionGetMyStats() {
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
     var quizzesCreated = createdSnap.size;
 
-    /* Keep historical attempts when a learner changes their display name. */
+    /* Match the attempts dashboard: use stable Firebase account ownership first.
+       Fall back to historical participant names for older attempts. */
     var participantNames = Array.from(new Set([profile.name, user.displayName, user.email]
         .map(function(value) { return String(value || '').trim(); }).filter(Boolean)));
     var attemptMap = {};
+    var ownedAttemptsSnap = await getDocs(query(collection(db, 'attempts'), where('participant_uid', '==', user.uid)));
+    ownedAttemptsSnap.docs.forEach(function(d) {
+        var a = d.data();
+        var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
+        attemptMap[d.id] = { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
+    });
+    /* Include legacy records not yet migrated to participant_uid, without duplicates. */
     for (var nameIndex = 0; nameIndex < participantNames.length; nameIndex++) {
         var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', participantNames[nameIndex])));
         attSnap.docs.forEach(function(d) {
+            if (attemptMap[d.id]) return;
             var a = d.data();
+            if (a.participant_uid && a.participant_uid !== user.uid) return;
             var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
             attemptMap[d.id] = { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
         });
