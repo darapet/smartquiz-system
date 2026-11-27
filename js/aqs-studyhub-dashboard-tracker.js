@@ -3,13 +3,18 @@
   var ACT='aqs_sh_act_log_v1', NOTES='aqs_notes_v1', GPA='aqs_gpa_v1',
       DECKS='aqs_flashcard_decks_v1', GUIDED='aqs_sh_guided_seen',
       AI='aqs_ai_teacher_chats_v2';
-  var rangeDays=30, quizAttempts=[], quizStats={}, quizState='loading';
+  var rangeDays=30, quizAttempts=[], quizStats={}, quizState='loading', cloudPlans=null, cloudPlansLoaded=false;
   var $=function(s,r){return (r||document).querySelector(s);};
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   function read(key){try{var v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function time(v){if(typeof v==='number')return v;var n=Date.parse(v);return Number.isFinite(n)?n:0;}
-  function plans(){return read(GUIDED);}
+  function time(v){
+    if(typeof v==='number')return v;
+    if(v&&typeof v.toDate==='function'){var d=v.toDate();return d&&Number.isFinite(d.getTime())?d.getTime():0;}
+    if(v&&typeof v.seconds==='number')return v.seconds*1000;
+    var n=Date.parse(v);return Number.isFinite(n)?n:0;
+  }
+  function plans(){return cloudPlansLoaded&&Array.isArray(cloudPlans)?cloudPlans:read(GUIDED);}
   function decks(){return read(DECKS);}
   function notes(){return read(NOTES);}
   function gpas(){return read(GPA);}
@@ -34,6 +39,14 @@
   }
   function events(){
     var out=read(ACT).filter(function(x){return x&&time(x.at)>0;}).map(function(x){return {kind:x.k||'study',at:time(x.at),label:activityLabel(x.k),detail:x.detail||''};});
+    if(cloudPlansLoaded){
+      out=out.filter(function(e){return e.kind!=='guided'&&e.kind!=='topic-completed';});
+      plans().forEach(function(p){
+        var created=time(p.createdAt),updated=time(p.updatedAt),detail=p.subject||p.title||'Study plan';
+        if(created)out.push({kind:'guided-cloud',at:created,label:'Guided Study plan created',detail:detail});
+        if(updated&&updated>created+1000)out.push({kind:'guided-cloud-update',at:updated,label:'Guided Study progress updated',detail:detail});
+      });
+    }
     chats().forEach(function(s){var at=time(s.updatedAt||s.createdAt);if(at)out.push({kind:'ai-teacher',at:at,label:'AI Assistant conversation'});});
     quizAttempts.forEach(function(a){var at=time(a.finished_at||a.finished_at_ms||a.created_at);if(at)out.push({kind:'quiz',at:at,label:'Practice quiz completed',detail:a.quiz_title||a.subject||''});});
     var seen={};out=out.filter(function(e){var k=e.kind+'|'+e.at+'|'+e.detail;if(seen[k])return false;seen[k]=1;return true;});
@@ -116,16 +129,28 @@
     finally{quizLoading=false;lastQuizLoad=Date.now();}
     render();
   }
-  var quizLoading=false,lastQuizLoad=0;
+  var quizLoading=false,lastQuizLoad=0,guidedLoading=false,lastGuidedLoad=0;
+  async function loadGuided(force){
+    if(guidedLoading||!window._aqsAuthResolved||!window.aqsStudyPlanStore)return;
+    if(!force&&Date.now()-lastGuidedLoad<30000)return;
+    var user=window._aqsFirebaseUser;
+    if(!user||user.isAnonymous){cloudPlans=null;cloudPlansLoaded=false;render();return;}
+    guidedLoading=true;
+    try{var result=await window.aqsStudyPlanStore.list();cloudPlans=Array.isArray(result)?result:[];cloudPlansLoaded=true;}
+    catch(e){cloudPlans=null;cloudPlansLoaded=false;console.warn('[StudyHub tracker] Guided Study records unavailable:',e);}
+    finally{guidedLoading=false;lastGuidedLoad=Date.now();}
+    render();
+  }
   function boot(){
     render();
     loadQuiz();
+    loadGuided();
     window.addEventListener('storage',function(e){if([ACT,NOTES,GPA,DECKS,GUIDED,AI].indexOf(e.key)>=0)render();});
     window.addEventListener('aqs:studyhub:activity',render);
-    window.addEventListener('aqs:guided-plans-updated',render);
-    document.addEventListener('aqs:authchange',function(){loadQuiz(true);});
-    window.addEventListener('focus',function(){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);});
-    document.addEventListener('visibilitychange',function(){if(!document.hidden){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);}});
+    window.addEventListener('aqs:guided-plans-updated',function(){render();loadGuided(true);});
+    document.addEventListener('aqs:authchange',function(){loadQuiz(true);loadGuided(true);});
+    window.addEventListener('focus',function(){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);if(Date.now()-lastGuidedLoad>30000)loadGuided(true);});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);if(Date.now()-lastGuidedLoad>30000)loadGuided(true);}});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
