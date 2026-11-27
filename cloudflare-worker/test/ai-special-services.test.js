@@ -26,7 +26,7 @@ function mockFetch() {
   globalThis.fetch = async (url, init = {}) => {
     const target = String(url);
     if (target.startsWith('https://identitytoolkit.googleapis.com/v1/accounts:lookup')) {
-      return new Response(JSON.stringify({ users: [{ localId: 'student-uid', email: 'student@example.com' }] }), {
+      return new Response(JSON.stringify({ users: [{ localId: 'admin-uid', email: 'admin@example.com' }] }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
