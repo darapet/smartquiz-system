@@ -493,10 +493,47 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
     };
 
+    async function _workerAIRequest(featureId, bodyObj, extraOpts) {
+        var requestBody = Object.assign({}, bodyObj || {});
+        if (requestBody.stream === true) return null; // Existing direct-provider stream handling remains intact.
+        var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && window.firebase && window.firebase.auth) {
+            try { user = window.firebase.auth().currentUser || null; } catch(e) {}
+        }
+        if (!user || typeof user.getIdToken !== 'function') return null;
+        var token;
+        try { token = await user.getIdToken(); } catch(e) { return null; }
+        if (!token) return null;
+        requestBody.feature = featureId || 'main';
+        var options = Object.assign({}, extraOpts || {});
+        var headers = Object.assign({}, options.headers || {}, {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        });
+        delete options.headers;
+        options.method = 'POST';
+        options.headers = headers;
+        options.body = JSON.stringify(requestBody);
+        var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai', options);
+        return response;
+    }
+    async function _featureFetch(featureId, bodyObj, extraOpts, legacyFetch) {
+        try {
+            var workerResponse = await _workerAIRequest(featureId, bodyObj, extraOpts);
+            if (workerResponse && (workerResponse.ok || ![502, 503, 504].includes(workerResponse.status))) return workerResponse;
+        } catch(error) {
+            if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw error;
+            _aqsLog('warn', featureId + ' secure AI route unavailable; using existing provider pool.');
+        }
+        return legacyFetch(bodyObj, extraOpts);
+    }
+
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
      *  features. The provider chain is transparent to callers.         */
     window.groqFetch = async function(bodyObj, extraOpts) {
+        var secureResponse = await _featureFetch('main', bodyObj, extraOpts, async function(){ return null; });
+        if (secureResponse) return secureResponse;
         /* Wait for the Firebase key auto-loader to complete before checking
            key counts. This prevents false "not configured" errors that happen
            when groqFetch is called before the async Firestore read finishes.
@@ -843,13 +880,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch       = function(b, o) { return _pools.quiz.fetch(b, o); };
-    window.challengeGroqFetch  = function(b, o) { return _pools.challenge.fetch(b, o); };
-    window.studyhubGroqFetch   = function(b, o) { return _pools.studyhub.fetch(b, o); };
-    window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
-    window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
-    window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
-    window.darasocialPostGroqFetch = function(b, o) { return _pools.darasocial_post_slot.fetch(b, o); };
+    window.quizGroqFetch       = function(b, o) { return _featureFetch('quiz', b, o, function(){ return _pools.quiz.fetch(b, o); }); };
+    window.challengeGroqFetch  = function(b, o) { return _featureFetch('challenge', b, o, function(){ return _pools.challenge.fetch(b, o); }); };
+    window.studyhubGroqFetch   = function(b, o) { return _featureFetch('studyhub', b, o, function(){ return _pools.studyhub.fetch(b, o); }); };
+    window.textdocsGroqFetch   = function(b, o) { return _featureFetch('textdocs', b, o, function(){ return _pools.textdocs.fetch(b, o); }); };
+    window.puzzleGroqFetch     = function(b, o) { return _featureFetch('puzzle', b, o, function(){ return _pools.puzzle.fetch(b, o); }); };
+    window.quizstudioGroqFetch = function(b, o) { return _featureFetch('quizstudio', b, o, function(){ return _pools.quizstudio.fetch(b, o); }); };
+    window.darasocialPostGroqFetch = function(b, o) { return _featureFetch('darasocial', b, o, function(){ return _pools.darasocial_post_slot.fetch(b, o); }); };
     /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
     window.aqsTranscribe = async function(audioBlob) {
         var keys = _getGroqKeys();
