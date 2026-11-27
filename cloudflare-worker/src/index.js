@@ -1194,9 +1194,10 @@ async function handleAIConfig(request, env) {
           keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === primaryProvider ? cleanPool(rawPools.primary) : []]));
           keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id === fallbackProvider ? cleanPool(rawPools.fallback) : []]));
         } else {
-          const legacyProvider = provider(raw.primary) || 'groq';
-          keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === legacyProvider ? cleanPool(rawPools[legacyProvider]) : []]));
-          keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id, []]));
+          const legacyPrimary = provider(raw.primary) || 'groq';
+          const legacyFallback = provider(raw.fallback);
+          keys.primary = Object.fromEntries([...allowedProviders].map((id) => [id, id === legacyPrimary ? cleanPool(rawPools[id]) : []]));
+          keys.fallback = Object.fromEntries([...allowedProviders].map((id) => [id, legacyFallback && legacyFallback !== legacyPrimary && id === legacyFallback ? cleanPool(rawPools[id]) : []]));
         }
         normalized[id] = {
           primary: provider(raw.primary) || 'groq',
