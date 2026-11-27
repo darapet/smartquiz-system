@@ -3,7 +3,7 @@ name: AI Control Centre checks
 on:
   push:
     branches:
-      - feat/ai-control-centre
+      - feat/ai-special-services-secure
     paths:
       - 'cloudflare-worker/**'
       - 'js/aqs-groq-key.js'
@@ -20,6 +20,10 @@ on:
       - 'cloudflare-worker/**'
       - 'js/aqs-groq-key.js'
       - 'js/aqs-quotes.js'
+      - 'js/aqs-firebase.js'
+      - 'js/aqs-gemini-tts.js'
+      - 'functions/index.js'
+      - 'admin-settings.html'
       - 'admin-ai.html'
 
 permissions:
