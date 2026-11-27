@@ -84,13 +84,13 @@
   }
   function render(){
     var root=$('#studyhubTracker');if(!root)return;
-    var ev=filteredEvents(),p=plans(),total=topics(),done=completed(),completion=total?Math.round(done/total*100):null;
+    var allEvents=events(),ev=allEvents.filter(function(e){return e.at>=Date.now()-rangeDays*86400000;}),p=plans(),total=topics(),done=completed(),completion=total?Math.round(done/total*100):null;
     var questions=quizAttempts.reduce(function(n,a){return n+(Number(a.total)||0);},0);
     var best=quizAttempts.reduce(function(n,a){return Math.max(n,pct(a));},0);
     var average=quizAttempts.length?Math.round(quizAttempts.reduce(function(n,a){return n+pct(a);},0)/quizAttempts.length):0;
     var f=featureData();
     root.innerHTML='<div class="shtrk-head"><div><h2>📈 Learning Analytics</h2><p>Your activity and progress across StudyHub features, using saved records.</p></div><select id="shtrk-range" aria-label="Analytics date range"><option value="7" '+(rangeDays===7?'selected':'')+'>Last 7 days</option><option value="30" '+(rangeDays===30?'selected':'')+'>Last 30 days</option><option value="90" '+(rangeDays===90?'selected':'')+'>Last 90 days</option></select></div>'+
-    '<div class="shtrk-kpis"><article><span>🔥</span><small>Learning streak</small><strong>'+streak(ev)+' days</strong></article><article><span>☑️</span><small>Quiz attempts</small><strong>'+quizAttempts.length+'</strong></article><article><span>🎓</span><small>Topics completed</small><strong>'+done+' / '+total+'</strong></article><article><span>⭐</span><small>Best quiz score</small><strong>'+(quizAttempts.length?best+'%':'—')+'</strong></article></div>'+
+    '<div class="shtrk-kpis"><article><span>🔥</span><small>Learning streak</small><strong>'+streak(allEvents)+' days</strong></article><article><span>☑️</span><small>Quiz attempts</small><strong>'+quizAttempts.length+'</strong></article><article><span>🎓</span><small>Topics completed</small><strong>'+done+' / '+total+'</strong></article><article><span>⭐</span><small>Best quiz score</small><strong>'+(quizAttempts.length?best+'%':'—')+'</strong></article></div>'+
     '<div class="shtrk-grid"><article class="shtrk-card"><div class="shtrk-card-head"><div><h3>Weekly activity</h3><p>Recorded actions and completed quizzes · last 7 days</p></div><b>'+ev.length+' events</b></div>'+chartBars(events().filter(function(e){return e.at>=Date.now()-7*86400000;}))+'</article>'+
     '<article class="shtrk-card"><div class="shtrk-card-head"><div><h3>Feature records</h3><p>Saved items and completed quiz attempts</p></div></div>'+featureBars()+'</article></div>'+
     '<div class="shtrk-grid shtrk-grid-bottom"><article class="shtrk-card"><div class="shtrk-card-head"><div><h3>Guided Study progress</h3><p>Completed topics across your saved plans</p></div><strong>'+(completion===null?'—':completion+'%')+'</strong></div><div class="shtrk-progress"><div><span style="width:'+(completion||0)+'%"></span></div><small>'+done+' completed · '+Math.max(0,total-done)+' remaining</small></div><div class="shtrk-mini-stats"><span><b>'+p.length+'</b> Plans</span><span><b>'+total+'</b> Topics</span><span><b>'+done+'</b> Completed</span></div></article>'+
@@ -108,17 +108,24 @@
     var empty=$('.bottom-grid .empty-row');if(empty)empty.outerHTML=recent(events().slice(0,6));
     var success=$('.success');if(success){var title=$('strong',success),copy=$('p',success);if(title)title.textContent=completion===null?'Start your learning journey':'You are making progress';if(copy)copy.textContent=completion===null?'Create a Guided Study plan or complete a quiz to begin building your learning record.':done+' of '+total+' Guided Study topics completed.';}
   }
-  async function loadQuiz(){
+  async function loadQuiz(force){
+    if(quizLoading||(!force&&Date.now()-lastQuizLoad<30000))return;
+    quizLoading=true;
     try{var result=await call('aqs_get_my_attempts',{limit:100});quizAttempts=Array.isArray(result)?result:[];quizState='ready';}
     catch(e){quizAttempts=[];quizState='error';}
+    finally{quizLoading=false;lastQuizLoad=Date.now();}
     render();
   }
+  var quizLoading=false,lastQuizLoad=0;
   function boot(){
     render();
     loadQuiz();
     window.addEventListener('storage',function(e){if([ACT,NOTES,GPA,DECKS,GUIDED,AI].indexOf(e.key)>=0)render();});
-    window.addEventListener('focus',function(){render();});
-    document.addEventListener('visibilitychange',function(){if(!document.hidden)render();});
+    window.addEventListener('aqs:studyhub:activity',render);
+    window.addEventListener('aqs:guided-plans-updated',render);
+    document.addEventListener('aqs:authchange',function(){loadQuiz(true);});
+    window.addEventListener('focus',function(){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden){render();if(Date.now()-lastQuizLoad>30000)loadQuiz(true);}});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
