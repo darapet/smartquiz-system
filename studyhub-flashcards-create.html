@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#faf3ea"><title>Flashcards — StudyHub</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script src="js/aqs-studyhub-activity.js?v=1"></script><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#faf3ea;--surface:rgba(255,255,255,.04);--border:rgba(255,255,255,.08);
+  --text:#12304a;--muted:#526579;--accent:#e8912d;--accent2:#d97706;
+  --green:#22c55e;--red:#ef4444;--gold:#f59e0b;--blue:#e8912d;--teal:#14b8a6;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+a{text-decoration:none;color:inherit;}
+
+/* HEADER */
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
+.sh-logo{font-size:1rem;font-weight:900;color:var(--text);}
+.sh-logo-ver{font-size:.6rem;font-weight:700;color:var(--muted);margin-left:6px;background:none;-webkit-text-fill-color:var(--muted);}
+.sh-back{color:var(--muted);font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .18s;}
+.sh-back:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+
+/* HAMBURGER NAV */
+.sh-hdr{gap:12px;}
+.sh-hamburger{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;transition:background .18s;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;width:40px;height:40px;flex-shrink:0;}
+.sh-hamburger:hover{background:rgba(255,255,255,.08);}
+.sh-hamburger span{display:block;width:20px;height:2px;background:#526579;border-radius:2px;transition:all .28s cubic-bezier(.4,0,.2,1);transform-origin:center;}
+.sh-hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.sh-hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+.sh-hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.sh-hdr-center{display:flex;align-items:baseline;gap:4px;flex:1;}
+.sh-hdr-active-tab{font-size:.72rem;font-weight:700;color:var(--muted);margin-left:8px;padding:2px 8px;background:rgba(232,145,45,.12);border:1px solid rgba(232,145,45,.25);border-radius:20px;white-space:nowrap;}
+.sh-hdr-actions{display:flex;gap:8px;flex-shrink:0;}
+/* Dropdown nav */
+#sh-nav-dropdown{position:sticky;top:57px;z-index:99;background:#faf3ea;border-bottom:1px solid var(--border);max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1);}
+#sh-nav-dropdown.open{max-height:420px;}
+.sh-nav-items{padding:10px 0 14px;}
+.sh-nav-item{display:flex;align-items:center;gap:13px;padding:13px 22px;font-size:.9rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all .18s;border-left:3px solid transparent;}
+.sh-nav-item:hover{background:rgba(255,255,255,.04);color:var(--text);}
+.sh-nav-item.active{color:#12304a;border-left-color:var(--accent);background:rgba(232,145,45,.07);}
+.sh-nav-item .nav-icon{font-size:1.1rem;width:22px;text-align:center;flex-shrink:0;}
+.sh-nav-item .nav-label{flex:1;}
+.sh-nav-item .nav-badge{font-size:.55rem;font-weight:900;background:linear-gradient(135deg,#faf3ea,#ffffff);color:#12304a;padding:2px 6px;border-radius:20px;letter-spacing:.06em;}
+.sh-nav-divider{height:1px;background:var(--border);margin:8px 22px;}
+/* Keep old .sh-tab hidden for backward compat */
+.sh-tabs-wrap{display:none;}
+
+/* PANELS */
+.sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
+.sh-panel.active{display:block;}
+
+/* SHARED COMPONENTS */
+.sh-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:16px;}
+.sh-label{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:block;}
+.sh-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.92rem;font-family:inherit;outline:none;transition:border-color .2s;resize:none;}
+.sh-input:focus{border-color:rgba(232,145,45,.5);background:rgba(232,145,45,.04);}
+.sh-select{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;cursor:pointer;-webkit-appearance:none;}
+.sh-select option{background:#ffffff;color:var(--text);}
+.sh-row{display:flex;gap:12px;flex-wrap:wrap;}
+.sh-row .sh-input,.sh-row .sh-select{flex:1;min-width:140px;}
+.sh-btn{padding:12px 24px;border-radius:10px;border:none;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+.sh-btn-primary{background:linear-gradient(135deg,#e8912d,#c96f16);color:#12304a;box-shadow:0 4px 18px rgba(232,145,45,.3);}
+.sh-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.sh-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.sh-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#12304a;}
+.sh-btn-ghost:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+.sh-btn-danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#12304a;}
+.sh-section-title{font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.sh-section-sub{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.sh-divider{height:1px;background:var(--border);margin:20px 0;}
+.sh-badge{display:inline-block;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.sh-badge-purple{background:rgba(232,145,45,.15);border:1px solid rgba(232,145,45,.3);color:#12304a;}
+.sh-badge-green{background:#faf3ea;border:1px solid rgba(34,197,94,.25);color:#12304a;}
+.sh-badge-gold{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#fcd34d;}
+.sh-badge-red{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#12304a;}
+.sh-skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:sh-shimmer 1.4s infinite;border-radius:6px;height:16px;margin-bottom:8px;}
+@keyframes sh-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sh-spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:sh-spin .8s linear infinite;}
+@keyframes sh-spin{100%{transform:rotate(360deg)}}
+
+/* ══════════════════════════════
+   1. AI STUDY NOTES
+══════════════════════════════ */
+.sh-notes-output{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:20px;font-size:.88rem;line-height:1.9;color:#12304a;min-height:200px;display:none;position:relative;}
+.sh-notes-output h1,.sh-notes-output h2,.sh-notes-output h3{color:var(--text);font-weight:800;margin:18px 0 8px;line-height:1.3;}
+.sh-notes-output h1{font-size:1.2rem;border-bottom:2px solid rgba(232,145,45,.3);padding-bottom:8px;}
+.sh-notes-output h2{font-size:1rem;color:#12304a;}
+.sh-notes-output h3{font-size:.92rem;color:#12304a;}
+.sh-notes-output p{margin-bottom:10px;}
+.sh-notes-output ul,.sh-notes-output ol{margin:8px 0 12px 20px;}
+.sh-notes-output li{margin-bottom:6px;}
+.sh-notes-output strong{color:#fcd34d;font-weight:700;}
+.sh-notes-output em{color:#12304a;font-style:normal;font-weight:600;}
+.sh-notes-output code{background:rgba(232,145,45,.15);border:1px solid rgba(232,145,45,.25);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:.83rem;color:#12304a;}
+.sh-notes-output blockquote{border-left:3px solid var(--accent);padding-left:14px;color:var(--muted);margin:12px 0;font-style:italic;}
+.sh-notes-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap;}
+
+/* ══════════════════════════════
+   2. FLASHCARDS
+══════════════════════════════ */
+.sh-fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px;}
+.sh-fc-card{height:180px;perspective:1000px;cursor:pointer;}
+.sh-fc-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);}
+.sh-fc-card.flipped .sh-fc-inner{transform:rotateY(180deg);}
+.sh-fc-front,.sh-fc-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;text-align:center;}
+.sh-fc-front{background:rgba(232,145,45,.08);border:2px solid rgba(232,145,45,.25);}
+.sh-fc-back{background:#faf3ea;border:2px solid rgba(34,197,94,.2);transform:rotateY(180deg);}
+.sh-fc-label{font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.sh-fc-front .sh-fc-label{color:rgba(165,180,252,.6);}
+.sh-fc-back .sh-fc-label{color:rgba(134,239,172,.6);}
+.sh-fc-text{font-size:.88rem;font-weight:700;color:var(--text);line-height:1.5;}
+.sh-fc-back .sh-fc-text{font-size:.82rem;font-weight:500;color:#12304a;}
+.sh-fc-hint{font-size:.7rem;color:var(--muted);margin-top:8px;}
+.sh-fc-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px;}
+.sh-fc-solo{height:220px;max-width:460px;margin:0 auto;}
+.sh-fc-progress{text-align:center;font-size:.82rem;color:var(--muted);font-weight:600;margin-top:8px;}
+.sh-fc-counter{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+.sh-fc-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:all .18s;}
+.sh-fc-dot.known{background:var(--green);border-color:var(--green);}
+.sh-fc-dot.unknown{background:var(--red);border-color:var(--red);}
+.sh-fc-dot.current{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ══════════════════════════════
+   3. GPA CALCULATOR
+══════════════════════════════ */
+.sh-gpa-row{display:grid;grid-template-columns:1fr 100px 90px 28px;gap:8px;align-items:center;margin-bottom:8px;}
+.sh-gpa-row.header{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.sh-gpa-add-btn{display:flex;align-items:center;gap:8px;background:rgba(232,145,45,.08);border:1px dashed rgba(232,145,45,.3);border-radius:10px;padding:10px 16px;color:#12304a;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;transition:all .18s;}
+.sh-gpa-add-btn:hover{background:rgba(232,145,45,.15);}
+.sh-gpa-result{background:linear-gradient(135deg,rgba(232,145,45,.12),rgba(217,119,6,.1));border:1px solid rgba(232,145,45,.25);border-radius:14px;padding:20px;text-align:center;margin-top:16px;}
+.sh-gpa-score{font-size:3rem;font-weight:900;color:var(--text);line-height:1.1;}
+.sh-gpa-class{font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px;}
+.sh-gpa-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.sh-gpa-stat{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center;}
+.sh-gpa-stat-val{font-size:1.1rem;font-weight:800;color:var(--text);}
+.sh-gpa-stat-lbl{font-size:.68rem;color:var(--muted);font-weight:600;margin-top:3px;}
+.sh-gpa-del{width:28px;height:28px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#12304a;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+.sh-gpa-del:hover{background:rgba(239,68,68,.2);}
+
+/* TOAST */
+#sh-toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.sh-toast{background:#faf3ea;border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 16px;font-size:.82rem;font-weight:600;backdrop-filter:blur(12px);}
+
+/* Responsive */
+@media(max-width:768px){
+  .sh-panel{padding:16px 14px;}
+  .sh-gpa-row{grid-template-columns:1fr 90px 80px 28px;}
+  .sh-result-grid{grid-template-columns:repeat(2,1fr);}
+  
+  
+}
+/* ── AI Visual Board (Canvas Concept Animator) ── */
+.ait-visual-board{width:100%;border-radius:12px;overflow:hidden;border:1px solid rgba(232,145,45,.22);background:#faf3ea;margin-bottom:14px;flex-shrink:0;}
+.ait-visual-board-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:rgba(232,145,45,.08);border-bottom:1px solid rgba(232,145,45,.15);}
+.ait-vb-title{font-size:.58rem;font-weight:800;color:#12304a;text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:6px;}
+.ait-vb-dot{width:5px;height:5px;border-radius:50%;background:#faf3ea;animation:ait-vb-blink 1.5s ease-in-out infinite;flex-shrink:0;}
+.ait-vb-dot.active{background:#faf3ea;box-shadow:0 0 6px rgba(52,211,153,.8);}
+@keyframes ait-vb-blink{0%,100%{opacity:.35}50%{opacity:1}}
+.ait-vb-mode{font-size:.58rem;color:#475569;font-weight:600;letter-spacing:.03em;}
+#ait-visual-canvas{display:block;width:100%;height:158px;cursor:default;}
+.ait-vb-math-overlay{position:absolute;inset:0;display:none;align-items:flex-start;justify-content:center;flex-direction:column;gap:2px;padding:10px 14px;overflow:hidden;pointer-events:none;color:#12304a;}
+.ait-vb-math-line{min-height:22px;max-width:100%;font:700 12px/1.35 Inter,sans-serif;white-space:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
+.ait-vb-math-line::-webkit-scrollbar{display:none;}
+.ait-vb-math-line:first-child{font-size:13px;color:#12304a;border-bottom:1px solid rgba(232,145,45,.25);padding-bottom:3px;margin-bottom:1px;width:100%;}
+.ait-vb-math-line.ait-vb-math-result{color:#34d399;background:#faf3ea;border-left:3px solid #34d399;padding-left:8px;width:100%;}
+.ait-vb-math-line .katex,.ait-vb-math-line mjx-container{font-size:1.08em;}
+.ait-vb-math-line .katex-display{margin:0;text-align:left;}
+@media(max-width:768px){.ait-vb-math-overlay{padding:7px 10px;}.ait-vb-math-line{font-size:11px;min-height:20px;}.ait-vb-math-line:first-child{font-size:12px;}}
+@media(max-width:768px){#ait-visual-canvas{height:118px;}.ait-visual-board{margin-bottom:10px;}}
+
+/* Professional flashcards workspace */
+.fc-study-complete{margin:22px auto 8px;max-width:540px;padding:26px 20px;text-align:center;border:1px solid rgba(34,197,94,.22);border-radius:16px;background:rgba(34,197,94,.055)}.fc-complete-icon{width:48px;height:48px;margin:0 auto 12px;display:grid;place-items:center;border-radius:50%;background:rgba(34,197,94,.15);color:#16a34a;font-size:1.5rem;font-weight:900}.fc-study-complete strong{display:block;font-size:1rem;color:var(--text)}.fc-study-complete p{font-size:.76rem;line-height:1.55;color:var(--muted);margin:8px auto 16px;max-width:420px}.fc-study-complete[hidden]{display:none!important}
+.fc-create-card{padding:18px!important}.fc-method-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:18px}
+.fc-method{min-height:42px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.035);color:var(--muted);font-size:.78rem;font-weight:800}.fc-method.active{background:rgba(232,145,45,.13);border-color:rgba(232,145,45,.45);color:var(--text);box-shadow:0 4px 14px rgba(232,145,45,.08)}
+.fc-source-pane[hidden],.fc-study-area[hidden],.fc-grid-wrap[hidden]{display:none!important}.fc-options-row{display:flex;align-items:end;gap:14px;margin-top:12px}.fc-options-row>div{width:150px;flex-shrink:0}.fc-options-row p{font-size:.74rem;color:var(--muted);line-height:1.5;margin:0 0 7px}
+.fc-notes-area{width:100%;min-height:145px;resize:vertical;padding:12px!important;line-height:1.6}.fc-upload-box{min-height:145px;border:1.5px dashed rgba(232,145,45,.4);border-radius:14px;background:rgba(232,145,45,.045);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px;text-align:center;cursor:pointer}.fc-upload-box:hover{background:rgba(232,145,45,.09);border-color:var(--accent)}
+.fc-upload-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(232,145,45,.15);font-size:1.3rem;color:var(--accent)}.fc-upload-box strong{font-size:.86rem;color:var(--text)}.fc-upload-box>span:not(.fc-upload-icon){font-size:.72rem;color:var(--muted);line-height:1.45}.fc-file-name{font-size:.75rem;font-weight:800;color:var(--accent)!important;overflow-wrap:anywhere}
+.fc-manual-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fc-manual-grid textarea{width:100%;resize:vertical;padding:11px!important;line-height:1.5}.fc-add-card-btn{margin-top:10px}.fc-manual-count{font-size:.72rem;color:var(--muted);margin:9px 0}.fc-generate-btn{margin-top:15px;min-width:210px}.fc-status{font-size:.76rem;color:var(--muted);margin-top:10px;min-height:18px}
+.fc-decks-section{margin:22px 0}.fc-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}.fc-section-heading strong{display:block;font-size:.92rem;color:var(--text)}.fc-section-heading span{display:block;font-size:.72rem;color:var(--muted);margin-top:3px}.fc-deck-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.fc-deck-item{padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;transition:.18s}.fc-deck-item:hover{border-color:rgba(232,145,45,.45);transform:translateY(-1px)}.fc-deck-item strong{display:block;font-size:.82rem;margin-bottom:5px}.fc-deck-item span{font-size:.7rem;color:var(--muted)}.fc-empty-decks{padding:18px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);font-size:.76rem;line-height:1.6}
+.fc-study-area{margin:16px 0 30px;padding:18px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.025)}.fc-study-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.fc-study-head h3{font-size:1rem;margin:4px 0 0;color:var(--text)}.fc-study-eyebrow{font-size:.62rem;font-weight:900;letter-spacing:.12em;color:var(--accent)}
+.fc-progress-stats{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:16px 0 8px;font-size:.7rem;font-weight:800}.fc-stat-mastered{color:#16a34a}.fc-stat-review{color:#c77b2e}.fc-stat-position{color:var(--muted)}.fc-progress-track{height:7px;border-radius:99px;background:rgba(148,163,184,.15);overflow:hidden;margin-bottom:16px}.fc-progress-track>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:99px;transition:width .25s}
+.fc-study-card{min-height:260px;max-width:650px;margin:0 auto 16px;cursor:pointer}.fc-study-card .sh-fc-text{font-size:1.1rem;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}.fc-study-card .sh-fc-label{letter-spacing:.12em}.fc-study-controls{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}.fc-study-controls .sh-btn{font-size:.76rem;padding:10px 13px}
+.fc-rate-again{background:rgba(239,68,68,.10)!important;border:1px solid rgba(239,68,68,.3)!important;color:#b91c1c!important}.fc-rate-hard{background:rgba(245,158,11,.10)!important;border:1px solid rgba(245,158,11,.3)!important;color:#a16207!important}.fc-rate-easy{background:rgba(34,197,94,.12)!important;border:1px solid rgba(34,197,94,.3)!important;color:#15803d!important}
+.fc-study-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;color:var(--muted);font-size:.69rem;line-height:1.5}.fc-grid-wrap{margin-top:16px}.fc-grid-card{min-height:190px;cursor:pointer}.fc-grid-card .sh-fc-text{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:600px){.fc-method-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.fc-options-row{align-items:stretch;flex-direction:column;gap:6px}.fc-options-row>div{width:100%}.fc-manual-grid{grid-template-columns:1fr}.fc-study-controls{display:grid;grid-template-columns:repeat(3,1fr)}.fc-study-foot{align-items:flex-start;flex-direction:column}}
+
+
+.sh-workspace-top{max-width:820px;margin:0 auto;padding:16px 18px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}.sh-workspace-top a{font-size:.78rem;font-weight:800;color:#526579;border:1px solid rgba(82,101,121,.22);border-radius:9px;padding:9px 12px}.sh-workspace-top strong{font-size:.8rem;color:#12304a}@media(max-width:600px){.sh-workspace-top{padding:12px 12px 0}}
+</style></head><body><header class="sh-workspace-top"><a href="studyhub-dashboard.html">← StudyHub Dashboard</a><strong>Flashcards</strong></header><main><div id="sh-panel-flashcards" class="sh-panel active">
+ <div class="sh-section-title">Smart Flashcards</div>
+ <div class="sh-section-sub">Turn your course topics, lecture notes or PDFs into revision cards. You can also write your own cards and track what you have mastered.</div>
+ <div class="sh-card fc-create-card">
+  <div class="fc-method-tabs" role="tablist" aria-label="Flashcard creation method">
+   <button type="button" class="fc-method active" data-source="topic" onclick="shFC_setSource('topic')">✨ Topic</button><button type="button" class="fc-method" data-source="notes" onclick="shFC_setSource('notes')">📝 My notes</button><button type="button" class="fc-method" data-source="pdf" onclick="shFC_setSource('pdf')">📄 PDF</button><button type="button" class="fc-method" data-source="manual" onclick="shFC_setSource('manual')">✍️ Manual</button>
+  </div>
+  <div class="fc-source-pane" id="fc-source-topic"><label class="sh-label" for="fc-topic">What topic do you want to study?</label><input class="sh-input" id="fc-topic" placeholder="e.g. Cell Biology, Soil Formation, Calculus"><div class="fc-options-row"><div><label class="sh-label" for="fc-count">Number of cards</label><select class="sh-select" id="fc-count"><option value="6">6 cards</option><option value="10" selected>10 cards</option><option value="15">15 cards</option><option value="20">20 cards</option></select></div><p>AI creates questions and concise answers from the topic you enter.</p></div></div>
+  <div class="fc-source-pane" id="fc-source-notes" hidden><label class="sh-label" for="fc-notes-source">Paste your lecture notes</label><textarea class="sh-input fc-notes-area" id="fc-notes-source" rows="7" placeholder="Paste your class notes, textbook extracts or revision material here…"></textarea><div class="fc-options-row"><div><label class="sh-label" for="fc-notes-count">Number of cards</label><select class="sh-select" id="fc-notes-count"><option value="6">6 cards</option><option value="10" selected>10 cards</option><option value="15">15 cards</option><option value="20">20 cards</option></select></div><p>Cards will be based on the information you provide.</p></div></div>
+  <div class="fc-source-pane" id="fc-source-pdf" hidden><label class="sh-label" for="fc-pdf-file">Choose a PDF document</label><label class="fc-upload-box" for="fc-pdf-file"><span class="fc-upload-icon">⇧</span><strong>Choose study PDF</strong><span>Text-based PDFs work best. Your document is processed in this browser.</span><span class="fc-file-name" id="fc-pdf-name">No PDF selected</span></label><input id="fc-pdf-file" type="file" accept="application/pdf,.pdf" hidden><div class="fc-options-row"><div><label class="sh-label" for="fc-pdf-count">Number of cards</label><select class="sh-select" id="fc-pdf-count"><option value="6">6 cards</option><option value="10" selected>10 cards</option><option value="15">15 cards</option><option value="20">20 cards</option></select></div><p>We'll extract readable text and use it to create revision cards.</p></div></div>
+  <div class="fc-source-pane" id="fc-source-manual" hidden><label class="sh-label" for="fc-manual-title">Deck name</label><input class="sh-input" id="fc-manual-title" placeholder="e.g. GEO 202 — Atmosphere"><div class="fc-manual-grid"><div><label class="sh-label" for="fc-manual-q">Question</label><textarea class="sh-input" id="fc-manual-q" rows="3" placeholder="Write your question…"></textarea></div><div><label class="sh-label" for="fc-manual-a">Answer</label><textarea class="sh-input" id="fc-manual-a" rows="3" placeholder="Write the answer…"></textarea></div></div><button type="button" class="sh-btn sh-btn-ghost fc-add-card-btn" onclick="shFC_addManual()">＋ Add this card</button><p class="fc-manual-count" id="fc-manual-count">0 cards added to this deck.</p><button type="button" class="sh-btn sh-btn-primary" id="fc-manual-study" onclick="shFC_startStudy()" disabled>Start studying</button></div>
+  <button type="button" class="sh-btn sh-btn-primary fc-generate-btn" id="fc-generate-btn" onclick="shFC_generate()">✨ Generate flashcards</button><div class="fc-status" id="fc-status" role="status" aria-live="polite"></div>
+ </div>
+ <div class="fc-decks-section"><div class="fc-section-heading"><div><strong>Your flashcard decks</strong><span>Continue where you stopped.</span></div><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_newDeck()">＋ New deck</button></div><div class="fc-deck-list" id="fc-deck-list"></div></div>
+ <section class="fc-study-area" id="fc-study-area" hidden><div class="fc-study-head"><div><span class="fc-study-eyebrow">NOW STUDYING</span><h3 id="fc-study-title">Flashcard deck</h3></div><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_closeStudy()">Close</button></div><div class="fc-progress-stats"><span class="fc-stat-mastered" id="fc-known-count">Mastered: 0</span><span class="fc-stat-review" id="fc-unknown-count">To review: 0</span><span class="fc-stat-position" id="fc-solo-progress">Card 1 of 1</span></div><div class="fc-progress-track"><div id="fc-progress-fill"></div></div><button type="button" class="sh-fc-card fc-study-card" id="fc-solo-card" aria-label="Reveal answer"><div class="sh-fc-inner"><div class="sh-fc-front"><div class="sh-fc-label">QUESTION</div><div class="sh-fc-text" id="fc-solo-q">—</div><div class="sh-fc-hint">Tap to reveal the answer</div></div><div class="sh-fc-back"><div class="sh-fc-label">ANSWER</div><div class="sh-fc-text" id="fc-solo-a">—</div><div class="sh-fc-hint">Rate how well you remembered it</div></div></div></button><div class="fc-study-controls"><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(-1)">← Previous</button><button type="button" class="sh-btn fc-rate-again" onclick="shFC_mark('again')">Again</button><button type="button" class="sh-btn fc-rate-hard" onclick="shFC_mark('hard')">Hard</button><button type="button" class="sh-btn fc-rate-easy" onclick="shFC_mark('easy')">Got it</button><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_move(1)">Next →</button></div><div class="fc-study-foot"><span>Cards marked “Got it” return after a longer interval. Difficult cards come back sooner.</span><button type="button" class="sh-btn sh-btn-ghost" onclick="shFC_view('grid')">View all cards</button></div><div class="fc-grid-wrap" id="fc-grid-wrap" hidden><div class="sh-fc-grid" id="fc-grid"></div></div><div class="fc-study-complete" id="fc-study-complete" hidden><div class="fc-complete-icon">✓</div><strong id="fc-complete-title">You are all caught up!</strong><p id="fc-complete-copy">Your next review is scheduled for later. You can still revisit the full deck.</p><button type="button" class="sh-btn sh-btn-primary" onclick="shFC_reviewAll()">Review the full deck</button></div></section>
+</div>
+
+</main><div id="sh-toast"></div><script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script><script src="js/aqs-groq-key.js?v=client-keys-2"></script><script>
+function shToast(msg, dur=3000){
+  const el=document.createElement('div');
+  el.className='sh-toast'; el.textContent=msg;
+  document.getElementById('sh-toast').appendChild(el);
+  setTimeout(()=>el.remove(), dur);
+}
+
+/* AI generation uses the Study Hub key pool loaded from Admin Settings. No provider keys belong in this public page. */
+async function shAI(prompt, maxTokens=1200){
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
+    messages: [{role:'user', content:String(prompt || '')}],
+    max_tokens: maxTokens,
+    temperature: 0.7
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message = data && data.error && (data.error.message || data.error);
+    if(response.status === 429) throw new Error('AI is busy right now. Please wait one minute and try again.');
+    throw new Error(message || ('AI request failed (' + response.status + ').'));
+  }
+  const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if(!text) throw new Error('The AI service returned an empty response. Please try again.');
+  return text;
+}
+
+
+/* ══════════════════════════════
+   2. FLASHCARDS — AI + manual decks
+══════════════════════════════ */
+let _fcCards=[],_fcIdx=0,_fcStudyOrder=[],_fcDeckId=null,_fcDeckTitle='My flashcards',_fcSource='topic';
+const _FC_STORE='aqs_flashcard_decks_v1';
+function shFC_setSource(source){
+ _fcSource=source;document.querySelectorAll('.fc-method').forEach(function(btn){btn.classList.toggle('active',btn.getAttribute('data-source')===source);});
+ ['topic','notes','pdf','manual'].forEach(function(name){var pane=document.getElementById('fc-source-'+name);if(pane)pane.hidden=name!==source;});
+ var generate=document.getElementById('fc-generate-btn');if(generate)generate.hidden=source==='manual';
+}
+function shFC_getDecks(){try{var d=JSON.parse(localStorage.getItem(_FC_STORE)||'[]');return Array.isArray(d)?d:[];}catch(e){return[];}}
+function shFC_saveDeck(){
+ if(!_fcCards.length)return;if(!_fcDeckId)_fcDeckId='fc-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+ var decks=shFC_getDecks().filter(function(d){return d.id!==_fcDeckId;});decks.unshift({id:_fcDeckId,title:_fcDeckTitle||'My flashcards',cards:_fcCards,updatedAt:Date.now()});
+ var saved=false;try{localStorage.setItem(_FC_STORE,JSON.stringify(decks));saved=true;}catch(e){shToast('⚠️ Device storage is full. This deck may not be saved.');}if(saved&&window.aqsTrackStudyHubActivity)window.aqsTrackStudyHubActivity('flashcards',_fcDeckTitle);shFC_renderDeckList();
+}
+function shFC_renderDeckList(){
+ var box=document.getElementById('fc-deck-list');if(!box)return;box.innerHTML='';var decks=shFC_getDecks();
+ if(!decks.length){var empty=document.createElement('div');empty.className='fc-empty-decks';empty.textContent='Your saved decks will appear here. Create one from a topic, your notes, a PDF or manually.';box.appendChild(empty);return;}
+ decks.forEach(function(deck){var card=document.createElement('button');card.type='button';card.className='fc-deck-item';var title=document.createElement('strong');title.textContent=deck.title||'Flashcard deck';var info=document.createElement('span');info.textContent=(deck.cards||[]).length+' cards · Updated '+new Date(deck.updatedAt||Date.now()).toLocaleDateString();card.appendChild(title);card.appendChild(info);card.addEventListener('click',function(){shFC_loadDeck(deck.id);});box.appendChild(card);});
+}
+function shFC_newDeck(){
+ _fcCards=[];_fcIdx=0;_fcDeckId=null;_fcDeckTitle='My flashcards';document.getElementById('fc-topic').value='';document.getElementById('fc-notes-source').value='';
+ document.getElementById('fc-manual-title').value='';document.getElementById('fc-manual-q').value='';document.getElementById('fc-manual-a').value='';document.getElementById('fc-pdf-file').value='';
+ document.getElementById('fc-pdf-name').textContent='No PDF selected';document.getElementById('fc-manual-count').textContent='0 cards added to this deck.';
+ document.getElementById('fc-manual-study').disabled=true;document.getElementById('fc-study-area').hidden=true;document.getElementById('fc-status').textContent='';shFC_setSource('topic');
+}
+function shFC_addManual(){
+ var q=document.getElementById('fc-manual-q').value.trim(),a=document.getElementById('fc-manual-a').value.trim();if(!q||!a){shToast('Add both a question and an answer first.');return;}
+ _fcDeckTitle=document.getElementById('fc-manual-title').value.trim()||'My manual flashcards';_fcCards.push({q:q,a:a,status:'new',intervalDays:0,dueAt:Date.now(),reviews:0});
+ document.getElementById('fc-manual-q').value='';document.getElementById('fc-manual-a').value='';document.getElementById('fc-manual-count').textContent=_fcCards.length+' card'+(_fcCards.length===1?'':'s')+' added to this deck.';
+ document.getElementById('fc-manual-study').disabled=false;shFC_saveDeck();
+}
+async function shFC_readPdf(file){
+ if(!window.pdfjsLib)throw new Error('The PDF reader is not available. Refresh the page and try again.');
+ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+ var data=await file.arrayBuffer(),pdf=await window.pdfjsLib.getDocument({data:data}).promise,text='',pages=Math.min(pdf.numPages,35);
+ for(var p=1;p<=pages;p++){var page=await pdf.getPage(p),content=await page.getTextContent();text+=content.items.map(function(item){return item.str||'';}).join(' ')+'\n';if(text.length>36000)break;}
+ if(!text.trim())throw new Error('No selectable text was found. This may be a scanned PDF.');return text.slice(0,36000);
+}
+function shFC_parseCards(raw){
+ var match=String(raw||'').match(/\{[\s\S]*\}/);if(!match)throw new Error('The AI response did not contain valid flashcards. Please try again.');
+ var data=JSON.parse(match[0]);if(!data||!Array.isArray(data.cards))throw new Error('The AI response was missing the cards list.');
+ return data.cards.filter(function(c){return c&&String(c.q||'').trim()&&String(c.a||'').trim();}).map(function(c){return{q:String(c.q).trim(),a:String(c.a).trim(),status:'new',intervalDays:0,dueAt:Date.now(),reviews:0};});
+}
+async function shFC_generate(){
+ var source=_fcSource,sourceText='',title='',count=10;
+ if(source==='topic'){title=document.getElementById('fc-topic').value.trim();if(!title){shToast('Enter a topic first.');return;}sourceText='Topic: '+title;count=+document.getElementById('fc-count').value||10;}
+ else if(source==='notes'){sourceText=document.getElementById('fc-notes-source').value.trim();if(sourceText.length<30){shToast('Paste a little more study material first.');return;}title='Flashcards from my notes';count=+document.getElementById('fc-notes-count').value||10;}
+ else if(source==='pdf'){var file=document.getElementById('fc-pdf-file').files[0];if(!file){shToast('Choose a PDF document first.');return;}title=file.name.replace(/\.pdf$/i,'');count=+document.getElementById('fc-pdf-count').value||10;document.getElementById('fc-status').textContent='Reading your PDF…';try{sourceText=await shFC_readPdf(file);}catch(e){document.getElementById('fc-status').textContent=e.message;return;}}
+ else return;
+ var btn=document.getElementById('fc-generate-btn');btn.disabled=true;btn.textContent='Creating your cards…';document.getElementById('fc-status').textContent='AI is preparing clear questions and answers…';
+ var prompt='Create exactly '+count+' useful university-level flashcards from the study material below. Make each question clear and focused. Answers should be accurate, concise and understandable. Include important definitions, facts, concepts, formulas or applications when relevant. Do not invent information that is not supported by supplied notes. Return ONLY valid JSON in this exact shape: {"cards":[{"q":"Question","a":"Answer"}]}.\n\nSTUDY MATERIAL:\n'+sourceText;
+ try{var raw=await shAI(prompt,Math.min(3600,count*180));_fcCards=shFC_parseCards(raw);if(!_fcCards.length)throw new Error('No usable cards were generated.');_fcDeckTitle=title;_fcDeckId=null;_fcIdx=0;document.getElementById('fc-manual-title').value='';shFC_saveDeck();shFC_startStudy();document.getElementById('fc-status').textContent=_fcCards.length+' flashcards created and saved.';}
+ catch(error){console.error('[StudyHub:Flashcards]',error);document.getElementById('fc-status').textContent=error&&error.message?error.message:'Could not create flashcards. Please try again.';}
+ finally{btn.disabled=false;btn.textContent='✨ Generate flashcards';}
+}
+function shFC_startStudy(){
+ if(!_fcCards.length){shToast('Create at least one flashcard first.');return;}
+ if(_fcSource==='manual')_fcDeckTitle=document.getElementById('fc-manual-title').value.trim()||_fcDeckTitle;
+ document.getElementById('fc-study-title').textContent=_fcDeckTitle;document.getElementById('fc-study-area').hidden=false;document.getElementById('fc-grid-wrap').hidden=true;_fcIdx=0;
+ _fcStudyOrder=_fcCards.map(function(c,i){return i;}).filter(function(i){return !_fcCards[i].dueAt||_fcCards[i].dueAt<=Date.now();});
+ shFC_saveDeck();shFC_showStudyState();document.getElementById('fc-study-area').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function shFC_showStudyState(){
+ var complete=document.getElementById('fc-study-complete'),card=document.getElementById('fc-solo-card'),controls=document.querySelector('.fc-study-controls'),foot=document.querySelector('.fc-study-foot');
+ var done=!_fcStudyOrder.length;complete.hidden=!done;card.hidden=done;controls.hidden=done;foot.hidden=done;
+ document.getElementById('fc-complete-title').textContent=done?'You are all caught up!':'Review the cards due now';
+ document.getElementById('fc-complete-copy').textContent=done?'No cards are due right now. Your difficult cards will return sooner and mastered cards will return later. You can still revisit the full deck.':'You have finished the cards due in this review session. You can still revisit the full deck.';
+ if(!done)shFC_render();
+}
+function shFC_reviewAll(){_fcStudyOrder=_fcCards.map(function(c,i){return i;});_fcIdx=0;shFC_showStudyState();}
+function shFC_loadDeck(id){
+ var deck=shFC_getDecks().find(function(d){return d.id===id;});if(!deck)return;_fcDeckId=deck.id;_fcDeckTitle=deck.title||'Flashcard deck';
+ document.getElementById('fc-manual-title').value=_fcDeckTitle;_fcCards=(deck.cards||[]).map(function(c){return Object.assign({status:'new',intervalDays:0,dueAt:Date.now(),reviews:0},c);});_fcIdx=0;shFC_startStudy();
+}
+function shFC_render(){
+ if(!_fcCards.length||!_fcStudyOrder.length)return;var c=_fcCards[_fcStudyOrder[_fcIdx]];document.getElementById('fc-solo-q').textContent=c.q;document.getElementById('fc-solo-a').textContent=c.a;
+ document.getElementById('fc-solo-card').classList.remove('flipped');document.getElementById('fc-solo-progress').textContent='Card '+(_fcIdx+1)+' of '+_fcStudyOrder.length+' due';
+ var mastered=_fcCards.filter(function(x){return x.status==='mastered';}).length,due=_fcCards.filter(function(x){return !x.dueAt||x.dueAt<=Date.now();}).length;
+ document.getElementById('fc-known-count').textContent='Mastered: '+mastered;document.getElementById('fc-unknown-count').textContent='To review: '+due;document.getElementById('fc-progress-fill').style.width=(mastered/_fcCards.length*100)+'%';
+ var grid=document.getElementById('fc-grid');grid.innerHTML='';
+ _fcCards.forEach(function(card){var item=document.createElement('button');item.type='button';item.className='sh-fc-card fc-grid-card';var inner=document.createElement('div');inner.className='sh-fc-inner';var front=document.createElement('div');front.className='sh-fc-front';var fl=document.createElement('div');fl.className='sh-fc-label';fl.textContent='QUESTION';var fq=document.createElement('div');fq.className='sh-fc-text';fq.textContent=card.q;var back=document.createElement('div');back.className='sh-fc-back';var bl=document.createElement('div');bl.className='sh-fc-label';bl.textContent='ANSWER';var ba=document.createElement('div');ba.className='sh-fc-text';ba.textContent=card.a;front.appendChild(fl);front.appendChild(fq);back.appendChild(bl);back.appendChild(ba);inner.appendChild(front);inner.appendChild(back);item.appendChild(inner);item.addEventListener('click',function(){item.classList.toggle('flipped');});grid.appendChild(item);});
+}
+function shFC_mark(level){
+ var realIndex=_fcStudyOrder[_fcIdx],c=_fcCards[realIndex];if(!c)return;var now=Date.now();c.reviews=(c.reviews||0)+1;
+ if(level==='easy'){c.status='mastered';c.intervalDays=Math.max(3,(c.intervalDays||1)*2);}else if(level==='hard'){c.status='learning';c.intervalDays=Math.max(1,(c.intervalDays||0.5)*1.5);}else{c.status='learning';c.intervalDays=0.01;}
+ c.lastReviewed=now;c.dueAt=now+c.intervalDays*86400000;shFC_saveDeck();_fcStudyOrder.splice(_fcIdx,1);if(_fcIdx>=_fcStudyOrder.length)_fcIdx=0;shFC_showStudyState();
+}
+function shFC_move(dir){if(!_fcStudyOrder.length)return;_fcIdx=(_fcIdx+dir+_fcStudyOrder.length)%_fcStudyOrder.length;shFC_render();}
+function shFC_view(mode){var wrap=document.getElementById('fc-grid-wrap');wrap.hidden=mode!=='grid';if(mode==='grid')wrap.scrollIntoView({behavior:'smooth',block:'nearest'});}
+function shFC_closeStudy(){document.getElementById('fc-study-area').hidden=true;}
+function shFC_init(){
+ shFC_setSource('topic');shFC_renderDeckList();var file=document.getElementById('fc-pdf-file');file.addEventListener('change',function(){document.getElementById('fc-pdf-name').textContent=file.files[0]?file.files[0].name:'No PDF selected';});
+ var card=document.getElementById('fc-solo-card');card.addEventListener('click',function(){card.classList.toggle('flipped');});
+}
+
+window.addEventListener('load',shFC_init);
+</script></body></html>
