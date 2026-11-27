@@ -2954,6 +2954,9 @@ async function actionGetSettings() {
             if (!window._AQS_ADMIN_SETTINGS_MODE) {
                 settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
+                delete settings.gemini_tts_keys;
+                delete settings.elevenlabs_keys;
+                delete settings.ai_special_services;
                 delete settings.darasocial_post_slot;
             }
             delete settings.brevo_api_key;
@@ -2961,6 +2964,19 @@ async function actionGetSettings() {
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
                 var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                /* One-time migration: specialized credentials move out of readable settings/main. */
+                var legacyPrivate = {};
+                ['creator_image_keys','creator_image_model','gemini_tts_keys','elevenlabs_keys'].forEach(function(field) {
+                    var legacyValue = snap.data()[field];
+                    if (legacyValue !== undefined && privateData[field] === undefined) legacyPrivate[field] = legacyValue;
+                });
+                if (Object.keys(legacyPrivate).length) {
+                    await setDoc(doc(db, 'settings', 'private'), legacyPrivate, { merge: true });
+                    var removeLegacy = {};
+                    Object.keys(legacyPrivate).forEach(function(field) { removeLegacy[field] = deleteField(); });
+                    await setDoc(doc(db, 'settings', 'main'), removeLegacy, { merge: true });
+                    privateData = Object.assign({}, privateData, legacyPrivate);
+                }
                 /* Groq keys live in settings/main again. If an earlier build moved them into
                    settings/private, put them back so every page can use them. */
                 var mainGroqKeys = Array.isArray(snap.data().groq_keys) ? snap.data().groq_keys : [];
