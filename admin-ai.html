@@ -226,6 +226,72 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 @media(max-width:650px){.aic-role-switch{gap:7px;padding:5px}.aic-role-tab{padding:12px 9px;gap:8px}.aic-role-tab strong{font-size:.76rem}.aic-role-tab small{font-size:.65rem}.aic-provider-workspace{padding:12px}.aic-provider-workspace .aic-provider-row{grid-template-columns:1fr!important}.aic-key-heading{align-items:flex-start}.aic-capacity-pill{font-size:.64rem;padding:6px 8px}}
 
 .aic-key-present{display:inline-flex;align-items:center;gap:5px;color:#168567;font-size:.69rem;font-weight:800;letter-spacing:.08em}.aic-key-empty{color:#9aa3b6;font-size:.69rem;font-weight:700}.aic-key input::placeholder{color:#8d96aa;opacity:1;letter-spacing:.04em;font-size:.76rem}
+
+/* Two-level AI provider dashboard and dedicated feature workspaces */
+.aic-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.aic-section-heading{display:flex;justify-content:space-between;align-items:end;gap:18px;margin:30px 0 15px}
+.aic-section-heading h2,.aic-detail-heading h2{font-size:1.35rem;letter-spacing:-.035em;margin:5px 0}
+.aic-section-heading p{margin:0;color:#7a8499;font-size:.85rem}
+.aic-eyebrow{font-size:.68rem;font-weight:850;letter-spacing:.13em;color:#7860e9}
+.aic-provider-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.aic-provider-card{position:relative;min-width:0;padding:17px;border:1px solid #e4e8f2;border-radius:17px;background:linear-gradient(145deg,#fff,#fafaff);box-shadow:0 8px 24px #273c6b0a}
+.aic-provider-card-top{display:flex;align-items:center;gap:11px;margin-bottom:15px}
+.aic-provider-logo{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#eeeaff,#e7efff);color:#5548c8;font-weight:900;font-size:.8rem}
+.aic-provider-card h3{font-size:.91rem;margin:0;color:#233252}
+.aic-provider-card small{display:block;color:#8290a5;font-size:.7rem;margin-top:3px}
+.aic-provider-counts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.aic-provider-count{background:#f5f7fc;border-radius:10px;padding:9px}
+.aic-provider-count strong{display:block;font-size:1.12rem;color:#263858}
+.aic-provider-count span{font-size:.68rem;color:#78869c}
+.aic-provider-health{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:.7rem;color:#78869c}
+.aic-health-dot{width:7px;height:7px;border-radius:50%;background:#aab4c5}
+.aic-health-dot.good{background:#17a477;box-shadow:0 0 0 3px #17a47718}
+.aic-health-dot.bad{background:#d45b67;box-shadow:0 0 0 3px #d45b6718}
+.aic-feature-heading{margin-top:34px}
+.aic-feature-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.aic-feature-card{position:relative;display:flex;flex-direction:column;gap:14px;min-height:174px;text-align:left;padding:19px;border:1px solid #e4e8f2;border-radius:18px;background:#fff;color:#233252;cursor:pointer;box-shadow:0 8px 24px #273c6b0a;transition:transform .18s,border-color .18s,box-shadow .18s}
+.aic-feature-card:hover{transform:translateY(-3px);border-color:#c9cafa;box-shadow:0 15px 32px #354a8718}
+.aic-feature-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.aic-feature-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#eeeaff,#e9f1ff);font-size:1.1rem}
+.aic-feature-arrow{font-size:1.2rem;color:#8a7ce8}
+.aic-feature-card h3{margin:0 0 5px;font-size:.98rem}
+.aic-feature-card p{margin:0;color:#7b879b;font-size:.76rem;line-height:1.5}
+.aic-feature-routes{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto}
+.aic-route-chip{padding:6px 8px;border-radius:8px;background:#f4f6fb;color:#63718b;font-size:.67rem;font-weight:750}
+.aic-route-chip b{color:#354c7c}
+.aic-runtime-panel{margin-top:26px}
+.aic-panel-heading{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:15px}
+.aic-panel-heading h2{margin:0 0 5px}
+.aic-panel-heading .aic-sub{margin:0}
+.aic-live-pill{padding:6px 9px;border-radius:99px;background:#e9f8f2;color:#13845e;font-size:.68rem;font-weight:800;white-space:nowrap}
+.aic-detail-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 24px}
+.aic-back-button{border:1px solid #dfe5f0;border-radius:11px;background:#fff;color:#40516f;padding:10px 13px;font-weight:750;cursor:pointer}
+.aic-back-button:hover{background:#f2f4ff;border-color:#cfd5fa}
+.aic-detail-context{font-size:.68rem;letter-spacing:.12em;font-weight:850;color:#8a91a6}
+.aic-detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:19px}
+.aic-detail-heading h2{font-size:1.8rem;margin:6px 0}
+.aic-detail-heading .aic-sub{margin:0;max-width:720px}
+.aic-detail-capacity{display:flex;align-items:center;gap:11px;padding:12px 15px;border:1px solid #e5e8f2;border-radius:14px;background:#fff}
+.aic-detail-capacity strong{font-size:1.55rem;color:#5e55d9}
+.aic-detail-capacity span{font-size:.7rem;line-height:1.45;color:#77839a}
+.aic-config-panel{padding:23px}
+.aic-role-switch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
+.aic-role-tab{display:flex;align-items:center;gap:12px;text-align:left;padding:15px;border:1px solid #e4e8f1;border-radius:14px;background:#fbfcff;color:#293957;cursor:pointer}
+.aic-role-tab.active{border-color:#9da8fa;background:linear-gradient(110deg,#f0efff,#eff4ff);box-shadow:inset 0 0 0 1px #c9cafa}
+.aic-role-tab strong,.aic-role-tab small{display:block}
+.aic-role-tab strong{font-size:.86rem}
+.aic-role-tab small{font-size:.7rem;color:#7e89a0;margin-top:4px}
+.aic-role-dot{width:10px;height:10px;border-radius:50%;background:#c3cad8;flex:none}
+.aic-role-tab.active .aic-role-dot{background:#6958e8;box-shadow:0 0 0 4px #6958e81b}
+.aic-key-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:17px 0 12px}
+.aic-key-heading h2{margin:0 0 4px}
+.aic-key-heading .aic-sub{margin:0}
+.aic-capacity-pill{padding:7px 10px;border-radius:99px;background:#f0efff;color:#6253d6;font-size:.7rem;font-weight:850;white-space:nowrap}
+.aic-keygrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.aic-provider-row{grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr)}
+@media(max-width:1100px){.aic-provider-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.aic-feature-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.aic-provider-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.aic-feature-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.aic-detail-heading{align-items:flex-start}}
+@media(max-width:560px){.aic-provider-cards,.aic-feature-cards,.aic-role-switch,.aic-keygrid,.aic-provider-row{grid-template-columns:1fr}.aic-section-heading{margin:23px 0 12px}.aic-provider-card{padding:14px}.aic-feature-card{min-height:155px;padding:16px}.aic-detail-top{align-items:flex-start;flex-direction:column}.aic-detail-heading{display:block}.aic-detail-capacity{margin-top:13px;width:max-content}.aic-config-panel{padding:15px}.aic-key-heading{align-items:flex-start}.aic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head>
 <body data-aqs-page="admin-settings" data-aqs-page-group="admin">
 <button class="aic-mobile-menu" id="aic-mobile-menu" type="button" aria-label="Open admin navigation" aria-expanded="false">☰</button><div class="aic-sidebar-backdrop" id="aic-sidebar-backdrop"></div>
@@ -234,14 +300,22 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a><a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a><a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a><a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> General Settings</a><a href="admin-ai.html" class="active"><span class="aqs-nav-icon">🤖</span> AI Control Centre</a><a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a><a href="admin-update.html"><span class="aqs-nav-icon">🚀</span> App Updates</a><a href="admin.html"><span class="aqs-nav-icon">🛡️</span> Admin Panel</a>
 </nav></aside>
 <main class="aqs-admin-content"><div class="aic-wrap">
-<section class="aic-hero"><div><span class="aic-chip">AI OPERATIONS</span><h1>AI Control Centre</h1><p>Manage providers, credentials, model preferences and fallback plans independently for each AI feature.</p></div><div class="aic-chip" id="aic-save-state">Connecting to settings…</div></section>
-<div class="aic-stats"><div class="aic-stat"><small>AI features</small><strong id="aic-feature-count">10</strong></div><div class="aic-stat"><small>Providers configured</small><strong id="aic-provider-count">0</strong></div><div class="aic-stat"><small>Saved key slots</small><strong id="aic-key-count">0</strong></div><div class="aic-stat"><small>Maximum per provider / feature</small><strong>50</strong></div></div>
-<section class="aic-panel" style="margin-bottom:16px"><h2>Runtime health</h2><p class="aic-sub">Latest provider key tests, configured feature routes and the enforced request limit.</p><div id="aic-runtime-health" class="aic-health-grid"><span class="aic-status">Waiting for secure runtime status…</span></div></section>
-<div class="aic-layout"><aside class="aic-panel"><h2>AI feature pages</h2><p class="aic-sub">Choose a feature to manage its provider and fallback.</p><nav class="aic-nav" id="aic-feature-nav"></nav></aside>
-<section class="aic-main"><div class="aic-panel"><h2 id="aic-feature-title">Main AI</h2><p class="aic-sub" id="aic-feature-desc">Shared AI provider configuration.</p>
+<section class="aic-hero"><div><span class="aic-chip">AI OPERATIONS</span><h1>AI Provider Dashboard</h1><p>Monitor every AI provider, see how many keys are assigned to each one, and open a dedicated workspace for any feature.</p></div><div class="aic-chip" id="aic-save-state">Connecting to settings…</div></section>
+<div class="aic-stats"><div class="aic-stat"><small>AI features</small><strong id="aic-feature-count">10</strong></div><div class="aic-stat"><small>AI providers</small><strong id="aic-provider-count">7</strong></div><div class="aic-stat"><small>Saved key slots</small><strong id="aic-key-count">0</strong></div><div class="aic-stat"><small>Key capacity per feature</small><strong>100</strong></div></div>
+<section id="aic-dashboard-view">
+<div class="aic-section-heading"><div><span class="aic-eyebrow">PROVIDER OVERVIEW</span><h2>AI providers & API keys</h2><p>Key totals are counted across all features, separately for Primary and Fallback.</p></div></div>
+<div id="aic-provider-cards" class="aic-provider-cards"></div>
+<div class="aic-section-heading aic-feature-heading"><div><span class="aic-eyebrow">FEATURE WORKSPACES</span><h2>Choose an AI feature</h2><p>Each feature has its own provider settings and its own 100 key slots.</p></div></div>
+<div id="aic-feature-cards" class="aic-feature-cards"></div>
+<section class="aic-panel aic-runtime-panel"><div class="aic-panel-heading"><div><h2>Runtime health</h2><p class="aic-sub">Latest provider tests and the enforced request limit.</p></div><span class="aic-live-pill">Live status</span></div><div id="aic-runtime-health" class="aic-health-grid"><span class="aic-status">Waiting for secure runtime status…</span></div></section>
+</section>
+<section id="aic-feature-view" hidden>
+<div class="aic-detail-top"><button type="button" class="aic-back-button" id="aic-back-dashboard">← Back to provider dashboard</button><span class="aic-detail-context">FEATURE CONFIGURATION</span></div>
+<div class="aic-detail-heading"><div><span class="aic-eyebrow">DEDICATED AI WORKSPACE</span><h2 id="aic-feature-title">Main AI</h2><p id="aic-feature-desc" class="aic-sub">Shared AI provider configuration.</p></div><div class="aic-detail-capacity"><strong>100</strong><span>total key slots<br>50 Primary + 50 Fallback</span></div></div>
+<div class="aic-panel aic-config-panel">
 <div class="aic-role-switch" role="tablist" aria-label="Provider route">
-<button type="button" class="aic-role-tab active" id="aic-primary-tab" data-role="primary" role="tab" aria-selected="true"><span class="aic-role-dot"></span><span><strong>Primary provider</strong><small>Main route used first</small></span></button>
-<button type="button" class="aic-role-tab" id="aic-fallback-tab" data-role="fallback" role="tab" aria-selected="false"><span class="aic-role-dot"></span><span><strong>Fallback provider</strong><small>Used if primary fails</small></span></button>
+<button type="button" class="aic-role-tab active" id="aic-primary-tab" data-role="primary" role="tab" aria-selected="true"><span class="aic-role-dot"></span><span><strong>Primary provider</strong><small>Main route · 50 key slots</small></span></button>
+<button type="button" class="aic-role-tab" id="aic-fallback-tab" data-role="fallback" role="tab" aria-selected="false"><span class="aic-role-dot"></span><span><strong>Fallback provider</strong><small>Backup route · 50 key slots</small></span></button>
 </div>
 <div class="aic-provider-workspace">
 <div class="aic-provider-row">
@@ -251,10 +325,11 @@ body[data-aqs-page-group="admin"]{font-family:Inter,ui-sans-serif,system-ui,sans
 <div class="aic-key-heading"><div><h2 id="aic-key-title">Primary provider API keys</h2><p class="aic-sub" id="aic-key-description">Keys saved here are used for the selected provider.</p></div><span class="aic-capacity-pill">50 key slots</span></div>
 <div class="aic-keygrid" id="aic-key-grid"></div>
 </div>
-<div class="aic-keygrid" id="aic-key-grid"></div>
 <div class="aic-actions"><button class="aic-btn primary" id="aic-save">Save feature configuration</button><button class="aic-btn" id="aic-test">Test entered key</button><span class="aic-status" id="aic-status" aria-live="polite"></span></div>
-<div class="aic-notice">Configured text/chat requests are routed through the Cloudflare Worker using the selected provider and fallback. Streaming requests, multimodal prompts, image generation and voice/TTS still use their existing specialized routes while those integrations are migrated. API keys entered here are stored in the admin-only Firestore private settings document and synced to Worker KV; they are not sent to student browsers.</div>
-</div></section></div></div></main>
+<div class="aic-notice">This feature uses its own Primary and Fallback providers. Keys are stored in admin-only settings and synced to the secure AI runtime; they are not sent to student browsers.</div>
+</div>
+</section>
+</div></main>
 <script>window._AQS_ADMIN_MODE=true;window._AQS_ADMIN_SETTINGS_MODE=true;window.AQS={ajax_url:"firebase",nonce:"",is_admin:true,plugin_url:"./"};</script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="js/aqs-groq-key.js?v=client-keys-1"></script>
@@ -325,9 +400,42 @@ function keyPool(feature,role,providerId){
  feature.keys[role][providerId]=cleanKeySlots(feature.keys[role][providerId]);
  return feature.keys[role][providerId];
 }
-function renderNav(){
-$('aic-feature-nav').innerHTML=features.map(function(f){return '<button type="button" data-feature="'+f.id+'" class="'+(active===f.id?'active':'')+'">'+f.name+'</button>'}).join('');
-$('aic-feature-nav').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){active=b.dataset.feature;renderNav();renderFeature()})});
+var runtimeData=null;
+var featureIcons={main:'✦',quote:'✎',library:'▤',quiz:'▦',challenge:'⚡',studyhub:'⌂',textdocs:'▧',puzzle:'◇',quizstudio:'✧',darasocial:'◉'};
+function featureById(id){return features.find(function(f){return f.id===id})}
+function providerCounts(){
+ var counts={};providers.forEach(function(p){counts[p.id]={primary:0,fallback:0}});
+ Object.keys(config).forEach(function(fid){var c=config[fid]||{};['primary','fallback'].forEach(function(role){var pools=c.keys&&c.keys[role]||{};Object.keys(pools).forEach(function(pid){if(!counts[pid])counts[pid]={primary:0,fallback:0};counts[pid][role]+=(pools[pid]||[]).filter(Boolean).length;});});});
+ return counts;
+}
+function renderDashboard(){
+ var counts=providerCounts(),health=runtimeData&&runtimeData.health||{},total=0;
+ providers.forEach(function(p){var c=counts[p.id]||{primary:0,fallback:0};total+=c.primary+c.fallback;});
+ $('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=providers.length;$('aic-key-count').textContent=total;
+ $('aic-provider-cards').innerHTML=providers.map(function(p){
+  var c=counts[p.id]||{primary:0,fallback:0},h=health[p.id],state=h?(h.ok?'good':'bad'):'',label=h?(h.ok?'Last key test passed':'Last key test failed'):(c.primary||c.fallback?'Configured keys':'No keys saved');
+  return '<article class="aic-provider-card"><div class="aic-provider-card-top"><span class="aic-provider-logo">'+p.name.split(/\s+/).map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()+'</span><div><h3>'+p.name+'</h3><small>'+(c.primary+c.fallback)+' saved key(s) across features</small></div></div><div class="aic-provider-counts"><div class="aic-provider-count"><strong>'+c.primary+'</strong><span>Primary keys</span></div><div class="aic-provider-count"><strong>'+c.fallback+'</strong><span>Fallback keys</span></div></div><div class="aic-provider-health"><i class="aic-health-dot '+state+'"></i>'+label+'</div></article>';
+ }).join('');
+ $('aic-feature-cards').innerHTML=features.map(function(f){
+  var c=config[f.id]||{},primary=c.primary||'groq',fallback=c.fallback||'mistral',p=provider(primary),b=provider(fallback),pk=keyPool(c,'primary',primary).filter(Boolean).length,fk=keyPool(c,'fallback',fallback).filter(Boolean).length;
+  return '<button type="button" class="aic-feature-card" data-open-feature="'+f.id+'"><div class="aic-feature-card-head"><span class="aic-feature-icon">'+(featureIcons[f.id]||'✦')+'</span><span class="aic-feature-arrow">↗</span></div><div><h3>'+f.name+'</h3><p>'+f.desc+'</p></div><div class="aic-feature-routes"><span class="aic-route-chip">Primary: <b>'+p.name+'</b> · '+pk+'/50</span><span class="aic-route-chip">Fallback: <b>'+b.name+'</b> · '+fk+'/50</span></div></button>';
+ }).join('');
+ $('aic-feature-cards').querySelectorAll('[data-open-feature]').forEach(function(card){card.addEventListener('click',function(){openFeature(card.dataset.openFeature,true)})});
+}
+function showDashboard(updateUrl){
+ $('aic-dashboard-view').hidden=false;$('aic-feature-view').hidden=true;
+ if(updateUrl!==false){var url=new URL(location.href);url.searchParams.delete('feature');history.pushState({aiDashboard:true},'',url.pathname+url.search+url.hash);}
+ document.title='AI Provider Dashboard — xzily AI';renderDashboard();
+}
+function openFeature(id,updateUrl){
+ if(!featureById(id))return;
+ active=id;activeRole='primary';$('aic-dashboard-view').hidden=true;$('aic-feature-view').hidden=false;
+ if(updateUrl!==false){var url=new URL(location.href);url.searchParams.set('feature',id);history.pushState({aiFeature:id},'',url.pathname+url.search+url.hash);}
+ document.title=featureById(id).name+' Settings — AI Control Centre';renderFeature();window.scrollTo({top:0,behavior:'smooth'});
+}
+function routeFromUrl(){
+ var id=new URLSearchParams(location.search).get('feature');
+ if(id&&featureById(id))openFeature(id,false);else showDashboard(false);
 }
 function setRole(role){
 activeRole=role==='fallback'?'fallback':'primary';
@@ -386,6 +494,7 @@ async function loadRuntimeStatus(){
   var response=await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/status',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
   var data=await response.json().catch(function(){return {}});
   if(!response.ok)throw new Error(data.error||'Runtime status unavailable.');
+  runtimeData=data;renderDashboard();
   var cards=[];
   cards.push('<div class="aic-health-item"><strong>Request limit</strong><small class="aic-health-good">'+(data.rateLimit&&data.rateLimit.enforcement==='active'?'Active · ':'Not confirmed · ')+(data.rateLimit&&data.rateLimit.perUserPerMinute||'—')+' requests / user / minute</small></div>');
   (data.features||[]).forEach(function(f){
@@ -437,10 +546,12 @@ if(!existing||!Object.keys(existing).length){
 features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=(migrated||keySchemaMigrated)?'Key pools migrated — saving securely':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported into the primary key pool. Fallback has its own separate 50 slots.';
-renderNav();renderFeature();stats();loadRuntimeStatus();
+routeFromUrl();renderDashboard();stats();loadRuntimeStatus();
 if(migrated||keySchemaMigrated){$('aic-status').textContent='Migrating existing key pools into separate primary and fallback storage…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
 }
+$('aic-back-dashboard').addEventListener('click',function(){showDashboard(true);window.scrollTo({top:0,behavior:'smooth'})});
+window.addEventListener('popstate',routeFromUrl);
 $('aic-primary-tab').addEventListener('click',function(){setRole('primary')});
 $('aic-fallback-tab').addEventListener('click',function(){setRole('fallback')});
 $('aic-current-provider').addEventListener('change',function(){
@@ -474,7 +585,7 @@ window.aqsAjax({action:'aqs_save_settings',ai_provider_config:config},async func
   $('aic-status').textContent='Saved in Firestore, but runtime sync failed: '+error.message;
   $('aic-save-state').textContent='Sync needed';
  }
- stats();loadRuntimeStatus();
+ stats();renderDashboard();loadRuntimeStatus();
 });
 });
 async function testProviderKey(owner,key,model){
