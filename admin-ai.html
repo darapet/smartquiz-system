@@ -394,8 +394,8 @@ $('aic-primary-tab').addEventListener('click',function(){setRole('primary')});
 $('aic-fallback-tab').addEventListener('click',function(){setRole('fallback')});
 $('aic-current-provider').addEventListener('change',function(){
  var c=config[active],next=this.value;
- if(activeRole==='primary'){c.primary=next;renderModelOptions(next);if(!c.model||!provider(next).models.includes(c.model))$('aic-current-model').value=c.model||'';}
- else{c.fallback=next;renderModelOptions(next);if(!c.fallbackModel||!provider(next).models.includes(c.fallbackModel))$('aic-current-model').value=c.fallbackModel||'';}
+ if(activeRole==='primary'){c.primary=next;renderModelOptions(next);if(c.model&&!provider(next).models.includes(c.model)){c.model='';$('aic-current-model').value='';}}
+ else{c.fallback=next;renderModelOptions(next);if(c.fallbackModel&&!provider(next).models.includes(c.fallbackModel)){c.fallbackModel='';$('aic-current-model').value='';}}
  $('aic-key-description').textContent='These key slots belong only to '+provider(next).name+'. Switch tabs to manage the other route.';
  $('aic-model-hint').textContent=provider(next).models.length+' suggested model IDs. You can also type a model ID supported by '+provider(next).name+'.';
  renderKeys();
