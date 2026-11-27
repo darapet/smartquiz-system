@@ -43,6 +43,12 @@ function mockFetch({ openaiStatus = 200 } = {}) {
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     if (target === 'https://api.groq.com/openai/v1/chat/completions') {
+      const requestBody = JSON.parse(init.body || '{}');
+      if (requestBody.stream === true) {
+        return new Response('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { content: 'Central streamed route active' }, finish_reason: null }] }) + '\\n\\ndata: [DONE]\\n\\n', {
+          status: 200, headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+        });
+      }
       return new Response(JSON.stringify({
         id: 'chatcmpl-fallback', object: 'chat.completion', model: 'openai/gpt-oss-20b',
         choices: [{ index: 0, message: { role: 'assistant', content: 'Fallback route active' }, finish_reason: 'stop' }],
@@ -67,11 +73,11 @@ async function syncConfig(env, featureConfig) {
   return syncConfigs(env, { main: featureConfig });
 }
 
-async function generate(env, feature = 'main') {
+async function generate(env, feature = 'main', stream = false) {
   return worker.fetch(new Request('https://worker.test/api/ai', {
     method: 'POST',
     headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feature, messages: [{ role: 'user', content: 'Say hello.' }] }),
+    body: JSON.stringify({ feature, stream, messages: [{ role: 'user', content: 'Say hello.' }] }),
   }), env);
 }
 
@@ -156,6 +162,26 @@ test('feature AI uses the central main primary even when the feature has no save
     const data = await response.json();
     assert.equal(response.status, 200);
     assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.calls, ['https://api.groq.com/openai/v1/chat/completions']);
+  } finally {
+    mock.restore();
+  }
+});
+
+
+test('streaming feature requests use the central configured provider', async () => {
+  const env = makeEnv();
+  const mock = mockFetch();
+  try {
+    await syncConfig(env, {
+      primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '',
+      keys: { primary: { groq: ['gsk-main-stream-key-123456789'] }, fallback: {} },
+    });
+    const response = await generate(env, 'studyhub', true);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('Content-Type') || '', /text\/event-stream/);
+    assert.match(body, /Central streamed route active/);
     assert.deepEqual(mock.calls, ['https://api.groq.com/openai/v1/chat/completions']);
   } finally {
     mock.restore();
