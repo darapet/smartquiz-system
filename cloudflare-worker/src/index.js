@@ -1379,36 +1379,61 @@ async function callConfiguredAIProvider(provider, model, apiKey, messages, optio
 async function runConfiguredAI(env, featureId, messages, options) {
   if (!env.EMAIL_CONFIG) return null;
   const stored = await env.EMAIL_CONFIG.get(AI_PROVIDER_CONFIG_KEY, 'json').catch(() => null);
-  const feature = stored && stored.features && stored.features[featureId];
-  if (!feature) return null;
+  const featureConfigs = stored && stored.features && typeof stored.features === 'object' ? stored.features : {};
+  const mainConfig = featureConfigs.main || null;
+  const featureConfig = featureConfigs[featureId] || null;
   const providerDefaults = {
     openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash', claude: 'claude-haiku-4-5',
     deepseek: 'deepseek-chat', groq: 'openai/gpt-oss-20b',
     mistral: 'mistral-small-latest', huggingface: 'openai/gpt-oss-20b'
   };
-  const attempts = [
-    { role: 'primary', provider: feature.primary, model: String(feature.model || '').trim() || providerDefaults[feature.primary] },
-    { role: 'fallback', provider: feature.fallback, model: String(feature.fallbackModel || '').trim() || providerDefaults[feature.fallback] }
-  ].filter((item) => item.provider && providerDefaults[item.provider]);
-  let lastError = null;
-  for (const attempt of attempts) {
-    const pools = feature.keys || {};
-    const rolePools = pools[attempt.role];
-    const keys = rolePools && !Array.isArray(rolePools) && Array.isArray(rolePools[attempt.provider])
-      ? rolePools[attempt.provider].slice(0, 50)
-      : (Array.isArray(rolePools) ? rolePools.slice(0, 50) : []);
-    for (const key of keys) {
-      try {
-        const result = await callConfiguredAIProvider(attempt.provider, attempt.model, key, messages, options);
-        return { result, provider: attempt.provider, model: attempt.model };
-      } catch (error) {
-        lastError = error;
-        if (![401, 403, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
+
+  // Each feature gets first priority for its own primary and fallback routes.
+  // The central "main" configuration is then the shared safety net for every
+  // feature, in the same primary -> fallback order.
+  const routeConfigs = featureId === 'main'
+    ? [{ id: 'main', config: mainConfig }]
+    : [{ id: featureId, config: featureConfig }, { id: 'main', config: mainConfig }];
+  const attempts = [];
+  const seenRoutes = new Set();
+
+  for (const route of routeConfigs) {
+    const config = route.config;
+    if (!config) continue;
+    for (const role of ['primary', 'fallback']) {
+      const provider = String(role === 'primary' ? config.primary : config.fallback || '').toLowerCase();
+      if (!providerDefaults[provider]) continue;
+      const modelValue = role === 'primary' ? config.model : config.fallbackModel;
+      const model = String(modelValue || '').trim() || providerDefaults[provider];
+      const rolePools = config.keys && config.keys[role];
+      const keys = rolePools && !Array.isArray(rolePools) && Array.isArray(rolePools[provider])
+        ? rolePools[provider].slice(0, 50)
+        : (Array.isArray(rolePools) ? rolePools.slice(0, 50) : []);
+      const uniqueKeys = keys.filter((key) => typeof key === 'string' && key.trim());
+      for (const key of uniqueKeys) {
+        const routeKey = [provider, model, key].join('|');
+        if (seenRoutes.has(routeKey)) continue;
+        seenRoutes.add(routeKey);
+        attempts.push({ role, provider, model, key, source: route.id });
       }
     }
   }
+
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const result = await callConfiguredAIProvider(attempt.provider, attempt.model, attempt.key, messages, options);
+      return { result, provider: attempt.provider, model: attempt.model, route: attempt.source, role: attempt.role };
+    } catch (error) {
+      lastError = error;
+      // Invalid credentials, provider rate limits and server errors should move
+      // to the next configured key/route. A malformed request is not retryable.
+      if (![400, 401, 403, 404, 408, 409, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
+    }
+  }
+
   if (lastError) {
-    const error = new Error('Configured AI providers are unavailable: ' + lastError.message);
+    const error = new Error('Feature and main AI routes are unavailable: ' + lastError.message);
     error.httpStatus = Number(lastError.status) || 502;
     throw error;
   }
