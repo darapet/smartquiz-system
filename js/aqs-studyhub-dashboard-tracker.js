@@ -5,7 +5,7 @@
       AI='aqs_ai_teacher_chats_v2';
   var rangeDays=30, quizAttempts=[], quizStats={}, quizState='loading';
   var $=function(s,r){return (r||document).querySelector(s);};
-  var $=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   function read(key){try{var v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function time(v){if(typeof v==='number')return v;var n=Date.parse(v);return Number.isFinite(n)?n:0;}
