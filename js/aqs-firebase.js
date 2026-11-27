@@ -2985,8 +2985,13 @@ async function actionGetSettings() {
                     settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
                     settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
-                    /* AI Control Centre credentials/config are private and admin-only. */
-                    settings.ai_provider_config = privateSnap.data().ai_provider_config || {};
+                    /* All specialized AI credentials/config are private and admin-only. */
+                    settings.ai_provider_config = privateData.ai_provider_config || {};
+                    settings.ai_special_services = privateData.ai_special_services || {};
+                    settings.creator_image_keys = privateData.creator_image_keys || settings.creator_image_keys || [];
+                    settings.creator_image_model = privateData.creator_image_model || settings.creator_image_model || 'gemini-3.1-flash-image';
+                    settings.gemini_tts_keys = privateData.gemini_tts_keys || settings.gemini_tts_keys || [];
+                    settings.elevenlabs_keys = privateData.elevenlabs_keys || settings.elevenlabs_keys || [];
                 }
             }
             window._aqsSettingsLoadError = '';
@@ -3030,20 +3035,22 @@ async function actionSaveSettings(data) {
         'puzzle_groq_keys',
         'quizstudio_groq_keys','darasocial_post_slot',
         'darasocial_course_enabled','darasocial_course_interval_minutes','darasocial_course_last_post_at','darasocial_news_enabled','darasocial_news_interval_hours','darasocial_news_last_post_at','darasocial_course_index','darasocial_news_index',
-        'gemini_tts_keys','ai_provider_config'
+        'gemini_tts_keys','elevenlabs_keys','ai_provider_config','ai_special_services'
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || k === 'ai_provider_config') privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_') || ['creator_image_keys','creator_image_model','gemini_tts_keys','elevenlabs_keys','ai_provider_config','ai_special_services'].includes(k)) privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
-    /* Trim and validate Gemini TTS keys (up to 5) before saving */
-    if (Array.isArray(payload.gemini_tts_keys)) {
-        payload.gemini_tts_keys = payload.gemini_tts_keys
-            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-            .filter(function(k){ return k.length > 20; })
-            .slice(0, 5);
-    }
+    /* Validate specialized provider key pools before private persistence. */
+    ['gemini_tts_keys','elevenlabs_keys','creator_image_keys'].forEach(function(field) {
+        if (Array.isArray(privatePayload[field])) {
+            privatePayload[field] = privatePayload[field]
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 10 && k.length <= 512 && !/[\\r\\n]/.test(k); })
+                .slice(0, field === 'creator_image_keys' ? 10 : 5);
+        }
+    });
     /* Trim and validate Groq keys (up to 20) before saving */
     if (Array.isArray(payload.groq_keys)) {
         payload.groq_keys = payload.groq_keys
@@ -3096,13 +3103,19 @@ async function actionSaveSettings(data) {
                 .slice(0, 10);
         }
     });
+    /* Never leave specialized provider secrets in the readable settings/main document. */
+    ['creator_image_keys','gemini_tts_keys','elevenlabs_keys'].forEach(function(field) {
+        if (field in privatePayload) payload[field] = deleteField();
+    });
+    if ('creator_image_model' in privatePayload) payload.creator_image_model = deleteField();
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     var privateKeys = Object.keys(privatePayload).filter(function (k) { return k !== 'brevo_api_key'; });
     if (privateKeys.length) {
         var privateMerge = {};
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
-            if (k === 'ai_provider_config') privateMerge[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+            if (k === 'ai_provider_config' || k === 'ai_special_services') privateMerge[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+            else if (['creator_image_keys','gemini_tts_keys','elevenlabs_keys'].includes(k)) privateMerge[k] = Array.isArray(v) ? v : [];
             else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
