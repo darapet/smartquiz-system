@@ -1356,15 +1356,19 @@ async function callConfiguredAIProvider(provider, model, apiKey, messages, optio
     headers.Authorization = 'Bearer ' + apiKey;
     body = { model, messages, max_tokens: maxTokens, temperature };
   }
+  const nativeStream = options.stream === true && provider !== 'gemini' && provider !== 'claude';
+  if (nativeStream && provider !== 'gemini' && provider !== 'claude') body.stream = true;
   const response = await fetch(endpoint, {
     method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45000)
   });
-  const result = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
     const error = new Error(String(result && result.error && (result.error.message || result.error) || result && result.message || 'AI provider request failed.').slice(0, 300));
     error.status = response.status;
     throw error;
   }
+  if (nativeStream) return response;
+  const result = await response.json().catch(() => ({}));
   if (provider === 'gemini') {
     const text = (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts || []).map((part) => part.text || '').join('');
     return { id: 'gemini-' + Date.now(), object: 'chat.completion', model, choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }] };
@@ -1531,7 +1535,28 @@ async function handleAI(request, env) {
       maxTokens: Math.max(64, Math.min(6000, Number(payload.max_tokens) || 1200)),
       temperature: Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7))
     });
-    if (configured) return json(request, env, configured.result);
+    if (configured) {
+      if (payload.stream === true) {
+        if (configured.result instanceof Response) {
+          return new Response(configured.result.body, {
+            status: configured.result.status,
+            headers: {
+              ...corsHeaders(request, env),
+              'Content-Type': configured.result.headers.get('Content-Type') || 'text/event-stream; charset=utf-8',
+              'Cache-Control': 'no-cache, no-transform',
+              'X-Accel-Buffering': 'no'
+            }
+          });
+        }
+        const content = String(configured.result && configured.result.choices && configured.result.choices[0] && configured.result.choices[0].message && configured.result.choices[0].message.content || '');
+        const packet = { id: configured.result.id || 'smartquiz-stream', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content }, finish_reason: null }] };
+        return new Response('data: ' + JSON.stringify(packet) + '\\n\\ndata: [DONE]\\n\\n', {
+          status: 200,
+          headers: { ...corsHeaders(request, env), 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' }
+        });
+      }
+      return json(request, env, configured.result);
+    }
 
     const aiConfig = await getGroqAIConfig(env);
     const keys = aiConfig.keys.slice();
@@ -1549,8 +1574,9 @@ async function handleAI(request, env) {
       upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-        body: JSON.stringify({ model: effectiveModel, messages, max_tokens: maxTokens, temperature }),
+        body: JSON.stringify({ model: effectiveModel, messages, max_tokens: maxTokens, temperature, ...(payload.stream === true ? { stream: true } : {}) }),
       });
+      if (upstream.ok && payload.stream === true) break;
       result = await upstream.json().catch(() => ({}));
       if (upstream.ok) break;
       if (![401, 403, 429].includes(upstream.status)) break;
@@ -1561,6 +1587,12 @@ async function handleAI(request, env) {
       return new Response(JSON.stringify({ error: { message: upstream.status === 429 ? 'The AI provider is busy. Please wait briefly and try again.' : detail } }), {
         status: upstream.status,
         headers: { ...corsHeaders(request, env), 'Content-Type': 'application/json; charset=utf-8', ...(retryAfter ? { 'Retry-After': retryAfter } : {}) },
+      });
+    }
+    if (payload.stream === true) {
+      return new Response(upstream.body, {
+        status: upstream.status,
+        headers: { ...corsHeaders(request, env), 'Content-Type': upstream.headers.get('Content-Type') || 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' }
       });
     }
     return json(request, env, result);
