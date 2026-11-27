@@ -106,6 +106,7 @@ var features=[
 {id:'darasocial',name:'Dara Social AI',desc:'Social content and publishing assistance.'}
 ];
 var config={},active='main',loaded=false;
+var specialMigrated=false;
 var specialConfig={
  creatorImage:{keys:[],model:'gemini-3.1-flash-image'},
  geminiTTS:{keys:[],model:'gemini-2.5-flash-preview-tts'},
@@ -137,7 +138,9 @@ $('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button
 }
 function normalizeSpecialPool(value,max){return Array.isArray(value)?value.map(function(k){return typeof k==='string'?k.trim():''}).filter(function(k){return k.length>10}).slice(0,max):[]}
 function loadSpecialServices(settings){
- var saved=settings.ai_special_services&&typeof settings.ai_special_services==='object'?settings.ai_special_services:{};
+ var hasSaved=settings.ai_special_services&&typeof settings.ai_special_services==='object'&&Object.keys(settings.ai_special_services).length>0;
+ specialMigrated=!hasSaved&&!!([settings.creator_image_keys,settings.gemini_tts_keys,settings.elevenlabs_keys].some(function(pool){return Array.isArray(pool)&&pool.length>0}));
+ var saved=hasSaved?settings.ai_special_services:{};
  var image=saved.creatorImage||{},gtts=saved.geminiTTS||{},el=saved.elevenLabs||{};
  specialConfig.creatorImage={keys:normalizeSpecialPool(image.keys||settings.creator_image_keys,10),model:String(image.model||settings.creator_image_model||'gemini-3.1-flash-image')};
  specialConfig.geminiTTS={keys:normalizeSpecialPool(gtts.keys||settings.gemini_tts_keys,5),model:String(gtts.model||'gemini-2.5-flash-preview-tts')};
@@ -219,7 +222,8 @@ $('aic-special-test').addEventListener('click',async function(){
 });
 function stats(){
 var p={},n=0;Object.keys(config).forEach(function(fid){Object.keys((config[fid]||{}).keys||{}).forEach(function(pid){p[pid]=true;n+=(config[fid].keys[pid]||[]).filter(Boolean).length})});
-$('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length;$('aic-key-count').textContent=n;
+Object.keys(specialConfig||{}).forEach(function(id){n+=(specialConfig[id].keys||[]).filter(Boolean).length});
+$('aic-feature-count').textContent=features.length;$('aic-provider-count').textContent=Object.keys(p).length+3;$('aic-key-count').textContent=n;
 }
 async function loadRuntimeStatus(){
  var target=$('aic-runtime-health');
@@ -289,6 +293,7 @@ features.forEach(function(f){ensureFeature(f.id)});
 loaded=true;$('aic-save-state').textContent=migrated?'Legacy keys imported — save to activate':'Settings loaded';
 if(migrated)$('aic-status').textContent=migrated+' existing AI key(s) imported from General Settings. Save a feature to store them in the new secure runtime.';
 renderNav();renderFeature();stats();loadRuntimeStatus();
+if(specialMigrated){$('aic-special-status').textContent='Legacy image/voice keys found. Moving them into private AI service storage…';setTimeout(function(){if(loaded)$('aic-special-save').click()},150)}
 if(migrated){$('aic-status').textContent='Migrating existing AI key pools into the secure runtime…';setTimeout(function(){if(loaded)$('aic-save').click()},0)}
 });
 }
