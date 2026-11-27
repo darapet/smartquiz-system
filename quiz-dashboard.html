@@ -82,16 +82,18 @@
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function call(action,data={}){return new Promise((resolve,reject)=>{const send=()=>window.aqsAjax({action,...data},r=>r&&r.success===false?reject(new Error(r.data||'Request failed')):resolve(r&&r.data!==undefined?r.data:r),reject);if(window.aqsAjax)send();else document.addEventListener('aqs:firebase:ready',send,{once:true});});}
 function date(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString();}
-let hosted=[],selfQuizzes=[],attempts=[],dashboardStats=null,activityRange="week";
+let hosted=[],selfQuizzes=[],attempts=[],dashboardStats={},activityRange="week",activeQuizUid='__pending__';
 function percent(a){return Number(a.total)>0?Math.round(Number(a.score)/Number(a.total)*100):0;}
 function renderOverview(){
- const all=attempts.slice();
+ const query=($('dq-search').value||'').trim().toLowerCase();
+ const matches=(value)=>!query||String(value||'').toLowerCase().includes(query);
+ const all=attempts.filter(a=>matches((a.quiz_title||'')+' '+(a.subject||'')));
  const recent=$("dq-recent-rows");
  recent.innerHTML=all.slice(0,5).length?all.slice(0,5).map(a=>{const p=percent(a);return '<tr><td><strong>'+esc(a.quiz_title||"Practice Quiz")+'</strong></td><td>'+esc(date(a.finished_at))+'</td><td><strong>'+p+'%</strong></td><td><span class="dq-quiz-status '+(p>=50?'passed':'retry')+'">'+(p>=50?'Passed':'Retry')+'</span></td></tr>';}).join(""):'<tr><td colspan="4" class="dq-feature-empty">No quiz attempts yet. Start practising to build your history.</td></tr>';
  const subjects={};all.forEach(a=>{const k=String(a.subject||"General").trim()||"General";if(!subjects[k])subjects[k]={score:0,total:0};subjects[k].score+=Number(a.score)||0;subjects[k].total+=Number(a.total)||0;});
  const subjectRows=Object.keys(subjects).map(k=>({name:k,pct:subjects[k].total?Math.round(subjects[k].score/subjects[k].total*100):0})).sort((a,b)=>b.pct-a.pct).slice(0,5);
  $("dq-subject-performance").innerHTML=subjectRows.length?subjectRows.map((s,i)=>'<div class="dq-subject-row"><div><span>'+esc(s.name)+'</span><strong>'+s.pct+'%</strong></div><div class="dq-subject-track"><span class="subject-'+(i%4)+'" style="width:'+s.pct+'%"></span></div></div>').join(""):'<p class="dq-chart-empty">No subject results yet.</p>';
- const quizList=selfQuizzes.concat(hosted).filter(q=>q.quiz_url).slice(0,3);
+ const quizList=selfQuizzes.concat(hosted).filter(q=>q.quiz_url&&matches((q.title||'')+' '+(q.subject||''))).slice(0,3);
  $("dq-continue-list").innerHTML=quizList.length?quizList.map((q,i)=>'<article class="dq-continue-card tone-'+(i%3)+'"><div class="dq-continue-info"><strong>'+esc(q.subject||q.title||"Practice Quiz")+'</strong><span>'+esc(q.title||"Continue your quiz")+'</span></div><a href="'+esc(q.quiz_url)+'">'+(q.quiz_note==="Created in Self Quiz Studio"?"Continue Quiz →":"Start Quiz →")+'</a></article>').join(""):'<div class="dq-continue-empty">No saved quizzes available yet.<a href="quiz-setup.html">Create a quiz →</a></div>';
  const chartItems=activityRange==="week"?(dashboardStats.weekly_activity||[]):activityRange==="month"?(dashboardStats.monthly_activity||[]):(dashboardStats.yearly_activity||[]);
  const max=Math.max(1,...chartItems.map(x=>Number(x.count)||0));
@@ -108,10 +110,12 @@ function renderHosted(list){$('hosted-rows').innerHTML=list.length?list.map(q=>'
 async function load(){try{const results=await Promise.all([call('aqs_get_my_quizzes',{limit:100}),call('aqs_get_my_attempts',{limit:100}),call('aqs_get_my_stats')]);const allOwned=Array.isArray(results[0])?results[0]:[];selfQuizzes=allOwned.filter(q=>q.quiz_note==='Created in Self Quiz Studio');hosted=allOwned.filter(q=>q.quiz_note!=='Created in Self Quiz Studio');attempts=Array.isArray(results[1])?results[1]:[];dashboardStats=results[2]||{};renderHosted(hosted);renderSelfQuizzes(selfQuizzes);renderSelf(attempts);$('stat-self').textContent=dashboardStats.quizzes_taken??attempts.length;$('stat-hosted').textContent=(dashboardStats.average_accuracy||0)+'%';$('stat-participants').textContent=dashboardStats.total_questions_answered??attempts.reduce((n,a)=>n+(Number(a.total)||0),0);$('stat-average').textContent=(dashboardStats.quiz_streak||0)+' Days';renderOverview();$('dq-status').textContent='Your quiz records are connected.';}catch(e){$('dq-status').textContent=e.message||'Could not load quiz records.';$('self-rows').innerHTML='<tr><td colspan="4" class="dq-feature-empty">Unable to load history. Please sign in and refresh.</td></tr>';$('hosted-rows').innerHTML='<tr><td colspan="5" class="dq-feature-empty">Unable to load hosted quizzes.</td></tr>';}}
 document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));activityRange=b.dataset.range;renderOverview();}));
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('self-panel').hidden=b.dataset.tab!=='self';$('hosted-panel').hidden=b.dataset.tab!=='hosted';}));
-$('dq-search').addEventListener('input',e=>{const q=e.target.value.toLowerCase();renderSelf(attempts.filter(a=>(a.quiz_title+' '+a.subject).toLowerCase().includes(q)));renderOverview();renderHosted(hosted.filter(a=>(a.title+' '+a.subject).toLowerCase().includes(q)));});
-$('dq-menu').addEventListener('click',()=>$('dq-sidebar').classList.toggle('open'));
-$('dq-logout').addEventListener('click',async e=>{e.preventDefault();try{await call('aqs_logout');}finally{location.href='login.html';}});
-load();
+$('dq-search').addEventListener('input',()=>{const q=$('dq-search').value.trim().toLowerCase();const match=v=>!q||String(v||'').toLowerCase().includes(q);renderSelfQuizzes(selfQuizzes.filter(x=>match((x.title||'')+' '+(x.subject||''))));renderSelf(attempts.filter(x=>match((x.quiz_title||'')+' '+(x.subject||''))));renderHosted(hosted.filter(x=>match((x.title||'')+' '+(x.subject||''))));renderOverview();});
+const menuButton=document.querySelector('.menu-btn');if(menuButton)menuButton.addEventListener('click',openMenu);
+function syncQuizProfile(user){const display=(user&&user.displayName)||(window.AQS&&window.AQS.current_user_name)||'Student';const label=$('dq-user-name'),avatar=$('dq-avatar');if(label)label.textContent=display;if(avatar)avatar.textContent=display.trim().charAt(0).toUpperCase()||'S';}
+function handleQuizAuth(user){const uid=user&&!user.isAnonymous?user.uid:'';syncQuizProfile(user);if(uid===activeQuizUid)return;activeQuizUid=uid;if(uid){$('dq-status').textContent='Loading your quiz records…';load();}else{hosted=[];selfQuizzes=[];attempts=[];dashboardStats={};renderHosted(hosted);renderSelfQuizzes(selfQuizzes);renderSelf(attempts);renderOverview();$('dq-status').textContent='Sign in to view your quiz records.';}}
+if(typeof window.onAqsAuthChange==='function')window.onAqsAuthChange(handleQuizAuth);
+document.addEventListener('aqs:authchange',e=>handleQuizAuth(e.detail&&e.detail.user));
 })();
 </script>
 <script src="js/daraquiz-quiz-dashboard-enhancements.js?v=2"></script>
