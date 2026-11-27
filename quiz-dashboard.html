@@ -46,10 +46,10 @@
   <div class="hero-art" aria-hidden="true">📝🏆</div>
  </section>
  <section class="quick" aria-label="Quiz statistics">
-  <article class="tool quiz-stat"><span class="tool-icon">▤</span><strong id="stat-self">—</strong><small>Quizzes Taken</small></article>
-  <article class="tool quiz-stat"><span class="tool-icon">◉</span><strong id="stat-hosted">—</strong><small>Average Score</small></article>
-  <article class="tool quiz-stat"><span class="tool-icon">♙</span><strong id="stat-participants">—</strong><small>Questions Practised</small></article>
-  <article class="tool quiz-stat"><span class="tool-icon">🔥</span><strong id="stat-average">—</strong><small>Current Streak</small><small class="stat-note">Keep going — consistency matters.</small></article>
+  <article class="tool quiz-stat"><span class="tool-icon">▤</span><strong id="stat-self">0</strong><small>Quizzes Taken</small></article>
+  <article class="tool quiz-stat"><span class="tool-icon">◉</span><strong id="stat-hosted">0%</strong><small>Average Score</small></article>
+  <article class="tool quiz-stat"><span class="tool-icon">♙</span><strong id="stat-participants">0</strong><small>Questions Practised</small></article>
+  <article class="tool quiz-stat"><span class="tool-icon">🔥</span><strong id="stat-average">0 Days</strong><small>Current Streak</small><small class="stat-note">Keep going — consistency matters.</small></article>
  </section>
  <section class="quiz-panels">
   <article class="quiz-panel"><div class="quiz-panel-head"><h2>📈 Your Practice Activity</h2><div class="quiz-range" role="group" aria-label="Activity period"><button class="active" data-range="week">Week</button><button data-range="month">Month</button><button data-range="year">Year</button></div></div><div id="dq-practice-chart"><div class="dq-chart-empty">Your practice activity will appear here when you complete quizzes.</div></div></article>
@@ -107,7 +107,36 @@ function renderOverview(){
 function renderSelfQuizzes(list){$('self-quiz-rows').innerHTML=list.length?list.map(q=>'<tr><td><strong>'+esc(q.title||'My Self Quiz')+'</strong><div class="dq-feature-muted">'+esc(q.subject||'Personal study quiz')+'</div></td><td>'+esc(q.num_questions||0)+'</td><td>'+esc(q.status||'Published')+'</td><td>'+esc(date(q.created_at_ms))+'</td><td><a class="dq-feature-pill" href="'+esc(q.quiz_url||'take-quiz.html')+'">Open</a> <button class="dq-feature-pill" data-rename="'+esc(q.id)+'">Rename</button></td></tr>').join(''):'<tr><td colspan="5" class="dq-feature-empty">No self quizzes yet. Create one to see it here.</td></tr>';document.querySelectorAll('[data-rename]').forEach(b=>b.addEventListener('click',async()=>{const item=selfQuizzes.find(x=>x.id===b.dataset.rename);const title=prompt('Enter a new name for this self quiz:',item?item.title:'');if(title===null)return;try{const result=await call('aqs_update_self_quiz_title',{quiz_id:b.dataset.rename,title});item.title=result.title;renderSelfQuizzes(selfQuizzes);$('dq-status').textContent='Self quiz renamed. Questions and answer keys were not changed.';}catch(e){$('dq-status').textContent=e.message||'Could not rename quiz.';}}));}
 function renderSelf(list){$('self-rows').innerHTML=list.length?list.map(a=>'<tr><td><strong>'+esc(a.quiz_title||'Practice quiz')+'</strong><div class="dq-feature-muted">'+esc(a.subject||'Self practice')+'</div></td><td>'+esc(a.score??0)+' / '+esc(a.total??0)+'</td><td>'+esc(date(a.finished_at))+'</td><td><a class="dq-feature-button" href="quiz-results.html?attempt_id='+encodeURIComponent(a.attempt_id)+'">View report</a></td></tr>').join(''):'<tr><td colspan="4" class="dq-feature-empty">No self quiz attempts are available yet.</td></tr>';}
 function renderHosted(list){$('hosted-rows').innerHTML=list.length?list.map(q=>'<tr><td><strong>'+esc(q.title||'Untitled quiz')+'</strong><div class="dq-feature-muted">'+esc(q.subject||'')+'</div></td><td>'+esc(q.num_questions||0)+'</td><td>'+esc(q.status||'Draft')+'</td><td>'+esc(date(q.created_at_ms))+'</td><td><div class="dq-feature-pills"><a class="dq-feature-pill" href="hosted-quiz-dashboard.html?quiz_id='+encodeURIComponent(q.id)+'">View</a><a class="dq-feature-pill" href="quiz-metadata.html?quiz_id='+encodeURIComponent(q.id)+'">Manage</a></div></td></tr>').join(''):'<tr><td colspan="5" class="dq-feature-empty">No hosted quizzes found. Create your first hosted quiz to see it here.</td></tr>';}
-async function load(){try{const results=await Promise.all([call('aqs_get_my_quizzes',{limit:100}),call('aqs_get_my_attempts',{limit:100}),call('aqs_get_my_stats')]);const allOwned=Array.isArray(results[0])?results[0]:[];selfQuizzes=allOwned.filter(q=>q.quiz_note==='Created in Self Quiz Studio');hosted=allOwned.filter(q=>q.quiz_note!=='Created in Self Quiz Studio');attempts=Array.isArray(results[1])?results[1]:[];dashboardStats=results[2]||{};renderHosted(hosted);renderSelfQuizzes(selfQuizzes);renderSelf(attempts);$('stat-self').textContent=dashboardStats.quizzes_taken??attempts.length;$('stat-hosted').textContent=(dashboardStats.average_accuracy||0)+'%';$('stat-participants').textContent=dashboardStats.total_questions_answered??attempts.reduce((n,a)=>n+(Number(a.total)||0),0);$('stat-average').textContent=(dashboardStats.quiz_streak||0)+' Days';renderOverview();$('dq-status').textContent='Your quiz records are connected.';}catch(e){$('dq-status').textContent=e.message||'Could not load quiz records.';$('self-rows').innerHTML='<tr><td colspan="4" class="dq-feature-empty">Unable to load history. Please sign in and refresh.</td></tr>';$('hosted-rows').innerHTML='<tr><td colspan="5" class="dq-feature-empty">Unable to load hosted quizzes.</td></tr>';}}
+async function load(){
+ try{
+  const results=await Promise.allSettled([
+   call('aqs_get_my_quizzes',{limit:100}),
+   call('aqs_get_my_attempts',{limit:100}),
+   call('aqs_get_my_stats')
+  ]);
+  const owned=results[0].status==='fulfilled'&&Array.isArray(results[0].value)?results[0].value:[];
+  selfQuizzes=owned.filter(q=>q.quiz_note==='Created in Self Quiz Studio');
+  hosted=owned.filter(q=>q.quiz_note!=='Created in Self Quiz Studio');
+  attempts=results[1].status==='fulfilled'&&Array.isArray(results[1].value)?results[1].value:[];
+  dashboardStats=results[2].status==='fulfilled'&&results[2].value&&typeof results[2].value==='object'?results[2].value:{};
+  const completed=Number.isFinite(Number(dashboardStats.quizzes_taken))?Number(dashboardStats.quizzes_taken):attempts.length;
+  const questionCount=Number.isFinite(Number(dashboardStats.total_questions_answered))?Number(dashboardStats.total_questions_answered):attempts.reduce((n,a)=>n+(Number(a.total)||0),0);
+  const accuracy=Number.isFinite(Number(dashboardStats.average_accuracy))?Number(dashboardStats.average_accuracy):(questionCount?Math.round(attempts.reduce((n,a)=>n+(Number(a.score)||0),0)/questionCount*100):0);
+  const streak=Number.isFinite(Number(dashboardStats.quiz_streak))?Number(dashboardStats.quiz_streak):0;
+  $('stat-self').textContent=completed;
+  $('stat-hosted').textContent=accuracy+'%';
+  $('stat-participants').textContent=questionCount;
+  $('stat-average').textContent=streak+' Days';
+  renderHosted(hosted);renderSelfQuizzes(selfQuizzes);renderSelf(attempts);renderOverview();
+  const failed=results.some(r=>r.status==='rejected');
+  $('dq-status').textContent=failed?'Some quiz records could not load. Available totals are shown.':'Your quiz records are connected.';
+ }catch(e){
+  $('stat-self').textContent='0';$('stat-hosted').textContent='0%';$('stat-participants').textContent='0';$('stat-average').textContent='0 Days';
+  $('dq-status').textContent=e.message||'Could not load quiz records.';
+  $('self-rows').innerHTML='<tr><td colspan="4" class="dq-feature-empty">Unable to load history. Please sign in and refresh.</td></tr>';
+  $('hosted-rows').innerHTML='<tr><td colspan="5" class="dq-feature-empty">Unable to load hosted quizzes.</td></tr>';
+ }
+}
 document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));activityRange=b.dataset.range;renderOverview();}));
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('self-panel').hidden=b.dataset.tab!=='self';$('hosted-panel').hidden=b.dataset.tab!=='hosted';}));
 $('dq-search').addEventListener('input',()=>{const q=$('dq-search').value.trim().toLowerCase();const match=v=>!q||String(v||'').toLowerCase().includes(q);renderSelfQuizzes(selfQuizzes.filter(x=>match((x.title||'')+' '+(x.subject||''))));renderSelf(attempts.filter(x=>match((x.quiz_title||'')+' '+(x.subject||''))));renderHosted(hosted.filter(x=>match((x.title||'')+' '+(x.subject||''))));renderOverview();});
