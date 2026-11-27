@@ -1,6 +1,6 @@
 from pathlib import Path
 p=Path('.')
-for f in ['studyhub.html','ai-teacher.html','index.html','library.html','ai-animate.html','docs-gen.html']:
+for f in ['studyhub-dashboard.html','studyhub-flashcards-create.html','studyhub-notes-create.html','studyhub-gpa-create.html','ai-teacher.html','index.html','library.html','ai-animate.html','docs-gen.html']:
  q=p/f
  print('\n---',f)
  if q.exists():
