@@ -20,7 +20,7 @@ function makeEnv() {
   };
 }
 
-function mockFetch({ openaiStatus = 200, statusByKey = {} } = {}) {
+function mockFetch({ openaiStatus = 200, statusSequence = null } = {}) {
   const calls = [];
   const original = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
@@ -31,9 +31,8 @@ function mockFetch({ openaiStatus = 200, statusByKey = {} } = {}) {
       });
     }
     calls.push({ url: target, authorization: init.headers && init.headers.Authorization || '' });
-    const apiKey = String(init.headers && init.headers.Authorization || '').replace(/^Bearer\\s+/i, '');
-    const configuredStatus = Object.prototype.hasOwnProperty.call(statusByKey, apiKey)
-      ? statusByKey[apiKey]
+    const configuredStatus = Array.isArray(statusSequence)
+      ? (statusSequence[calls.length - 1] == null ? 200 : statusSequence[calls.length - 1])
       : target === 'https://api.openai.com/v1/chat/completions' ? openaiStatus : 200;
     if (target === 'https://api.openai.com/v1/chat/completions' || target === 'https://api.groq.com/openai/v1/chat/completions') {
       if (configuredStatus !== 200) {
@@ -174,10 +173,7 @@ test('feature AI uses the central main primary even when the feature has no save
 
 test('feature primary and fallback failures continue to Main AI primary', async () => {
   const env = makeEnv();
-  const mock = mockFetch({ statusByKey: {
-    'sk-studyhub-primary-key-123456789': 429,
-    'gsk-studyhub-fallback-key-123456789': 429,
-  } });
+  const mock = mockFetch({ statusSequence: [429, 429, 200] });
   try {
     await syncConfigs(env, {
       main: {
@@ -206,11 +202,7 @@ test('feature primary and fallback failures continue to Main AI primary', async 
 
 test('Main AI fallback is used when feature routes and Main AI primary fail', async () => {
   const env = makeEnv();
-  const mock = mockFetch({ statusByKey: {
-    'sk-studyhub-primary-key-123456789': 429,
-    'gsk-studyhub-fallback-key-123456789': 429,
-    'sk-main-primary-key-123456789': 429,
-  } });
+  const mock = mockFetch({ statusSequence: [429, 429, 429, 200] });
   try {
     await syncConfigs(env, {
       main: {
@@ -240,7 +232,7 @@ test('Main AI fallback is used when feature routes and Main AI primary fail', as
 
 test('Main AI requests try only Main AI primary and fallback without recursive routing', async () => {
   const env = makeEnv();
-  const mock = mockFetch({ statusByKey: { 'sk-main-primary-key-123456789': 429 } });
+  const mock = mockFetch({ statusSequence: [429, 200] });
   try {
     await syncConfig(env, {
       primary: 'openai', model: 'gpt-4.1-mini', fallback: 'groq', fallbackModel: 'openai/gpt-oss-20b',
@@ -261,12 +253,7 @@ test('Main AI requests try only Main AI primary and fallback without recursive r
 
 test('all configured routes failing returns a clear unavailable error', async () => {
   const env = makeEnv();
-  const mock = mockFetch({ statusByKey: {
-    'sk-studyhub-primary-key-123456789': 429,
-    'gsk-studyhub-fallback-key-123456789': 429,
-    'sk-main-primary-key-123456789': 429,
-    'gsk-main-fallback-key-123456789': 429,
-  } });
+  const mock = mockFetch({ statusSequence: [429, 429, 429, 429] });
   try {
     await syncConfigs(env, {
       main: {
