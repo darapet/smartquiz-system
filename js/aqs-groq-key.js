@@ -532,7 +532,18 @@ window._aqsKeysReady = new Promise(function(resolve) {
             if (workerResponse) return workerResponse;
         } catch(error) {
             if (extraOpts && extraOpts.signal && extraOpts.signal.aborted) throw error;
-            _aqsLog('warn', featureId + ' secure AI route unavailable; using existing provider pool.');
+            _aqsLog('warn', featureId + ' secure AI route unavailable.');
+            // Guided Study must never fall back to browser-to-provider requests.
+            // Those requests bypass the Worker router and can expose provider
+            // credentials while masking the actual authentication/routing failure.
+            if (featureId === 'studyhub') {
+                throw new Error('Guided Study secure AI connection failed. Please sign in again, refresh the page, and retry.');
+            }
+        }
+        // A missing token or invalid Worker payload also returns null rather than
+        // throwing. Keep Guided Study on the secure route in that case too.
+        if (featureId === 'studyhub') {
+            throw new Error('Guided Study secure AI connection is not ready. Please sign in again, refresh the page, and retry.');
         }
         return legacyFetch(bodyObj, extraOpts);
     }
