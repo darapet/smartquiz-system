@@ -499,6 +499,9 @@ function renderKeys(){
    input.value='';
    renderKeys();
    stats();renderDashboard();
+   // Persist the updated provider pool immediately; do not require the separate Save button.
+   $('aic-save-state').textContent='Key entered — saving securely…';
+   $('aic-save').click();
   });
  });
  $('aic-key-grid').querySelectorAll('[data-remove-slot]').forEach(function(button){
