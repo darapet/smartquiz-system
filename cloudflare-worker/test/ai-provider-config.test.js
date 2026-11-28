@@ -100,6 +100,55 @@ test('AI Control Centre config routes generation through the selected provider',
   }
 });
 
+test('AI Control Centre falls back when the primary provider requires a subscription (HTTP 402)', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ openaiStatus: 402 });
+  try {
+    await syncConfigs(env, {
+      main: {
+        primary: 'groq', model: 'openai/gpt-oss-20b', fallback: '',
+        keys: { primary: { groq: ['gsk-main-primary-key-123456789'] }, fallback: {} },
+      },
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: '',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: {} },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(data.choices[0].message.content, 'Fallback route active');
+    assert.deepEqual(mock.calls, [
+      'https://api.openai.com/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+    ]);
+  } finally {
+    mock.restore();
+  }
+});
+
+test('AI errors identify the failed provider, route, and key slot without exposing the key', async () => {
+  const env = makeEnv();
+  const mock = mockFetch({ openaiStatus: 402 });
+  try {
+    await syncConfigs(env, {
+      studyhub: {
+        primary: 'openai', model: 'gpt-4.1-mini', fallback: '',
+        keys: { primary: { openai: ['sk-studyhub-primary-key-123456789'] }, fallback: {} },
+      },
+    });
+    const response = await generate(env, 'studyhub');
+    const data = await response.json();
+    assert.equal(response.status, 402);
+    assert.match(data.error, /studyhub primary/i);
+    assert.match(data.error, /OPENAI/);
+    assert.match(data.error, /key slot 1/i);
+    assert.doesNotMatch(data.error, /sk-studyhub-primary-key/);
+  } finally {
+    mock.restore();
+  }
+});
+
 test('AI Control Centre falls back when the primary provider is rate limited', async () => {
   const env = makeEnv();
   const mock = mockFetch({ openaiStatus: 429 });
