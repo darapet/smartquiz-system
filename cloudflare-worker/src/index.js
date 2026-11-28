@@ -1414,12 +1414,14 @@ async function runConfiguredAI(env, featureId, messages, options) {
       const keys = rolePools && !Array.isArray(rolePools) && Array.isArray(rolePools[provider])
         ? rolePools[provider].slice(0, 50)
         : (Array.isArray(rolePools) ? rolePools.slice(0, 50) : []);
-      const uniqueKeys = keys.filter((key) => typeof key === 'string' && key.trim());
-      for (const key of uniqueKeys) {
+      const uniqueKeys = keys.map((key, index) => ({ key, slot: index + 1 }))
+        .filter((entry) => typeof entry.key === 'string' && entry.key.trim());
+      for (const entry of uniqueKeys) {
+        const key = entry.key;
         const routeKey = [provider, model, key].join('|');
         if (seenRoutes.has(routeKey)) continue;
         seenRoutes.add(routeKey);
-        attempts.push({ role, provider, model, key, source: route.id });
+        attempts.push({ role, provider, model, key, slot: entry.slot, source: route.id });
       }
     }
   }
@@ -1431,14 +1433,34 @@ async function runConfiguredAI(env, featureId, messages, options) {
       return { result, provider: attempt.provider, model: attempt.model, route: attempt.source, role: attempt.role };
     } catch (error) {
       lastError = error;
-      // Invalid credentials, provider rate limits and server errors should move
-      // to the next configured key/route. A malformed request is not retryable.
-      if (![400, 401, 403, 404, 408, 409, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
+      error.aiAttempt = {
+        provider: attempt.provider,
+        model: attempt.model,
+        route: attempt.source,
+        role: attempt.role,
+        slot: attempt.slot,
+        status: Number(error.status) || 0
+      };
+      // Subscription-required (402), invalid credentials, rate limits and
+      // provider/server failures should continue through configured fallbacks.
+      // Only malformed/non-retryable client requests stop the route chain.
+      if (![400, 401, 402, 403, 404, 408, 409, 429].includes(Number(error.status)) && Number(error.status) < 500) break;
     }
   }
 
   if (lastError) {
-    const error = new Error('Feature and main AI routes are unavailable: ' + lastError.message);
+    const failed = lastError.aiAttempt || {};
+    const providerName = String(failed.provider || 'unknown').toUpperCase();
+    const routeName = String(failed.route || featureId || 'main');
+    const roleName = String(failed.role || 'route');
+    const slotName = failed.slot ? ' key slot ' + failed.slot : '';
+    const statusName = failed.status ? ' (HTTP ' + failed.status + ')' : '';
+    const error = new Error(
+      'Feature and main AI routes are unavailable. Last failed route: ' +
+      routeName + ' ' + roleName + ' — ' + providerName +
+      (failed.model ? ' / ' + failed.model : '') + slotName + statusName +
+      ': ' + lastError.message
+    );
     error.httpStatus = Number(lastError.status) || 502;
     throw error;
   }
